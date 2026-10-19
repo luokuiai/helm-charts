@@ -114,16 +114,7 @@ Do not terminate TLS on an ordinary HTTPS Ingress before this proxy.
 
 The chart uses one replica with `Recreate` upgrades, so upgrades briefly interrupt traffic. Embedded client state and downloaded geolocation data are temporary; certificate data is persistent in ACME mode.
 
-## Validation and upstream references
-
-Local checks render both certificate modes, Secret references, ACME challenges, Service types, Traefik routes, and form mappings.
-They do not connect to your management server or validate live DNS, certificate issuance, certificate rotation, or Rancher form interactions.
-
-With Helm on `PATH` and PyYAML installed, run the render checks from the repository root:
-
-```bash
-python3 tests/netbird-proxy/test_chart.py
-```
+## Upstream references
 
 - [Proxy configuration source for v0.81.2](https://github.com/netbirdio/netbird/blob/v0.81.2/proxy/cmd/proxy/cmd/root.go)
 - [Official image Dockerfile](https://github.com/netbirdio/netbird/blob/v0.81.2/proxy/Dockerfile)
