@@ -114,13 +114,14 @@ Retain the original MongoDB archive as a fallback.
 ## 6. Restore directly inside Core
 
 On the K3s host, create an isolated directory for the imported backup and copy both archives into the normal Core Pod:
+Use `--no-same-owner` to extract files without restoring archived UID/GID values; the Core container drops Linux capabilities and cannot change file ownership.
 
 ```bash
 sudo k3s kubectl -n internal exec deployment/komodo -- mkdir -p /backups/migration /config/keys
 sudo k3s kubectl -n internal exec -i deployment/komodo -- \
-  tar -xzf - -C /backups/migration < ~/komodo-backups.tar.gz
+  tar --no-same-owner -xzf - -C /backups/migration < ~/komodo-backups.tar.gz
 sudo k3s kubectl -n internal exec -i deployment/komodo -- \
-  tar -xzf - -C /config/keys < ~/komodo-keys.tar.gz
+  tar --no-same-owner -xzf - -C /config/keys < ~/komodo-keys.tar.gz
 ```
 
 The restore target is the original database name, `komodo`. There is no database-name switch.
