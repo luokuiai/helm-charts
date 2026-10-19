@@ -1,6 +1,6 @@
 # Komodo + MongoDB: Rancher Git Chart Repository
 
-Locally maintained chart version `1.0.0`, with an English Rancher configuration form.
+Locally maintained chart version `1.0.0`, with a Rancher configuration form.
 This version is based on antiantiops Komodo Chart `0.1.23`; see `charts/komodo/1.0.0/UPSTREAM.md`.
 
 Directory layout:

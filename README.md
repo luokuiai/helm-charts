@@ -10,6 +10,8 @@ helm-charts/                         # Git repository root
 ├── charts/                          # Chart directory scanned by Rancher
 │   ├── postgres/
 │   │   └── 1.0.0/                   # PostgreSQL 18 + Rancher form + PVC
+│   ├── netbird-proxy/
+│   │   └── 1.0.0/                   # Standalone proxy + ACME certificate PVC + Rancher form
 │   └── komodo/
 │       └── 1.0.0/                   # Matches version in Chart.yaml
 │           ├── Chart.yaml
@@ -21,8 +23,10 @@ helm-charts/                         # Git repository root
 │           ├── UPSTREAM.md
 │           └── templates/
 ├── docs/
-│   └── komodo/
-│       ├── migration.md
+│   ├── komodo/
+│   │   ├── migration.md
+│   │   └── secrets.example.yaml
+│   └── netbird-proxy/
 │       └── secrets.example.yaml
 └── .gitignore
 ```
@@ -34,8 +38,9 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 
 | Chart | Chart version | Contents |
 | --- | --- | --- |
-| komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and an English configuration form |
-| postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and an English configuration form |
+| komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
+| postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and a Rancher configuration form |
+| netbird-proxy | 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, Traefik TLS passthrough, and a Rancher configuration form |
 
 Komodo optionally creates an Ingress through the Rancher form, with an existing TLS Secret or cert-manager certificate issuance.
 Ingress is disabled by default. DNS, cert-manager installation, and Issuer / ClusterIssuer creation are managed separately.
@@ -44,10 +49,12 @@ Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.exam
 
 See the [PostgreSQL README](charts/postgres/1.0.0/README.md) for PostgreSQL 18 installation and data volume details.
 
+See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.0/README.md) for management connection settings, certificate ownership, and sharing Rancher's Traefik entrypoint.
+
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/` and `charts/postgres/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, and `charts/netbird-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -79,4 +86,4 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo` or `postgres` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, or `netbird-proxy` and select the desired chart version.

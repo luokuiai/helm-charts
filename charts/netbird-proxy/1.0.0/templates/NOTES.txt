@@ -1,0 +1,26 @@
+NetBird Reverse Proxy connects to {{ .Values.proxy.managementAddress }}.
+Proxy cluster domain: {{ .Values.proxy.domain }}
+TLS mode: {{ .Values.tls.mode }}; certificate directory: {{ .Values.tls.certificateDirectory }}.
+
+{{- if .Values.traefik.enabled }}
+TLS passes through the existing Traefik {{ .Values.traefik.entryPoint }} entrypoint.
+Point {{ .Values.proxy.domain }} and *.{{ .Values.proxy.domain }} at that entrypoint.
+{{- if eq .Values.tls.mode "acme" }}
+NetBird Proxy issues and renews service certificates through TLS-ALPN-01 on public port 443.
+If Traefik has its own TLS ACME resolver, set entryPoints.{{ .Values.traefik.entryPoint }}.allowACMEByPass=true in the existing Traefik configuration.
+{{- end }}
+{{- else }}
+Service: {{ include "netbird-proxy.fullname" . }} ({{ .Values.service.type }}), HTTPS port {{ .Values.service.httpsPort }}.
+Expose this Service through an L4 load balancer or a TLS passthrough router.
+{{- end }}
+
+{{- if eq .Values.tls.mode "existingSecret" }}
+TLS Secret {{ .Values.tls.existingSecret }} must exist in namespace {{ .Release.Namespace }}.
+Its certificate must cover every public service hostname handled by this proxy.
+{{- else }}
+Ensure public {{ if eq .Values.tls.acme.challengeType "http-01" }}port 80{{ else }}port 443{{ end }} reaches the proxy for ACME validation.
+Certificate PVCs are retained on uninstall; manage them separately.
+{{- end }}
+
+For an existing token Secret, restart the Deployment after rotating the token.
+Read this chart's README.md before changing certificate ownership or exposure settings.

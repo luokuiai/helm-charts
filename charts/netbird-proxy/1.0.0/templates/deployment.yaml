@@ -1,0 +1,145 @@
+{{- include "netbird-proxy.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "netbird-proxy.fullname" . }}
+  labels:
+    {{- include "netbird-proxy.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "netbird-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "netbird-proxy.selectorLabels" . | nindent 8 }}
+      {{- if not .Values.auth.useExistingSecret }}
+      annotations:
+        checksum/auth: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: proxy
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: https
+              containerPort: 8443
+            - name: health
+              containerPort: 8080
+            {{- if and (eq .Values.tls.mode "acme") (eq .Values.tls.acme.challengeType "http-01") }}
+            - name: acme-http
+              containerPort: 8081
+            {{- end }}
+          env:
+            - name: NB_PROXY_MANAGEMENT_ADDRESS
+              value: {{ .Values.proxy.managementAddress | quote }}
+            - name: NB_PROXY_DOMAIN
+              value: {{ .Values.proxy.domain | quote }}
+            - name: NB_PROXY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "netbird-proxy.secretName" . | quote }}
+                  key: {{ .Values.auth.secretKey | quote }}
+            - name: NB_PROXY_ADDRESS
+              value: ":8443"
+            - name: NB_PROXY_HEALTH_ADDRESS
+              value: ":8080"
+            - name: NB_PROXY_LOG_LEVEL
+              value: {{ .Values.proxy.logLevel | quote }}
+            - name: NB_PROXY_PRIVATE
+              value: {{ .Values.proxy.private | quote }}
+            - name: NB_PROXY_FORWARDED_PROTO
+              value: {{ .Values.proxy.forwardedProto | quote }}
+            - name: NB_PROXY_PROXY_PROTOCOL
+              value: {{ .Values.proxy.proxyProtocol | quote }}
+            - name: NB_PROXY_TRUSTED_PROXIES
+              value: {{ .Values.proxy.trustedProxies | quote }}
+            - name: NB_PROXY_SUPPORTS_CUSTOM_PORTS
+              value: "false"
+            - name: NB_PROXY_CERTIFICATE_DIRECTORY
+              value: {{ .Values.tls.certificateDirectory | quote }}
+            - name: NB_PROXY_CERTIFICATE_FILE
+              value: tls.crt
+            - name: NB_PROXY_CERTIFICATE_KEY_FILE
+              value: tls.key
+            - name: NB_PROXY_ACME_CERTIFICATES
+              value: {{ eq .Values.tls.mode "acme" | quote }}
+            {{- if eq .Values.tls.mode "acme" }}
+            - name: NB_PROXY_CERT_LOCK_METHOD
+              value: flock
+            - name: NB_PROXY_ACME_ADDRESS
+              value: ":8081"
+            - name: NB_PROXY_ACME_DIRECTORY
+              value: {{ .Values.tls.acme.directory | quote }}
+            - name: NB_PROXY_ACME_CHALLENGE_TYPE
+              value: {{ .Values.tls.acme.challengeType | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /healthz/startup
+              port: health
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: health
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: health
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: certs
+              mountPath: {{ .Values.tls.certificateDirectory | quote }}
+              readOnly: {{ eq .Values.tls.mode "existingSecret" }}
+            - name: state
+              mountPath: /var/lib/netbird
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: certs
+          {{- if eq .Values.tls.mode "existingSecret" }}
+          secret:
+            secretName: {{ .Values.tls.existingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "netbird-proxy.claimName" . | quote }}
+          {{- end }}
+        - name: state
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

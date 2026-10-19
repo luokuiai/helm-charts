@@ -1,0 +1,220 @@
+questions:
+  - variable: proxy.managementAddress
+    label: "NetBird management URL"
+    type: string
+    default: https://api.netbird.io:443
+    required: true
+    group: "NetBird connection"
+    description: "NB_PROXY_MANAGEMENT_ADDRESS. Use your management URL with scheme and optional port, without an API path. The endpoint must support the ProxyService gRPC API. Prefer HTTPS; http:// uses plaintext."
+  - variable: proxy.domain
+    label: "Proxy cluster domain"
+    type: hostname
+    default: ""
+    required: true
+    group: "NetBird connection"
+    description: "NB_PROXY_DOMAIN. For example proxy.example.com, without https://, a port, a path, or a wildcard. Must match the cluster configured in NetBird. Use a different domain from Rancher."
+  - variable: auth.useExistingSecret
+    label: "Use an existing proxy token Secret"
+    type: boolean
+    default: "false"
+    group: "NetBird connection"
+  - variable: auth.token
+    label: "Proxy token"
+    type: password
+    default: ""
+    required: true
+    show_if: auth.useExistingSecret=false
+    group: "NetBird connection"
+    description: "NB_PROXY_TOKEN. Use the proxy token from the NetBird cluster setup, not a peer setup key. An existing Secret keeps the token out of Helm values."
+  - variable: auth.existingSecret
+    label: "Existing token Secret name"
+    type: string
+    default: ""
+    required: true
+    show_if: auth.useExistingSecret=true
+    group: "NetBird connection"
+    description: "Must exist in the installation namespace. Restart the Deployment after rotating this token."
+  - variable: auth.secretKey
+    label: "Token key in Secret"
+    type: string
+    default: token
+    required: true
+    group: "NetBird connection"
+  - variable: tls.mode
+    label: "Certificate source"
+    type: enum
+    options: [acme, existingSecret]
+    default: acme
+    required: true
+    group: "Certificates"
+    description: "acme lets NetBird Proxy automatically issue and renew service certificates, stored on a PVC. existingSecret optionally reads an externally managed TLS Secret and disables proxy ACME."
+  - variable: tls.existingSecret
+    label: "Existing TLS Secret name"
+    type: string
+    default: ""
+    required: true
+    show_if: tls.mode=existingSecret
+    group: "Certificates"
+    description: "Must be in the installation namespace with tls.crt and tls.key. Cover the proxy domain and all service hostnames, typically proxy.example.com and *.proxy.example.com. Renew the Secret through its existing owner."
+  - variable: tls.certificateDirectory
+    label: "Certificate mount directory"
+    type: string
+    default: /certs
+    required: true
+    group: "Certificates"
+    description: "NB_PROXY_CERTIFICATE_DIRECTORY and the container mount path use this same absolute directory. The TLS Secret is read-only; an ACME certificate PVC is writable by UID/GID 1000."
+  - variable: tls.acme.challengeType
+    label: "ACME challenge type"
+    type: enum
+    options: [tls-alpn-01, http-01]
+    default: tls-alpn-01
+    required: true
+    show_if: tls.mode=acme
+    group: "Certificates"
+    description: "Use tls-alpn-01 with the shared Traefik TLS passthrough route; public TCP 443 and ACME validation traffic must reach NetBird Proxy unchanged. http-01 needs a separate public port 80 route and requires disabling the built-in Traefik route."
+  - variable: tls.acme.directory
+    label: "ACME directory URL"
+    type: string
+    default: https://acme-v02.api.letsencrypt.org/directory
+    required: true
+    show_if: tls.mode=acme
+    group: "Certificates"
+  - variable: traefik.enabled
+    label: "Share the existing Traefik HTTPS entrypoint"
+    type: boolean
+    default: "true"
+    group: "Network exposure"
+    description: "Requires Traefik v3, the traefik.io IngressRouteTCP CRD, and service.type=ClusterIP. Passes TLS and tls-alpn-01 validation through to NetBird Proxy for the proxy domain and its subdomains. If Traefik has its own TLS ACME resolver, enable allowACMEByPass on its entrypoint; see README."
+  - variable: traefik.entryPoint
+    label: "Traefik HTTPS entrypoint"
+    type: string
+    default: websecure
+    required: true
+    show_if: traefik.enabled=true
+    group: "Network exposure"
+  - variable: service.type
+    label: "Service type"
+    type: enum
+    options: [ClusterIP, NodePort, LoadBalancer]
+    default: ClusterIP
+    required: true
+    group: "Network exposure"
+    description: "ClusterIP needs a TLS passthrough route or an external L4 load balancer. LoadBalancer needs a dedicated address; K3s ServiceLB may conflict with Traefik's node ports 80/443."
+  - variable: service.httpsPort
+    label: "HTTPS Service port"
+    type: int
+    default: 443
+    required: true
+    group: "Network exposure"
+    description: "Maps to container port 8443. External clients normally connect to public port 443."
+  - variable: service.httpsNodePort
+    label: "HTTPS NodePort"
+    type: int
+    default: 0
+    show_if: service.type=NodePort
+    group: "Network exposure"
+    description: "0 allocates a port automatically; otherwise choose 30000-32767. Forward public port 443 to this node port."
+  - variable: service.httpPort
+    label: "ACME HTTP Service port"
+    type: int
+    default: 80
+    required: true
+    show_if: tls.mode=acme&&tls.acme.challengeType=http-01
+    group: "Network exposure"
+  - variable: service.httpNodePort
+    label: "ACME HTTP NodePort"
+    type: int
+    default: 0
+    show_if: service.type=NodePort&&tls.mode=acme&&tls.acme.challengeType=http-01
+    group: "Network exposure"
+    description: "0 allocates a port automatically; otherwise choose 30000-32767. Forward public port 80 to this node port."
+  - variable: proxy.proxyProtocol
+    label: "Receive PROXY protocol from the upstream load balancer"
+    type: boolean
+    default: "false"
+    group: "Client IP and logging"
+    description: "NB_PROXY_PROXY_PROTOCOL. Enable only when the upstream sends PROXY protocol. The optional Traefik route will send v2 automatically when enabled. Direct browser connections cannot send this protocol."
+  - variable: proxy.trustedProxies
+    label: "Trusted upstream proxy IPs or CIDRs"
+    type: string
+    default: ""
+    group: "Client IP and logging"
+    description: "NB_PROXY_TRUSTED_PROXIES. Comma-separated upstream addresses. Required with PROXY protocol to preserve client IPs for access rules; restrict to the actual upstream proxies."
+  - variable: proxy.forwardedProto
+    label: "Forwarded protocol sent to backends"
+    type: enum
+    options: [https, auto, http]
+    default: https
+    required: true
+    group: "Client IP and logging"
+    description: "NB_PROXY_FORWARDED_PROTO. HTTPS is appropriate for the TLS entrypoint provided by this chart."
+  - variable: proxy.logLevel
+    label: "Proxy log level"
+    type: enum
+    options: [panic, fatal, error, warn, info, debug, trace]
+    default: info
+    required: true
+    group: "Client IP and logging"
+  - variable: proxy.private
+    label: "Enable NetBird private service capability"
+    type: boolean
+    default: "true"
+    group: "NetBird connection"
+    description: "NB_PROXY_PRIVATE. Allows NetBird-Only Access services; individual service access is configured in NetBird."
+  - variable: persistence.existingClaim
+    label: "Existing ACME certificate PVC (optional)"
+    type: string
+    default: ""
+    show_if: tls.mode=acme
+    group: "ACME persistence"
+    description: "Leave empty to create a retained PVC. An existing PVC must be in the installation namespace and writable by UID/GID 1000."
+  - variable: persistence.storageClass
+    label: "ACME certificate storage class"
+    type: storageclass
+    default: local-path
+    show_if: tls.mode=acme
+    group: "ACME persistence"
+  - variable: persistence.size
+    label: "Initial ACME certificate storage size"
+    type: string
+    default: 1Gi
+    required: true
+    show_if: tls.mode=acme
+    group: "ACME persistence"
+  - variable: image.repository
+    label: "Proxy image repository"
+    type: string
+    default: netbirdio/reverse-proxy
+    required: true
+    group: "Images"
+  - variable: image.tag
+    label: "Proxy image tag"
+    type: string
+    default: "0.81.2"
+    required: true
+    group: "Images"
+    description: "Environment variables and health endpoints were checked against this version."
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"

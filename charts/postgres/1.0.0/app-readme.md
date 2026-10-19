@@ -1,6 +1,6 @@
 # PostgreSQL 18
 
-A single PostgreSQL 18 instance with an English configuration form, password Secret, ClusterIP Service, and persistent storage.
+A single PostgreSQL 18 instance with a Rancher configuration form, password Secret, ClusterIP Service, and persistent storage.
 
 - Default image: `postgres:18`.
 - On first installation, enter the initial administrator password or select an existing Secret in the same namespace.

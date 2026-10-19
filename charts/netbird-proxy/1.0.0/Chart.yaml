@@ -1,0 +1,16 @@
+apiVersion: v2
+name: netbird-proxy
+description: Standalone NetBird Reverse Proxy with a Rancher configuration form
+type: application
+version: 1.0.0
+appVersion: "0.81.2"
+home: https://netbird.io/
+icon: file://charts/netbird-proxy/1.0.0/icon.png
+sources:
+  - https://github.com/netbirdio/netbird/tree/v0.81.2/proxy
+keywords:
+  - netbird
+  - reverse-proxy
+annotations:
+  catalog.cattle.io/display-name: "NetBird Reverse Proxy"
+  catalog.cattle.io/release-name: netbird-proxy

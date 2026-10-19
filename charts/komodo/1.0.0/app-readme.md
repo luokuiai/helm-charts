@@ -1,6 +1,6 @@
 # Komodo + MongoDB
 
-Includes Komodo Core, MongoDB, persistent storage, and an English Rancher configuration form.
+Includes Komodo Core, MongoDB, persistent storage, and a Rancher configuration form.
 
 Normal installations start one Core replica.
 

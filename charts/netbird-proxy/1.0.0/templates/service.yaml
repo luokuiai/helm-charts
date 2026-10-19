@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "netbird-proxy.fullname" . }}
+  labels:
+    {{- include "netbird-proxy.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: https
+      port: {{ .Values.service.httpsPort }}
+      targetPort: https
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.httpsNodePort }}
+      nodePort: {{ .Values.service.httpsNodePort }}
+      {{- end }}
+    {{- if and (eq .Values.tls.mode "acme") (eq .Values.tls.acme.challengeType "http-01") }}
+    - name: acme-http
+      port: {{ .Values.service.httpPort }}
+      targetPort: acme-http
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.httpNodePort }}
+      nodePort: {{ .Values.service.httpNodePort }}
+      {{- end }}
+    {{- end }}
+  selector:
+    {{- include "netbird-proxy.selectorLabels" . | nindent 4 }}
