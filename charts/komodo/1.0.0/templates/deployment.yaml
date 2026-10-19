@@ -19,6 +19,8 @@ spec:
         {{- include "komodo.labels" . | nindent 8 }}
         app.kubernetes.io/component: core
     spec:
+      # Avoid KOMODO_PORT collisions with Kubernetes Service variables.
+      enableServiceLinks: false
       securityContext:
         {{- toYaml .Values.komodo.podSecurityContext | nindent 8 }}
       {{- with .Values.komodo.nodeSelector }}
