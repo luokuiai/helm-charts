@@ -1,0 +1,117 @@
+nameOverride: ""
+fullnameOverride: komodo
+# Legacy fallback used only when komodo.envSecret is empty.
+existingSecret:
+  name: ""
+
+komodo:
+  # Shared Core environment and MongoDB credentials: KOMODO_DATABASE_USERNAME / PASSWORD.
+  envSecret: komodo-env
+  image:
+    repository: moghtech/komodo-core
+    tag: "2"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  host: "https://komodo.luokuiai.com"
+  localAuth: true
+  timezone: Asia/Shanghai
+  auth:
+    initAdminUsername: admin
+    initAdminPassword: ""
+    jwtSecret: ""
+    passkey: ""
+    webhookSecret: ""
+  googleOAuth:
+    enabled: false
+    id: ""
+    secret: ""
+  userRegistration:
+    enableNewUsers: false
+    disableUserRegistration: false
+    disableGoogleUserRegistration: false
+    disableLocalUserRegistration: false
+  service:
+    type: ClusterIP
+    port: 9120
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: komodo.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    # Keep tls above for custom YAML; use certificate for the Rancher form.
+    certificate:
+      mode: disabled # disabled, existing, or cert-manager
+      secretName: komodo-tls
+      issuerName: ""
+      issuerKind: ClusterIssuer
+  persistence:
+    backups:
+      enabled: true
+      size: 5Gi
+      storageClass: local-path
+      accessModes: [ReadWriteOnce]
+    config:
+      enabled: true
+      size: 1Gi
+      storageClass: local-path
+      accessModes: [ReadWriteOnce]
+    repoCache:
+      enabled: false
+      size: 10Gi
+      storageClass: ""
+      accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  podSecurityContext:
+    fsGroup: 1000
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+mongo:
+  # embedded: chart deploys MongoDB; external: use an existing Mongo-compatible endpoint.
+  mode: embedded
+
+  # Used only when mode: external.
+  host: ""
+  port: 27017
+
+  image:
+    repository: mongo
+    tag: "8"
+    pullPolicy: IfNotPresent
+  auth:
+    # Legacy generated-Secret mode only, when both Secret names above are empty.
+    username: ""
+    password: ""
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+    accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

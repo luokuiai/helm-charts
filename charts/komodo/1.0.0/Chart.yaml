@@ -1,0 +1,19 @@
+apiVersion: v2
+appVersion: "2"
+description: Komodo Core with MongoDB
+home: https://komo.do/
+icon: file://charts/komodo/1.0.0/icon.png
+keywords:
+- komodo
+- mongodb
+- devops
+maintainers:
+- name: antiantiops
+name: komodo
+sources:
+- https://github.com/moghtech/komodo
+type: application
+version: 1.0.0
+annotations:
+  catalog.cattle.io/display-name: "Komodo + MongoDB"
+  catalog.cattle.io/release-name: komodo

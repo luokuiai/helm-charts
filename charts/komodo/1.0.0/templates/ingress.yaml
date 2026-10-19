@@ -1,0 +1,59 @@
+{{- if .Values.komodo.ingress.enabled }}
+{{- $certificate := .Values.komodo.ingress.certificate }}
+{{- $annotations := deepCopy .Values.komodo.ingress.annotations }}
+{{- if not .Values.komodo.ingress.hosts }}
+{{- fail "komodo.ingress.hosts must contain at least one hostname" }}
+{{- end }}
+{{- if and (ne $certificate.mode "disabled") .Values.komodo.ingress.tls }}
+{{- fail "Use either komodo.ingress.certificate or komodo.ingress.tls, not both" }}
+{{- end }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $issuer := required "komodo.ingress.certificate.issuerName is required for cert-manager" $certificate.issuerName }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- if eq $certificate.issuerKind "ClusterIssuer" }}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" $issuer }}
+{{- else }}
+{{- $_ := set $annotations "cert-manager.io/issuer" $issuer }}
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "komodo.fullname" . }}
+  labels:
+    {{- include "komodo.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.komodo.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if ne $certificate.mode "disabled" }}
+  tls:
+    - secretName: {{ required "komodo.ingress.certificate.secretName is required for HTTPS" $certificate.secretName | quote }}
+      hosts:
+        {{- range .Values.komodo.ingress.hosts }}
+        - {{ required "komodo.ingress.hosts[].host is required" .host | quote }}
+        {{- end }}
+  {{- else }}
+  {{- with .Values.komodo.ingress.tls }}
+  tls: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.komodo.ingress.hosts }}
+    - host: {{ required "komodo.ingress.hosts[].host is required" .host | quote }}
+      http:
+        paths:
+          {{- range (.paths | default (list (dict "path" "/" "pathType" "Prefix"))) }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "komodo.fullname" $ }}
+                port: { name: http }
+          {{- end }}
+    {{- end }}
+{{- end }}

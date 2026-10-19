@@ -1,0 +1,102 @@
+questions:
+  - variable: image.repository
+    label: "PostgreSQL image repository"
+    type: string
+    default: postgres
+    required: true
+    group: "Images"
+    description: "Use the official postgres image, or a mirror repository compatible with the official image."
+  - variable: image.tag
+    label: "PostgreSQL image tag"
+    type: string
+    default: "18"
+    required: true
+    group: "Images"
+    description: "This chart supports PostgreSQL 18 only. Use a PostgreSQL 18 tag such as 18, 18.x, or 18-alpine."
+  - variable: auth.username
+    label: "Initial administrator username"
+    type: string
+    default: postgres
+    required: true
+    group: "Database and authentication"
+    description: "Used only when initializing an empty data directory. This user has superuser privileges."
+  - variable: auth.database
+    label: "Initial database name"
+    type: string
+    default: postgres
+    required: true
+    group: "Database and authentication"
+    description: "Used only when initializing an empty data directory. You can create additional databases in PostgreSQL later."
+  - variable: auth.useExistingSecret
+    label: "Use an existing password Secret"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Database and authentication"
+  - variable: auth.password
+    label: "Initial administrator password"
+    type: password
+    default: ""
+    required: true
+    group: "Database and authentication"
+    show_if: auth.useExistingSecret=false
+    description: "Sets the database password only when initializing an empty data directory. Editing this form does not change the password of an existing database."
+  - variable: auth.existingSecret
+    label: "Existing Secret name"
+    type: string
+    default: ""
+    required: true
+    group: "Database and authentication"
+    show_if: auth.useExistingSecret=true
+    description: "Must be in the namespace where this application is installed."
+  - variable: auth.secretKey
+    label: "Password key in Secret"
+    type: string
+    default: password
+    required: true
+    group: "Database and authentication"
+    show_if: auth.useExistingSecret=true
+  - variable: persistence.existingClaim
+    label: "Existing PVC name (optional)"
+    type: string
+    default: ""
+    group: "Persistence"
+    description: "Leave empty to create a PVC. Otherwise, use an existing PVC in the installation namespace and ignore the storage class and size below. Do not switch after installation."
+  - variable: persistence.storageClass
+    label: "Storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    description: "Used when creating a PVC. local-path stores data on the local disk of the node running the Pod."
+  - variable: persistence.size
+    label: "Initial storage size"
+    type: string
+    default: 10Gi
+    required: true
+    group: "Persistence"
+    description: "Used only when creating a PVC. After installation, check storage class capabilities and resize the PVC separately instead of changing this field."
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+    description: "1000m equals 1 CPU core."
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"

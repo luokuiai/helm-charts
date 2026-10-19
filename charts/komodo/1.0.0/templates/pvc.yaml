@@ -1,0 +1,19 @@
+{{- range $name, $pvc := dict "config" .Values.komodo.persistence.config "repo-cache" .Values.komodo.persistence.repoCache "backups" .Values.komodo.persistence.backups }}
+{{- if $pvc.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "komodo.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "komodo.labels" $ | nindent 4 }}
+spec:
+  accessModes: {{- toYaml $pvc.accessModes | nindent 4 }}
+  {{- with $pvc.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $pvc.size }}
+---
+{{- end }}
+{{- end }}

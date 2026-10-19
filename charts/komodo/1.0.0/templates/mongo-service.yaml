@@ -1,0 +1,17 @@
+{{- if eq .Values.mongo.mode "embedded" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "komodo.mongoName" . }}
+  labels:
+    {{- include "komodo.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: mongo
+      port: 27017
+  selector:
+    app.kubernetes.io/name: {{ include "komodo.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: mongo
+{{- end }}

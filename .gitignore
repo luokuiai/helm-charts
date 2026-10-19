@@ -1,0 +1,14 @@
+# Local credentials and data backups
+.env
+.env.*
+!.env.example
+secrets.yaml
+*.archive.gz
+*.dump
+*.pem
+*.key
+
+# Generated chart packages and local files
+*.tgz
+*.tar.gz
+.DS_Store

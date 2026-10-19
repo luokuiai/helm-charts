@@ -1,0 +1,27 @@
+image:
+  repository: postgres
+  tag: "18"
+  pullPolicy: IfNotPresent
+
+auth:
+  username: postgres
+  database: postgres
+  # Required on first install unless useExistingSecret is true. Do not commit real passwords.
+  password: ""
+  useExistingSecret: false
+  existingSecret: ""
+  secretKey: password
+
+persistence:
+  # An existing claim must be in the release namespace and contain compatible PG18 data.
+  existingClaim: ""
+  storageClass: local-path
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "komodo.fullname" . }}
+  labels:
+    {{- include "komodo.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.komodo.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.komodo.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "komodo.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: core

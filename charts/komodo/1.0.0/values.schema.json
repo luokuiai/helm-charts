@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "komodo": {
+      "type": "object",
+      "properties": {
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "certificate": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["disabled", "existing", "cert-manager"]
+                },
+                "secretName": { "type": "string" },
+                "issuerName": { "type": "string" },
+                "issuerKind": {
+                  "type": "string",
+                  "enum": ["ClusterIssuer", "Issuer"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "mongo": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    }
+  }
+}

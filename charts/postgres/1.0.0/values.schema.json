@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "auth", "persistence", "resources"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "pattern": "^18([.-].+)?$"},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["username", "database", "password", "useExistingSecret", "existingSecret", "secretKey"],
+      "properties": {
+        "username": {"type": "string", "minLength": 1},
+        "database": {"type": "string", "minLength": 1},
+        "password": {"type": "string"},
+        "useExistingSecret": {"type": "boolean"},
+        "existingSecret": {"type": "string"},
+        "secretKey": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"}
+      },
+      "if": {"properties": {"useExistingSecret": {"const": true}}},
+      "then": {"properties": {"existingSecret": {"minLength": 1}}},
+      "else": {"properties": {"password": {"minLength": 1}}}
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["existingClaim", "storageClass", "size"],
+      "properties": {
+        "existingClaim": {"type": "string"},
+        "storageClass": {"type": "string"},
+        "size": {"type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": {"$ref": "#/definitions/resources"},
+        "limits": {"$ref": "#/definitions/resources"}
+      }
+    }
+  },
+  "definitions": {
+    "resources": {
+      "type": "object",
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": {"type": "string", "pattern": "^([0-9]+m|[0-9]+([.][0-9]+)?)$"},
+        "memory": {"type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"}
+      }
+    }
+  }
+}

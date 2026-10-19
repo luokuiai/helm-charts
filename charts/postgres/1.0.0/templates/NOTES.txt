@@ -1,0 +1,13 @@
+PostgreSQL 18 is available inside the cluster at:
+  {{ include "postgres.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:5432
+
+PVC mounted at /var/lib/postgresql; PGDATA=/var/lib/postgresql/18/docker.
+{{- if .Values.persistence.existingClaim }}
+Existing PVC: {{ .Values.persistence.existingClaim }}
+{{- else }}
+Created PVC: data-{{ include "postgres.fullname" . }}-0
+{{- end }}
+
+POSTGRES_USER / POSTGRES_DB / POSTGRES_PASSWORD initialize EMPTY storage only.
+Changing these Helm values does not alter an initialized database or its password.
+See the chart README before changing storage or reinstalling the release.

@@ -1,0 +1,81 @@
+{{- if eq .Values.mongo.mode "embedded" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "komodo.mongoName" . }}
+  labels:
+    {{- include "komodo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mongo
+spec:
+  serviceName: {{ include "komodo.mongoName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "komodo.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: mongo
+  template:
+    metadata:
+      labels:
+        {{- include "komodo.labels" . | nindent 8 }}
+        app.kubernetes.io/component: mongo
+    spec:
+      {{- with .Values.mongo.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongo.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongo.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mongo
+          image: "{{ .Values.mongo.image.repository }}:{{ .Values.mongo.image.tag }}"
+          imagePullPolicy: {{ .Values.mongo.image.pullPolicy }}
+          args: ["--quiet", "--wiredTigerCacheSizeGB", "0.25"]
+          ports:
+            - name: mongo
+              containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "komodo.secretName" . }}
+                  key: {{ include "komodo.mongoUsernameKey" . }}
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "komodo.secretName" . }}
+                  key: {{ include "komodo.mongoPasswordKey" . }}
+          readinessProbe:
+            tcpSocket: { port: mongo }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: mongo }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.mongo.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  {{- if .Values.mongo.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: {{- toYaml .Values.mongo.persistence.accessModes | nindent 10 }}
+        {{- with .Values.mongo.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.mongo.persistence.size }}
+  {{- else }}
+      volumes:
+        - name: data
+          emptyDir: {}
+  {{- end }}
+{{- end }}
