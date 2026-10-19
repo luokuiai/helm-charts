@@ -4,6 +4,11 @@ Includes Komodo Core, MongoDB, persistent storage, and an English Rancher config
 
 Normal installations start one Core replica.
 
+Configuration and backup PVCs are retained when Helm uninstalls the application.
+Upgrade an existing installation to this chart before uninstalling it to apply this policy.
+Retained PVCs must be managed or deleted manually after uninstall; namespace deletion still removes them.
+Optional repository-cache PVCs are disposable and are removed during uninstall.
+
 For migration, use the official `km` CLI inside the normal Core container and keep the database name `komodo`.
 Copy the native backup and original keys, run the restore, and restart Core to load the copied keys.
 The restore upserts backup records; it does not clear unrelated records already in the database.
