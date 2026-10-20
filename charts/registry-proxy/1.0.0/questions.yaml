@@ -15,8 +15,9 @@ questions:
     group: 代理配置
   - variable: ingress.className
     default: traefik
-    type: string
+    type: "reference[networking.k8s.io.ingressclass]"
     label: Ingress Class
+    description: 从集群现有的 Ingress Class 中选择，K3s 通常选择 traefik；留空使用集群默认 Ingress Class。
     group: 入口配置
   - variable: ingress.clusterIssuer
     default: letsencrypt
