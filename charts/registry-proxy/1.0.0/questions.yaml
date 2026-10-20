@@ -1,0 +1,59 @@
+questions:
+  - variable: ingress.host
+    default: registry.example.com
+    required: true
+    type: string
+    label: 上游仓库代理域名
+    description: 填写实际域名，并将 DNS 指向 Ingress 入口。
+    group: 入口配置
+  - variable: upstreamHost
+    default: registry-upstream.example.com
+    required: true
+    type: string
+    label: 上游仓库域名
+    description: 只填域名，不带 https://、端口或路径；上游使用 HTTPS 443。
+    group: 代理配置
+  - variable: ingress.className
+    default: traefik
+    type: string
+    label: Ingress Class
+    group: 入口配置
+  - variable: ingress.clusterIssuer
+    default: letsencrypt
+    type: string
+    label: 证书签发器 ClusterIssuer
+    description: 填写集群内已就绪的 ClusterIssuer；使用已有证书时留空，两个入口可共享覆盖两个域名的已有证书。
+    group: 证书配置
+  - variable: ingress.tls.secretName
+    default: ""
+    type: string
+    label: TLS Secret 名称
+    description: 自动签发时可留空，使用安装名称加 -tls；已有证书需填写同命名空间的 Secret 名称。
+    group: 证书配置
+  - variable: replicaCount
+    default: 1
+    required: true
+    type: int
+    min: 1
+    label: Caddy 副本数
+    group: 工作负载
+  - variable: publicProxy.enabled
+    default: true
+    type: boolean
+    label: 启用公共镜像代理
+    group: 公共镜像代理
+  - variable: publicProxy.host
+    default: docker.example.com
+    required: true
+    type: string
+    label: 公共镜像代理域名
+    description: 使用独立域名；不能与上游仓库代理域名相同。
+    show_if: "publicProxy.enabled=true"
+    group: 公共镜像代理
+  - variable: publicProxy.tls.secretName
+    default: ""
+    type: string
+    label: 公共镜像 TLS Secret
+    description: 自动签发时可留空，使用安装名称加 -public-tls，最终名称必须与仓库入口不同；使用已有证书时填写同命名空间的 Secret 名称。
+    show_if: "publicProxy.enabled=true"
+    group: 公共镜像代理

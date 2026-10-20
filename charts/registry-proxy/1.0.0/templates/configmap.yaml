@@ -1,0 +1,37 @@
+{{- $upstreamPattern := replace "." "[.]" .Values.upstreamHost -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  Caddyfile: |
+    :8080 {
+        reverse_proxy {{ printf "https://%s" .Values.upstreamHost | quote }} {
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto https
+            header_down Location {{ printf "^https://%s(:443)?/" $upstreamPattern | quote }} {{ printf "https://%s/" .Values.ingress.host | quote }}
+        }
+    }
+    {{- if .Values.publicProxy.enabled }}
+
+    :8081 {
+        @ping path /v2 /v2/
+        handle @ping {
+            header Docker-Distribution-API-Version "registry/2.0"
+            respond 200
+        }
+
+        handle {
+            uri path_regexp ^/v2/(library/)? /v2/docker/
+
+            reverse_proxy{{ range .Values.publicProxy.upstreams }} {{ . | quote }}{{ end }} {
+                lb_policy first
+                fail_duration 30s
+                unhealthy_status 5xx
+                lb_try_duration 10s
+                header_up Host {upstream_hostport}
+            }
+        }
+    }
+    {{- end }}
