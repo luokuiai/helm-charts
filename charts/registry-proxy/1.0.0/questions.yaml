@@ -43,6 +43,18 @@ questions:
     type: boolean
     label: 启用公共镜像代理
     group: 公共镜像代理
+  - variable: publicProxy.upstreams
+    default:
+      - https://gh-proxy.org
+      - https://v4.gh-proxy.org
+      - https://v6.gh-proxy.org
+      - https://cdn.gh-proxy.org
+    required: true
+    type: "array[string]"
+    label: 公共镜像上游地址
+    description: 至少保留一个 HTTPS 地址，可添加、删除或修改；按列表顺序优先使用。只填写协议、域名和可选端口，不带路径；上游须兼容现有 gh-proxy 路径规则。
+    show_if: "publicProxy.enabled=true"
+    group: 公共镜像代理
   - variable: publicProxy.host
     default: docker.example.com
     required: true

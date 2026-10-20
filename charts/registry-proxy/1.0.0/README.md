@@ -43,7 +43,7 @@ helm upgrade --install registry-proxy ./charts/registry-proxy/1.0.0 \
 
 在 Rancher 的“应用 → 仓库 → 创建”中选择 Git 仓库，填写本仓库的 Git 地址和实际分支。同步完成后，在“应用 → Charts”搜索 `registry-proxy`，选择 `1.0.0`，安装命名空间选 `infra`。
 
-Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。公共代理上游列表在 `publicProxy.upstreams` 配置；CPU/内存在 `resources` 配置。
+Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。“公共镜像上游地址”列表对应 `publicProxy.upstreams`，可直接在表单中添加、删除或修改；至少保留一个 HTTPS 地址，不带路径，上游按列表顺序优先使用，且须兼容现有 gh-proxy 路径规则。CPU/内存在 `resources` 配置。
 
 Ingress Class 和 ClusterIssuer 与 Komodo 一样使用资源下拉框，从集群现有资源中选择；使用已有证书时清空 ClusterIssuer 选择。
 
