@@ -45,6 +45,8 @@ helm upgrade --install registry-proxy ./charts/registry-proxy/1.0.0 \
 
 Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。公共代理上游列表在 `publicProxy.upstreams` 配置；CPU/内存在 `resources` 配置。
 
+ClusterIssuer 与 Komodo 一样使用资源下拉框，从集群现有的签发器中选择；使用已有证书时清空选择。
+
 仓库中的域名和上游默认值均为示例，部署前必须替换。两个代理域名必须不同。
 
 如果仓库通过 Fleet 管理，也可以让 Fleet 指向 `charts/registry-proxy/1.0.0/`。

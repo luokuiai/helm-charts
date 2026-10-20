@@ -20,9 +20,9 @@ questions:
     group: 入口配置
   - variable: ingress.clusterIssuer
     default: letsencrypt
-    type: string
+    type: "reference[cert-manager.io.clusterissuer]"
     label: 证书签发器 ClusterIssuer
-    description: 填写集群内已就绪的 ClusterIssuer；使用已有证书时留空，两个入口可共享覆盖两个域名的已有证书。
+    description: 从下拉列表选择集群内已就绪的 ClusterIssuer；使用已有证书时清空选择，两个入口可共享覆盖两个域名的已有证书。
     group: 证书配置
   - variable: ingress.tls.secretName
     default: ""
