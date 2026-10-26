@@ -4,14 +4,18 @@ Deploys one standalone `netbirdio/reverse-proxy:0.81.2` instance connected to an
 Includes a Rancher configuration form, Secret-backed proxy token, persistent proxy-managed certificates, and Traefik TLS passthrough.
 The chart provides HTTP/HTTPS service access; additional TCP/UDP service ports are not exposed or advertised.
 
-## Rancher installation
+## Rancher 安装：域名 / HTTPS
 
-1. Sync this Git chart repository and select **NetBird Reverse Proxy**, chart version `1.0.0`.
-2. Set the management URL and proxy cluster domain from the NetBird cluster setup. The token must be a proxy token, not a peer setup key.
-3. Enter the token in the form or select an existing Secret by name and key in the installation namespace.
-4. Keep proxy-managed ACME enabled and choose the certificate storage settings. Certificates persist on a retained PVC mounted at `/certs` by default; no TLS Secret is required.
-5. Keep the default Traefik v3 TLS passthrough route and `ClusterIP` Service. If Traefik has its own TLS challenge resolver, configure ACME bypass as described below.
-6. Point the proxy domain and its wildcard DNS record at that entrypoint. Create services and configure their authentication in NetBird.
+Komodo 的 HTTPS 由 Ingress 控制器终止；NetBird 的 HTTPS 由 Proxy 容器终止。这里使用 Traefik `IngressRouteTCP` 透传 TLS，不创建普通 HTTP Ingress。
+
+1. 同步 Git Chart 仓库，选择 **NetBird Reverse Proxy** `1.0.0` 和安装命名空间。填写管理端 URL、Proxy Token，或选择同命名空间的 Token Secret；不能使用 Peer Setup Key。
+2. 在“域名 / HTTPS”填写 `proxy.domain`，例如 `proxy.example.com`。保留 Traefik TLS 透传、`websecure` 入口和 `ClusterIP` Service，将 `proxy.example.com` 与 `*.proxy.example.com` 的 DNS 指向 Traefik，并保证公网 TCP 443 可达。
+3. 证书有两种配置流程：
+   - **NetBird 自动签发（默认）**：保持 `tls.mode=acme` 和 `tls-alpn-01`，选择可用的存储类或已有 PVC。NetBird 自动申请、续期证书，默认持久化到 `/certs`；无需 ClusterIssuer 或 TLS Secret。
+   - **使用已有证书**：选择 `tls.mode=existingSecret`，再从 `tls.existingSecret` 下拉框选择安装命名空间内的 Secret。列表不会过滤 Secret 类型，所选项必须包含 `tls.crt`、`tls.key`，证书需覆盖实际使用的服务域名，例如 `*.proxy.example.com`；若还使用 `proxy.example.com`，也需覆盖它。NetBird 从 `/certs` 只读加载证书，续期由现有证书管理流程负责；`cattle-system` 中的 Secret 不能跨命名空间直接挂载。
+4. 在 NetBird 中创建服务并配置认证。Rancher 可用 `rancher.example.com` 和自己的证书；NetBird 使用 `proxy.example.com` 及其服务域名，默认由 NetBird 管理对应证书。不要让 Rancher 域名落入 Proxy 的域名范围。
+
+若 Traefik 自己配置了 TLS ACME 验证器，还需在其现有 HTTPS 入口启用 `allowACMEByPass`，让证书验证流量到达 NetBird；具体设置见下文。
 
 `questions.yaml` is Rancher's configuration form filename. Form fields map directly to `values.yaml`; all proxy settings are passed through environment variables.
 The management endpoint must expose the `/management.ProxyService/` gRPC API. A dashboard URL that returns HTML for this path will not work.
@@ -48,7 +52,7 @@ The management URL selects the transport: HTTPS verifies the server using the im
 
 Set `tls.mode=existingSecret` and `tls.existingSecret` to use a certificate renewed through Rancher, cert-manager, or another existing process. This disables NetBird's ACME client.
 The Secret must contain `tls.crt` and `tls.key` and be in the installation namespace; a Secret in `cattle-system` cannot be mounted from another namespace.
-It must cover every service hostname, typically `proxy.example.com` and `*.proxy.example.com`. A `*.example.com` certificate does not cover `app.proxy.example.com`.
+It must cover every hostname actually used by services, such as `*.proxy.example.com`; include `proxy.example.com` if you also serve that hostname. A `*.example.com` certificate does not cover `app.proxy.example.com`.
 The Secret is mounted read-only as a complete directory without `subPath`, with group-readable permissions. NetBird 0.81.2 reloads changes after Kubernetes updates the mounted Secret.
 Keep one renewal owner for each certificate; this optional mode also supports the Traefik TLS passthrough route.
 

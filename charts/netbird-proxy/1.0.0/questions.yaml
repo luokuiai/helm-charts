@@ -1,220 +1,226 @@
 questions:
   - variable: proxy.managementAddress
-    label: "NetBird management URL"
+    label: "NetBird 管理端 URL"
     type: string
     default: https://api.netbird.io:443
     required: true
-    group: "NetBird connection"
-    description: "NB_PROXY_MANAGEMENT_ADDRESS. Use your management URL with scheme and optional port, without an API path. The endpoint must support the ProxyService gRPC API. Prefer HTTPS; http:// uses plaintext."
-  - variable: proxy.domain
-    label: "Proxy cluster domain"
-    type: hostname
-    default: ""
-    required: true
-    group: "NetBird connection"
-    description: "NB_PROXY_DOMAIN. For example proxy.example.com, without https://, a port, a path, or a wildcard. Must match the cluster configured in NetBird. Use a different domain from Rancher."
+    group: "NetBird 连接"
+    description: "对应 NB_PROXY_MANAGEMENT_ADDRESS。填写支持 ProxyService gRPC API 的管理端 URL，含 http:// 或 https://，不带 API 路径；优先使用 HTTPS。"
   - variable: auth.useExistingSecret
-    label: "Use an existing proxy token Secret"
+    label: "使用已有 Proxy Token Secret"
     type: boolean
     default: "false"
-    group: "NetBird connection"
+    group: "NetBird 连接"
   - variable: auth.token
-    label: "Proxy token"
+    label: "Proxy Token"
     type: password
     default: ""
     required: true
     show_if: auth.useExistingSecret=false
-    group: "NetBird connection"
-    description: "NB_PROXY_TOKEN. Use the proxy token from the NetBird cluster setup, not a peer setup key. An existing Secret keeps the token out of Helm values."
+    group: "NetBird 连接"
+    description: "对应 NB_PROXY_TOKEN。填写 NetBird Proxy 集群的 Token，不能使用 Peer Setup Key。直接填写会将 Token 保存在 Helm Release 的 values 中。"
   - variable: auth.existingSecret
-    label: "Existing token Secret name"
-    type: string
+    label: "已有 Proxy Token Secret"
+    type: "reference[secret]"
     default: ""
     required: true
     show_if: auth.useExistingSecret=true
-    group: "NetBird connection"
-    description: "Must exist in the installation namespace. Restart the Deployment after rotating this token."
+    group: "NetBird 连接"
+    description: "选择安装命名空间中已有的 Secret；它必须包含下方指定的 Token 字段。更新 Secret 后需重启 Deployment。"
   - variable: auth.secretKey
-    label: "Token key in Secret"
+    label: "Secret 中的 Token 字段名"
     type: string
     default: token
     required: true
-    group: "NetBird connection"
+    group: "NetBird 连接"
+    description: "默认为 token；使用已有 Secret 时请填写其中实际的字段名。"
+  - variable: proxy.private
+    label: "启用 NetBird 私有服务功能"
+    type: boolean
+    default: "true"
+    group: "NetBird 连接"
+    description: "对应 NB_PROXY_PRIVATE；具体服务的访问权限仍需在 NetBird 中配置。"
+  - variable: proxy.domain
+    label: "Proxy 集群域名"
+    type: hostname
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    description: "对应 NB_PROXY_DOMAIN。填写 NetBird 中的 Proxy 集群域名，如 proxy.example.com，不带协议、端口或通配符。将该域名及其通配子域指向入口；Rancher 请使用独立域名。"
+  - variable: traefik.enabled
+    label: "共用 Traefik HTTPS 入口（TLS 透传）"
+    type: boolean
+    default: "true"
+    group: "域名 / HTTPS"
+    description: "默认通过 Traefik v3 IngressRouteTCP 共用 443，需要 traefik.io CRD 和 ClusterIP Service。Traefik 不终止此域名的 HTTPS；若它自身启用 TLS ACME 验证器，须在入口开启 allowACMEByPass。"
+  - variable: traefik.entryPoint
+    label: "Traefik HTTPS 入口名称"
+    type: string
+    default: websecure
+    required: true
+    show_if: traefik.enabled=true
+    group: "域名 / HTTPS"
+    description: "填写 Traefik 已有的 entryPoint 名称，通常是 websecure；它是监听入口，不是 Ingress Class。"
   - variable: tls.mode
-    label: "Certificate source"
+    label: "HTTPS 证书来源"
     type: enum
     options: [acme, existingSecret]
     default: acme
     required: true
-    group: "Certificates"
-    description: "acme lets NetBird Proxy automatically issue and renew service certificates, stored on a PVC. existingSecret optionally reads an externally managed TLS Secret and disables proxy ACME."
+    group: "域名 / HTTPS"
+    description: "acme（默认）：NetBird Proxy 自行申请、续期证书，无需 TLS Secret 或 ClusterIssuer；existingSecret：挂载已有证书并关闭 NetBird ACME。Traefik 只透传 TLS。"
   - variable: tls.existingSecret
-    label: "Existing TLS Secret name"
-    type: string
+    label: "已有 TLS Secret"
+    type: "reference[secret]"
     default: ""
     required: true
     show_if: tls.mode=existingSecret
-    group: "Certificates"
-    description: "Must be in the installation namespace with tls.crt and tls.key. Cover the proxy domain and all service hostnames, typically proxy.example.com and *.proxy.example.com. Renew the Secret through its existing owner."
-  - variable: tls.certificateDirectory
-    label: "Certificate mount directory"
-    type: string
-    default: /certs
-    required: true
-    group: "Certificates"
-    description: "NB_PROXY_CERTIFICATE_DIRECTORY and the container mount path use this same absolute directory. The TLS Secret is read-only; an ACME certificate PVC is writable by UID/GID 1000."
+    group: "域名 / HTTPS"
+    description: "从安装命名空间选择已有 Secret。列表不按证书类型过滤；它必须含 tls.crt 和 tls.key，证书须覆盖所有实际使用的服务域名，如 *.proxy.example.com；若使用 proxy.example.com，也须覆盖该主域名。续期由现有流程负责。"
   - variable: tls.acme.challengeType
-    label: "ACME challenge type"
+    label: "NetBird ACME 验证方式"
     type: enum
     options: [tls-alpn-01, http-01]
     default: tls-alpn-01
     required: true
     show_if: tls.mode=acme
-    group: "Certificates"
-    description: "Use tls-alpn-01 with the shared Traefik TLS passthrough route; public TCP 443 and ACME validation traffic must reach NetBird Proxy unchanged. http-01 needs a separate public port 80 route and requires disabling the built-in Traefik route."
+    group: "域名 / HTTPS"
+    description: "共用 Traefik HTTPS 入口时使用 tls-alpn-01，公网 TCP 443 必须透传到 NetBird。http-01 需要关闭下方 Traefik TCP 路由，并单独转发公网 TCP 80。"
   - variable: tls.acme.directory
-    label: "ACME directory URL"
+    label: "ACME 服务目录 URL"
     type: string
     default: https://acme-v02.api.letsencrypt.org/directory
     required: true
     show_if: tls.mode=acme
-    group: "Certificates"
-  - variable: traefik.enabled
-    label: "Share the existing Traefik HTTPS entrypoint"
-    type: boolean
-    default: "true"
-    group: "Network exposure"
-    description: "Requires Traefik v3, the traefik.io IngressRouteTCP CRD, and service.type=ClusterIP. Passes TLS and tls-alpn-01 validation through to NetBird Proxy for the proxy domain and its subdomains. If Traefik has its own TLS ACME resolver, enable allowACMEByPass on its entrypoint; see README."
-  - variable: traefik.entryPoint
-    label: "Traefik HTTPS entrypoint"
+    group: "域名 / HTTPS"
+    description: "对应 NB_PROXY_ACME_DIRECTORY；默认使用 Let’s Encrypt 正式环境。"
+  - variable: tls.certificateDirectory
+    label: "容器内证书目录"
     type: string
-    default: websecure
+    default: /certs
     required: true
-    show_if: traefik.enabled=true
-    group: "Network exposure"
+    group: "域名 / HTTPS"
+    description: "同时作为容器挂载路径和 NB_PROXY_CERTIFICATE_DIRECTORY。ACME 模式下挂载可写 PVC；已有 Secret 模式下只读挂载证书。"
+  - variable: persistence.existingClaim
+    label: "已有证书 PVC（可选）"
+    type: string
+    default: ""
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "留空则创建并保留新的 PVC；已有 PVC 必须位于安装命名空间，且 UID/GID 1000 可写。重新安装并复用旧证书时填写原 PVC 名称。"
+  - variable: persistence.storageClass
+    label: "证书 PVC 存储类"
+    type: storageclass
+    default: local-path
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "创建新 PVC 时使用；请确认集群中存在该存储类。"
+  - variable: persistence.size
+    label: "证书 PVC 容量"
+    type: string
+    default: 1Gi
+    required: true
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "仅创建新 PVC 时使用。"
   - variable: service.type
-    label: "Service type"
+    label: "Service 类型"
     type: enum
     options: [ClusterIP, NodePort, LoadBalancer]
     default: ClusterIP
     required: true
-    group: "Network exposure"
-    description: "ClusterIP needs a TLS passthrough route or an external L4 load balancer. LoadBalancer needs a dedicated address; K3s ServiceLB may conflict with Traefik's node ports 80/443."
+    group: "网络入口"
+    description: "共用 Traefik 入口时必须选 ClusterIP。独立入口可用 NodePort 或带独立地址的 LoadBalancer；K3s ServiceLB 占用 80/443 可能与 Traefik 冲突。"
   - variable: service.httpsPort
-    label: "HTTPS Service port"
+    label: "HTTPS Service 端口"
     type: int
     default: 443
     required: true
-    group: "Network exposure"
-    description: "Maps to container port 8443. External clients normally connect to public port 443."
+    group: "网络入口"
+    description: "映射到容器 8443 端口；外部客户端通常访问公网 443。"
   - variable: service.httpsNodePort
     label: "HTTPS NodePort"
     type: int
     default: 0
     show_if: service.type=NodePort
-    group: "Network exposure"
-    description: "0 allocates a port automatically; otherwise choose 30000-32767. Forward public port 443 to this node port."
+    group: "网络入口"
+    description: "0 表示自动分配；手动填写时使用 30000–32767，并将公网 443 转发到该端口。"
   - variable: service.httpPort
-    label: "ACME HTTP Service port"
+    label: "ACME HTTP Service 端口"
     type: int
     default: 80
     required: true
     show_if: tls.mode=acme&&tls.acme.challengeType=http-01
-    group: "Network exposure"
+    group: "网络入口"
+    description: "仅供 http-01 验证；需要单独将公网 TCP 80 转发到 NetBird。"
   - variable: service.httpNodePort
     label: "ACME HTTP NodePort"
     type: int
     default: 0
     show_if: service.type=NodePort&&tls.mode=acme&&tls.acme.challengeType=http-01
-    group: "Network exposure"
-    description: "0 allocates a port automatically; otherwise choose 30000-32767. Forward public port 80 to this node port."
+    group: "网络入口"
+    description: "0 表示自动分配；手动填写时使用 30000–32767，并将公网 80 转发到该端口。"
   - variable: proxy.proxyProtocol
-    label: "Receive PROXY protocol from the upstream load balancer"
+    label: "接收上游 PROXY Protocol"
     type: boolean
     default: "false"
-    group: "Client IP and logging"
-    description: "NB_PROXY_PROXY_PROTOCOL. Enable only when the upstream sends PROXY protocol. The optional Traefik route will send v2 automatically when enabled. Direct browser connections cannot send this protocol."
+    group: "客户端 IP 与日志"
+    description: "对应 NB_PROXY_PROXY_PROTOCOL。仅当上游发送 PROXY Protocol 时启用；本 Chart 的 Traefik 路由会发送 v2。浏览器直连不能使用此协议。"
   - variable: proxy.trustedProxies
-    label: "Trusted upstream proxy IPs or CIDRs"
+    label: "可信上游代理 IP 或 CIDR"
     type: string
     default: ""
-    group: "Client IP and logging"
-    description: "NB_PROXY_TRUSTED_PROXIES. Comma-separated upstream addresses. Required with PROXY protocol to preserve client IPs for access rules; restrict to the actual upstream proxies."
+    group: "客户端 IP 与日志"
+    description: "对应 NB_PROXY_TRUSTED_PROXIES。多个地址用逗号分隔；使用 PROXY Protocol 保留客户端 IP 时必须填写实际可信的上游地址。"
   - variable: proxy.forwardedProto
-    label: "Forwarded protocol sent to backends"
+    label: "转发给后端的协议"
     type: enum
     options: [https, auto, http]
     default: https
     required: true
-    group: "Client IP and logging"
-    description: "NB_PROXY_FORWARDED_PROTO. HTTPS is appropriate for the TLS entrypoint provided by this chart."
+    group: "客户端 IP 与日志"
+    description: "对应 NB_PROXY_FORWARDED_PROTO；使用本 Chart 的 TLS 入口时保持 https。"
   - variable: proxy.logLevel
-    label: "Proxy log level"
+    label: "Proxy 日志级别"
     type: enum
     options: [panic, fatal, error, warn, info, debug, trace]
     default: info
     required: true
-    group: "Client IP and logging"
-  - variable: proxy.private
-    label: "Enable NetBird private service capability"
-    type: boolean
-    default: "true"
-    group: "NetBird connection"
-    description: "NB_PROXY_PRIVATE. Allows NetBird-Only Access services; individual service access is configured in NetBird."
-  - variable: persistence.existingClaim
-    label: "Existing ACME certificate PVC (optional)"
-    type: string
-    default: ""
-    show_if: tls.mode=acme
-    group: "ACME persistence"
-    description: "Leave empty to create a retained PVC. An existing PVC must be in the installation namespace and writable by UID/GID 1000."
-  - variable: persistence.storageClass
-    label: "ACME certificate storage class"
-    type: storageclass
-    default: local-path
-    show_if: tls.mode=acme
-    group: "ACME persistence"
-  - variable: persistence.size
-    label: "Initial ACME certificate storage size"
-    type: string
-    default: 1Gi
-    required: true
-    show_if: tls.mode=acme
-    group: "ACME persistence"
+    group: "客户端 IP 与日志"
   - variable: image.repository
-    label: "Proxy image repository"
+    label: "Proxy 镜像仓库"
     type: string
     default: netbirdio/reverse-proxy
     required: true
-    group: "Images"
+    group: "镜像"
   - variable: image.tag
-    label: "Proxy image tag"
+    label: "Proxy 镜像标签"
     type: string
     default: "0.81.2"
     required: true
-    group: "Images"
-    description: "Environment variables and health endpoints were checked against this version."
+    group: "镜像"
+    description: "环境变量和健康检查地址已按此版本核对。"
   - variable: resources.requests.cpu
-    label: "CPU request"
+    label: "CPU 请求量"
     type: string
     default: 100m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.cpu
-    label: "CPU limit"
+    label: "CPU 上限"
     type: string
     default: 1000m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.requests.memory
-    label: "Memory request"
+    label: "内存请求量"
     type: string
     default: 256Mi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.memory
-    label: "Memory limit"
+    label: "内存上限"
     type: string
     default: 1Gi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
