@@ -2,18 +2,11 @@ replicaCount: 1
 
 image:
   repository: caddy
-  tag: 2.11-alpine
+  tag: 2-alpine
   pullPolicy: IfNotPresent
 
 # HTTPS upstream on port 443. Enter only its hostname, without a URL path.
 upstreamHost: registry-upstream.example.com
-# Optional single repository namespace on the upstream, e.g. an Aliyun ACR namespace.
-# When set, registry.example.com/image:tag maps to upstreamHost/<namespace>/image:tag.
-upstreamNamespace: ""
-
-diagnostics:
-  # Temporarily log only redirect hosts and non-secret signature markers.
-  logRedirects: false
 
 ingress:
   enabled: true

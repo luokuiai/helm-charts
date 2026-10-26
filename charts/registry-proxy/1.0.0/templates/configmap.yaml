@@ -7,50 +7,9 @@ metadata:
 data:
   Caddyfile: |
     :8080 {
-        {{ if .Values.diagnostics.logRedirects }}
-        map {http.response.header.Location} {registry_redirect_host} {
-            "~(?i)^https?://([a-z0-9.-]+)(?::[0-9]+)?(?:[/?#]|$)" "${1}"
-            default unknown
-        }
-        map {http.response.header.Location} {registry_host_signed_marker} {
-            "~(?i)[?&]x-oss-additional-headers=(?:host|[^&#]*(?:%3b|;)host)(?:%3b|;|&|#|$)" true
-            default false
-        }
-        map {http.response.header.Location} {registry_signature_version} {
-            "~(?i)[?&]x-oss-signature-version=OSS4-HMAC-SHA256(?:&|#|$)" v4
-            "~(?i)[?&]x-oss-signature-version=OSS2(?:&|#|$)" v2
-            "~(?i)[?&]OSSAccessKeyId=" v1
-            default unknown
-        }
-        map {http.response.header.Location} {registry_network_restriction_marker} {
-            "~(?i)[?&]x-oss-ac-(?:subnet-mask|vpc-id)=" true
-            default false
-        }
-        log_append redirect_host {registry_redirect_host}
-        log_append host_signed_marker {registry_host_signed_marker}
-        log_append signature_version {registry_signature_version}
-        log_append network_restriction_marker {registry_network_restriction_marker}
-        log {
-            output stdout
-            format filter {
-                request delete
-                resp_headers delete
-                wrap json
-            }
-        }
-        {{ end }}
-        {{ if .Values.upstreamNamespace }}
-        @addNamespace {
-            path_regexp ^/v2/[^/]+
-            not path /v2/_catalog {{ printf "/v2/%s" .Values.upstreamNamespace | quote }} {{ printf "/v2/%s/*" .Values.upstreamNamespace | quote }}
-        }
-        uri @addNamespace path_regexp ^/v2/ {{ printf "/v2/%s/" .Values.upstreamNamespace | quote }}
-        {{ end }}
         reverse_proxy {{ printf "https://%s" .Values.upstreamHost | quote }} {
-            header_up Host {{ .Values.upstreamHost | quote }}
-            header_up -X-Forwarded-For
-            header_up -X-Forwarded-Host
-            header_up -X-Forwarded-Proto
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto https
             header_down Location {{ printf "^https://%s(:443)?/" $upstreamPattern | quote }} {{ printf "https://%s/" .Values.ingress.host | quote }}
         }
     }

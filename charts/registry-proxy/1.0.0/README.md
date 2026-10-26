@@ -7,8 +7,6 @@
 
 默认域名均为示例，部署前必须替换。两个入口使用不同域名，分别转发到 Caddy 8080 和 8081，避免公共 ping 响应影响上游仓库认证。仓库入口当前支持上游 HTTPS 443，`upstreamHost` 只填写域名。
 
-如果上游镜像路径需要一个命名空间，而希望拉取时省略它，可设置 `upstreamNamespace`。例如上游镜像是 `upstream.example.com/myteam/intelliconf:1.3.2`，将 `upstreamHost` 填为 `upstream.example.com`、`upstreamNamespace` 填为 `myteam` 后，可执行 `docker pull registry.example.com/intelliconf:1.3.2`。此配置只作用于私有仓库入口；留空时路径原样转发。上游返回的已含命名空间路径不会重复添加前缀。它不改变镜像层下载时上游返回的对象存储跳转地址。
-
 ## Helm 安装
 
 编辑 `values.yaml`，或通过参数覆盖：
@@ -47,7 +45,7 @@ helm upgrade --install registry-proxy ./charts/registry-proxy/1.0.0 \
 
 Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。“公共镜像上游地址”列表对应 `publicProxy.upstreams`，可直接在表单中添加、删除或修改；至少保留一个 HTTPS 地址，不带路径，上游按列表顺序优先使用，且须兼容现有 gh-proxy 路径规则。CPU/内存在 `resources` 配置。
 
-表单参照 Komodo 按“应用”“代理配置”“域名 / HTTPS”分组。两个代理域名、Ingress Class 和证书设置集中在“域名 / HTTPS”，关闭 Ingress 时隐藏对应字段；关闭公共代理时隐藏其上游、域名和证书字段。Ingress Class 和 ClusterIssuer 都使用集群资源下拉框；TLS Secret 名称与 Komodo 一样保留文本输入，以支持自动签发时的新名称及已有证书名称。使用已有证书时清空 ClusterIssuer 选择。
+Ingress Class 和 ClusterIssuer 与 Komodo 一样使用资源下拉框，从集群现有资源中选择；使用已有证书时清空 ClusterIssuer 选择。
 
 仓库中的域名和上游默认值均为示例，部署前必须替换。两个代理域名必须不同。
 
@@ -59,21 +57,10 @@ Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、
 - 配置变化会改变 Pod 模板的校验和，由 Deployment 滚动更新加载新配置。
 - readiness 使用 TCP 探测，因为未登录访问 Registry `/v2/` 通常返回 401。
 - 仓库入口不修改 `WWW-Authenticate`。客户端仍需访问上游返回的认证地址；这里不提供独立、统一的 Token 服务。
-- 仓库入口向上游发送不带 `:443` 的 `Host: upstreamHost`，并去掉 `X-Forwarded-For`、`X-Forwarded-Host`、`X-Forwarded-Proto`，使阿里云 ACR 等上游看到与直接拉取更一致的请求。上游日志将记录代理节点地址，而不是通过这些头获取原客户端地址。
 - 仓库入口只改写指向上游仓库自身的绝对 `Location`，保留路径和查询参数；对象存储等其他域名的跳转保持原样。
-- Docker 客户端仍需能访问上游返回的对象存储地址。阿里云 ACR 个人版应填写 `crpi-...personal.cr.aliyuncs.com` 公网入口；若镜像层仍跳转到 `oss-cn-chengdu-internal.aliyuncs.com`，不能直接无条件改写为公网域名，因为 OSS 签名可能绑定 `Host`。设置 `upstreamNamespace` 不会改变该下载地址。
 - 仓库入口不限制 HTTP 方法，可转发推送请求；是否支持推拉取决于上游权限及实际网络环境，需要部署后验证。
 - 公共入口将 `/v2/library/nginx/...` 和 `/v2/nginx/...` 改写为 `/v2/docker/nginx/...`；上游按给定顺序配置 `first` 策略及被动健康检查。
 - 公共入口不需要时设置 `publicProxy.enabled=false`，对应监听端口和 Ingress 会一起移除。
-
-镜像清单能读取、镜像层却超时时，可在 Rancher 表单中临时开启“记录脱敏的跳转信息”，或设置 `diagnostics.logRedirects=true`。然后照常拉取一次镜像，在 Rancher 工作负载日志中查找 `"status":307`，或执行：
-
-```bash
-kubectl -n infra logs deployment/registry-proxy -c caddy --since=10m \
-  | jq -Rc 'fromjson? | select(.status == 307) | {redirect_host, signature_version, host_signed_marker, network_restriction_marker}'
-```
-
-日志中的跳转信息只保留域名、签名类型标记及是否发现 Host 签名/IP 或 VPC 限制标记；请求对象和原始响应头不会写入该访问日志。`host_signed_marker=false` 和 `network_restriction_marker=false` 都只表示未发现对应参数，不能证明替换域名一定有效。此功能需要 Caddy 2.8 或更新版本，Chart 默认使用 `caddy:2.11-alpine`。排查后关闭此选项。不要另外开启 Caddy debug 日志，因为它不经过这里的脱敏过滤。
 
 部署后使用实际域名检查：
 

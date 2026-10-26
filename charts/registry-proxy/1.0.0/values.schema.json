@@ -14,13 +14,6 @@
       }
     },
     "upstreamHost": {"$ref": "#/definitions/hostname"},
-    "upstreamNamespace": {"type": "string", "pattern": "^$|^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$"},
-    "diagnostics": {
-      "type": "object",
-      "properties": {
-        "logRedirects": {"type": "boolean"}
-      }
-    },
     "ingress": {
       "type": "object",
       "required": ["enabled", "className", "host", "clusterIssuer", "tls"],
