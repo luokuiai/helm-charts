@@ -7,9 +7,18 @@ metadata:
 data:
   Caddyfile: |
     :8080 {
+        {{ if .Values.upstreamNamespace }}
+        @addNamespace {
+            path_regexp ^/v2/[^/]+
+            not path /v2/_catalog {{ printf "/v2/%s" .Values.upstreamNamespace | quote }} {{ printf "/v2/%s/*" .Values.upstreamNamespace | quote }}
+        }
+        uri @addNamespace path_regexp ^/v2/ {{ printf "/v2/%s/" .Values.upstreamNamespace | quote }}
+        {{ end }}
         reverse_proxy {{ printf "https://%s" .Values.upstreamHost | quote }} {
-            header_up Host {upstream_hostport}
-            header_up X-Forwarded-Proto https
+            header_up Host {{ .Values.upstreamHost | quote }}
+            header_up -X-Forwarded-For
+            header_up -X-Forwarded-Host
+            header_up -X-Forwarded-Proto
             header_down Location {{ printf "^https://%s(:443)?/" $upstreamPattern | quote }} {{ printf "https://%s/" .Values.ingress.host | quote }}
         }
     }
