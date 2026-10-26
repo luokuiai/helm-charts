@@ -1,0 +1,10 @@
+apiVersion: v2
+name: registry-proxy
+description: Upstream registry and public image proxies using Caddy, Traefik and cert-manager.
+type: application
+version: 1.0.2
+appVersion: "2.11.7"
+keywords:
+  - caddy
+  - registry
+  - proxy

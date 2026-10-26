@@ -1,0 +1,39 @@
+{{- if .Values.ingress.enabled }}
+{{- if and (not .Values.ingress.clusterIssuer) (not .Values.ingress.tls.secretName) }}
+{{- fail "Set ingress.clusterIssuer for automatic issuance, or ingress.tls.secretName for an existing TLS Secret." }}
+{{- end }}
+{{- $annotations := deepCopy (.Values.ingress.annotations | default dict) }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- $_ := unset $annotations "kubernetes.io/tls-acme" }}
+{{- if .Values.ingress.clusterIssuer }}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" .Values.ingress.clusterIssuer }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ default (printf "%s-tls" .Release.Name) .Values.ingress.tls.secretName | quote }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  number: 8080
+{{- end }}

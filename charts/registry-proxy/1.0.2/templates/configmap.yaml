@@ -1,0 +1,77 @@
+{{- $upstreamPattern := replace "." "[.]" .Values.upstreamHost -}}
+{{- if and .Values.upstreamNamespace (not .Values.auth.realmURL) -}}
+{{- fail "auth.realmURL is required when upstreamNamespace is set" -}}
+{{- end -}}
+{{- $authRealmPattern := replace "." "[.]" .Values.auth.realmURL -}}
+{{- $authHost := "" -}}
+{{- $authPath := "" -}}
+{{- if .Values.upstreamNamespace -}}
+{{- $authURL := urlParse .Values.auth.realmURL -}}
+{{- $authHost = get $authURL "host" -}}
+{{- $authPath = get $authURL "path" -}}
+{{- if or (ne (get $authURL "scheme") "https") (not $authHost) (not $authPath) -}}
+{{- fail "auth.realmURL must be an HTTPS URL with a path" -}}
+{{- end -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  Caddyfile: |
+    :8080 {
+        {{ if .Values.upstreamNamespace }}
+        @addNamespace {
+            path_regexp ^/v2/[^/]+
+            not path /v2/_catalog {{ printf "/v2/%s" .Values.upstreamNamespace | quote }} {{ printf "/v2/%s/*" .Values.upstreamNamespace | quote }}
+        }
+
+        handle /_registry_auth/token {
+            route {
+                uri query scope "^repository:([^/:]+):(.+)$" {{ printf "repository:%s/$1:$2" .Values.upstreamNamespace | quote }}
+                rewrite {{ $authPath | quote }}
+                reverse_proxy {{ printf "https://%s" $authHost | quote }} {
+                    header_up Host {{ $authHost | quote }}
+                }
+            }
+        }
+        {{ end }}
+        handle {
+            {{ if .Values.upstreamNamespace }}
+            uri @addNamespace path_regexp ^/v2/ {{ printf "/v2/%s/" .Values.upstreamNamespace | quote }}
+            {{ end }}
+            reverse_proxy {{ printf "https://%s" .Values.upstreamHost | quote }} {
+                header_up Host {{ .Values.upstreamHost | quote }}
+                header_up -X-Forwarded-For
+                header_up -X-Forwarded-Host
+                header_up -X-Forwarded-Proto
+                header_down Location {{ printf "^https://%s(:443)?/" $upstreamPattern | quote }} {{ printf "https://%s/" .Values.ingress.host | quote }}
+                {{ if .Values.upstreamNamespace }}
+                header_down WWW-Authenticate {{ $authRealmPattern | quote }} {{ printf "https://%s/_registry_auth/token" .Values.ingress.host | quote }}
+                {{ end }}
+            }
+        }
+    }
+    {{- if .Values.publicProxy.enabled }}
+
+    :8081 {
+        @ping path /v2 /v2/
+        handle @ping {
+            header Docker-Distribution-API-Version "registry/2.0"
+            respond 200
+        }
+
+        handle {
+            uri path_regexp ^/v2/(library/)? /v2/docker/
+
+            reverse_proxy{{ range .Values.publicProxy.upstreams }} {{ . | quote }}{{ end }} {
+                lb_policy first
+                fail_duration 30s
+                unhealthy_status 5xx
+                lb_try_duration 10s
+                header_up Host {upstream_hostport}
+            }
+        }
+    }
+    {{- end }}

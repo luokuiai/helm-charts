@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: caddy
+  tag: 2.11.7-alpine
+  pullPolicy: IfNotPresent
+
+# HTTPS upstream on port 443. Enter only its hostname, without a URL path.
+upstreamHost: registry-upstream.example.com
+# Optional single repository namespace on the upstream, e.g. an Aliyun ACR namespace.
+# When set, registry.example.com/image:tag maps to upstreamHost/<namespace>/image:tag.
+upstreamNamespace: ""
+
+auth:
+  # Required when upstreamNamespace is set; use the realm from the registry's /v2/ challenge.
+  realmURL: ""
+
+ingress:
+  enabled: true
+  className: traefik
+  host: registry.example.com
+  # 两个入口共用；签发器注解统一由 clusterIssuer 配置。
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  # Existing ClusterIssuer. Leave empty when using an existing TLS Secret.
+  clusterIssuer: letsencrypt
+  tls:
+    # Empty means <release-name>-tls; cert-manager creates it after issuance.
+    secretName: ""
+
+# Independent public-image entry point using the supplied gh-proxy rules.
+# It shares ingress.className, ingress.annotations and ingress.clusterIssuer with the registry entry.
+publicProxy:
+  enabled: true
+  host: docker.example.com
+  upstreams:
+    - https://gh-proxy.org
+    - https://v4.gh-proxy.org
+    - https://v6.gh-proxy.org
+    - https://cdn.gh-proxy.org
+  tls:
+    # Empty means <release-name>-public-tls.
+    secretName: ""
+
+resources: {}
