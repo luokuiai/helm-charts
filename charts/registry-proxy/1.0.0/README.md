@@ -66,6 +66,15 @@ Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、
 - 公共入口将 `/v2/library/nginx/...` 和 `/v2/nginx/...` 改写为 `/v2/docker/nginx/...`；上游按给定顺序配置 `first` 策略及被动健康检查。
 - 公共入口不需要时设置 `publicProxy.enabled=false`，对应监听端口和 Ingress 会一起移除。
 
+镜像清单能读取、镜像层却超时时，可在 Rancher 表单中临时开启“记录脱敏的跳转信息”，或设置 `diagnostics.logRedirects=true`。然后照常拉取一次镜像，在 Rancher 工作负载日志中查找 `"status":307`，或执行：
+
+```bash
+kubectl -n infra logs deployment/registry-proxy -c caddy --since=10m \
+  | jq -Rc 'fromjson? | select(.status == 307) | {redirect_host, signature_version, host_signed_marker, network_restriction_marker}'
+```
+
+日志中的跳转信息只保留域名、签名类型标记及是否发现 Host 签名/IP 或 VPC 限制标记；请求对象和原始响应头不会写入该访问日志。`host_signed_marker=false` 和 `network_restriction_marker=false` 都只表示未发现对应参数，不能证明替换域名一定有效。此功能需要 Caddy 2.8 或更新版本，Chart 默认使用 `caddy:2.11-alpine`。排查后关闭此选项。不要另外开启 Caddy debug 日志，因为它不经过这里的脱敏过滤。
+
 部署后使用实际域名检查：
 
 ```bash

@@ -20,6 +20,12 @@ questions:
     label: 私有仓库上游命名空间（可选）
     description: "如上游镜像是 upstream.example.com/myteam/intelliconf:1.3.2，填 myteam 后可拉取代理域名/intelliconf:1.3.2。只填一个命名空间段，不带斜杠；留空则原样转发路径。"
     group: 代理配置
+  - variable: diagnostics.logRedirects
+    default: false
+    type: boolean
+    label: 临时记录脱敏的跳转信息
+    description: 排查镜像层下载超时时启用；只记录跳转域名及签名标记，不记录完整跳转 URL、请求信息或响应头。排查后关闭。
+    group: 代理配置
   - variable: publicProxy.enabled
     default: true
     type: boolean
