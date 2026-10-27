@@ -1,6 +1,6 @@
 # NetBird Reverse Proxy
 
-Deploys one standalone `netbirdio/reverse-proxy:0.81.2` instance connected to an existing NetBird management service.
+Deploys one standalone `netbirdio/reverse-proxy:0.81.4` instance connected to an existing NetBird management service.
 Includes a Rancher configuration form, an existing environment Secret, persistent proxy-managed certificates, and Traefik TLS passthrough.
 The chart provides HTTP/HTTPS service access; additional TCP/UDP service ports are not exposed or advertised.
 
@@ -52,7 +52,8 @@ Use the actual entrypoint name if you change `traefik.entryPoint`. Without a TLS
 This is a Traefik setting, not a NetBird environment variable. Merge it into the existing Traefik configuration; preserve other settings in any existing K3s `HelmChartConfig`.
 The chart creates a TCP route only. Its shared Traefik route therefore requires `tls-alpn-01`; `http-01` requires a separate HTTP challenge route and is rejected with `traefik.enabled=true`.
 
-ACME mode creates a `1Gi` certificate PVC on `local-path`, or uses `persistence.existingClaim`.
+ACME mode creates a `128Mi` certificate PVC on `local-path` by default, or uses `persistence.existingClaim`.
+Set `persistence.size` in the Rancher form for new claims. Existing PVCs cannot be shrunk; keep their original size when upgrading.
 The PVC is retained on Helm uninstall. Namespace deletion or manual PVC deletion can still remove it.
 To reuse a retained claim on reinstall, set `persistence.existingClaim` to its name.
 The container uses UID/GID `1000`; `fsGroup: 1000` allows ACME PVC writes.
@@ -63,7 +64,7 @@ The management URL selects the transport: HTTPS verifies the server using the im
 Set `tls.mode=existingSecret` and `tls.existingSecret` to use a certificate renewed through Rancher, cert-manager, or another existing process. This disables NetBird's ACME client.
 The Secret must contain `tls.crt` and `tls.key` and be in the installation namespace; a Secret in `cattle-system` cannot be mounted from another namespace.
 It must cover every hostname actually used by services, such as `*.proxy.example.com`; include `proxy.example.com` if you also serve that hostname. A `*.example.com` certificate does not cover `app.proxy.example.com`.
-The Secret is mounted read-only as a complete directory without `subPath`, with group-readable permissions. NetBird 0.81.2 reloads changes after Kubernetes updates the mounted Secret.
+The Secret is mounted read-only as a complete directory without `subPath`, with group-readable permissions. NetBird 0.81.4 reloads changes after Kubernetes updates the mounted Secret.
 Keep one renewal owner for each certificate; this optional mode also supports the Traefik TLS passthrough route.
 
 ## 环境变量
@@ -107,9 +108,9 @@ The chart uses one replica with `Recreate` upgrades, so upgrades briefly interru
 
 ## Upstream references
 
-- [Proxy configuration source for v0.81.2](https://github.com/netbirdio/netbird/blob/v0.81.2/proxy/cmd/proxy/cmd/root.go)
-- [Official image Dockerfile](https://github.com/netbirdio/netbird/blob/v0.81.2/proxy/Dockerfile)
-- [Certificate watcher](https://github.com/netbirdio/netbird/blob/v0.81.2/proxy/internal/certwatch/watcher.go)
+- [Proxy configuration source for v0.81.4](https://github.com/netbirdio/netbird/blob/v0.81.4/proxy/cmd/proxy/cmd/root.go)
+- [Official image Dockerfile](https://github.com/netbirdio/netbird/blob/v0.81.4/proxy/Dockerfile)
+- [Certificate watcher](https://github.com/netbirdio/netbird/blob/v0.81.4/proxy/internal/certwatch/watcher.go)
 - [Bring Your Own Proxy](https://docs.netbird.io/manage/reverse-proxy/bring-your-own-proxy)
 - [Self-hosted proxy setup](https://docs.netbird.io/selfhosted/migration/enable-reverse-proxy)
 - [Traefik TCP routing](https://doc.traefik.io/traefik/routing/routers/#configuring-tcp-routers)

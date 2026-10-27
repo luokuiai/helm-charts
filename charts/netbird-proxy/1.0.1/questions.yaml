@@ -43,6 +43,14 @@ questions:
     show_if: tls.mode=acme
     group: "域名 / HTTPS"
     description: "创建新 PVC 时使用；请确认集群中存在该存储类。"
+  - variable: persistence.size
+    label: "证书 PVC 容量"
+    type: string
+    default: "128Mi"
+    required: true
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "仅创建新 PVC 时使用，可填 128Mi、256Mi 等；已有 PVC 不能直接缩容，升级时请保持原容量。"
   - variable: image.repository
     label: "Proxy 镜像仓库"
     type: string
@@ -52,10 +60,10 @@ questions:
   - variable: image.tag
     label: "Proxy 镜像标签"
     type: string
-    default: "0.81.2"
+    default: "0.81.4"
     required: true
     group: "镜像"
-    description: "环境变量和健康检查地址已按此版本核对。"
+    description: "覆盖默认镜像标签时，请确认环境变量和健康检查路径兼容。"
   - variable: resources.requests.cpu
     label: "CPU 请求量"
     type: string

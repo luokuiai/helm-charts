@@ -1,6 +1,6 @@
 image:
   repository: netbirdio/reverse-proxy
-  tag: "0.81.2"
+  tag: "0.81.4"
   pullPolicy: IfNotPresent
 
 proxy:
@@ -38,7 +38,7 @@ persistence:
   # Used only in acme mode; certificates survive Helm uninstall.
   existingClaim: ""
   storageClass: local-path
-  size: 1Gi
+  size: 128Mi
 
 resources:
   requests:

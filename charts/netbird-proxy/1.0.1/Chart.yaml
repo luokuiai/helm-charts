@@ -3,11 +3,11 @@ name: netbird-proxy
 description: Standalone NetBird Reverse Proxy with an environment Secret and Rancher form
 type: application
 version: 1.0.1
-appVersion: "0.81.2"
+appVersion: "0.81.4"
 home: https://netbird.io/
 icon: file://charts/netbird-proxy/1.0.1/icon.png
 sources:
-  - https://github.com/netbirdio/netbird/tree/v0.81.2/proxy
+  - https://github.com/netbirdio/netbird/tree/v0.81.4/proxy
 keywords:
   - netbird
   - reverse-proxy
