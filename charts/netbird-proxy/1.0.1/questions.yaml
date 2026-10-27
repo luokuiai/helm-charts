@@ -1,0 +1,82 @@
+questions:
+  - variable: proxy.envSecret
+    label: "NetBird Proxy 环境变量 Secret"
+    type: "reference[secret]"
+    default: netbird-proxy-env
+    required: true
+    group: "环境变量"
+    description: "选择安装命名空间中已有的 Secret，包含 NB_PROXY_MANAGEMENT_ADDRESS、NB_PROXY_DOMAIN、NB_PROXY_TOKEN、NB_PROXY_PROXY_PROTOCOL、NB_PROXY_TRUSTED_PROXIES 等配置。更新 Secret 后需重启 Deployment。"
+  - variable: proxy.domain
+    label: "Traefik 路由域名"
+    type: hostname
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    description: "供 Helm 生成 Traefik TCP 路由；须与环境变量 Secret 中的 NB_PROXY_DOMAIN 一致。填写 proxy.example.com 这样的主域名，不带协议或通配符。"
+  - variable: tls.mode
+    label: "HTTPS 证书来源"
+    type: enum
+    options: [acme, existingSecret]
+    default: acme
+    required: true
+    group: "域名 / HTTPS"
+    description: "acme（默认）：NetBird Proxy 自行申请、续期证书，无需 TLS Secret 或 ClusterIssuer；existingSecret：挂载已有证书并关闭 NetBird ACME。Traefik 只透传 TLS。"
+  - variable: tls.existingSecret
+    label: "已有 TLS Secret"
+    type: "reference[secret]"
+    default: ""
+    required: true
+    show_if: tls.mode=existingSecret
+    group: "域名 / HTTPS"
+    description: "从安装命名空间选择已有 Secret。列表不按证书类型过滤；它必须含 tls.crt 和 tls.key，证书须覆盖所有实际使用的服务域名，如 *.proxy.example.com；若使用 proxy.example.com，也须覆盖该主域名。续期由现有流程负责。"
+  - variable: persistence.existingClaim
+    label: "已有证书 PVC（可选）"
+    type: string
+    default: ""
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "留空则创建并保留新的 PVC；已有 PVC 必须位于安装命名空间，且 UID/GID 1000 可写。重新安装并复用旧证书时填写原 PVC 名称。"
+  - variable: persistence.storageClass
+    label: "证书 PVC 存储类"
+    type: storageclass
+    default: local-path
+    show_if: tls.mode=acme
+    group: "域名 / HTTPS"
+    description: "创建新 PVC 时使用；请确认集群中存在该存储类。"
+  - variable: image.repository
+    label: "Proxy 镜像仓库"
+    type: string
+    default: netbirdio/reverse-proxy
+    required: true
+    group: "镜像"
+  - variable: image.tag
+    label: "Proxy 镜像标签"
+    type: string
+    default: "0.81.2"
+    required: true
+    group: "镜像"
+    description: "环境变量和健康检查地址已按此版本核对。"
+  - variable: resources.requests.cpu
+    label: "CPU 请求量"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.cpu
+    label: "CPU 上限"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.requests.memory
+    label: "内存请求量"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.memory
+    label: "内存上限"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / 内存"
