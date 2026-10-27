@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "image",
+    "auth",
+    "magpie",
+    "persistence",
+    "ingress"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": [
+        "useExistingSecret",
+        "secretKey"
+      ],
+      "properties": {
+        "useExistingSecret": {
+          "type": "boolean"
+        },
+        "webKey": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        }
+      },
+      "if": {
+        "properties": {
+          "useExistingSecret": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "existingSecret"
+        ],
+        "properties": {
+          "existingSecret": {
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "webKey"
+        ],
+        "properties": {
+          "webKey": {
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9._~-]+$"
+          }
+        }
+      }
+    },
+    "magpie": {
+      "type": "object",
+      "properties": {
+        "publicURL": {
+          "type": "string",
+          "pattern": "^$|^https?://[^/\\s?#@]+/?$"
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|Pi|Ei)$"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "tls": {
+          "type": "array"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$"
+              }
+            }
+          }
+        },
+        "certificate": {
+          "type": "object",
+          "required": [
+            "mode",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "disabled",
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "issuerName": {
+              "type": "string"
+            },
+            "issuerKind": {
+              "enum": [
+                "Issuer",
+                "ClusterIssuer"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    }
+  }
+}

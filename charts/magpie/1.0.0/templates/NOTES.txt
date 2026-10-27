@@ -1,0 +1,18 @@
+Magpie runs one persistent gateway with its Web UI on port 3430.
+
+{{- with include "magpie.publicURL" . }}
+
+Public base URL: {{ . }}
+OpenAI-compatible base URL: {{ . }}/v1
+{{- end }}
+
+For private setup:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "magpie.fullname" . }} 3430:3430
+
+Open http://localhost:3430/?k=<your-web-key> in a trusted browser.
+The key is read from Secret {{ include "magpie.secretName" . }}, key {{ .Values.auth.secretKey }}.
+
+Add providers and sign-ins in the Web UI, then create gateway keys for API clients.
+The Web administration key is separate from gateway API keys.
+Use HTTPS or a private tunnel for remote administration.
+The config PVC is retained on uninstall; back it up and manage it separately.

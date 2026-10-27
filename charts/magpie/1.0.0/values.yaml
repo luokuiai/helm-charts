@@ -1,0 +1,49 @@
+image:
+  repository: ghcr.io/yetone/magpie
+  # Empty uses Chart.appVersion; upstream Docker tags omit the leading v.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+auth:
+  # Supply a stable Web administration key, or use an existing Secret.
+  # Allowed characters: letters, digits, - . _ ~; minimum length: 16.
+  webKey: ""
+  useExistingSecret: false
+  existingSecret: ""
+  secretKey: MAGPIE_WEB_KEY
+
+magpie:
+  # Optional external base URL, without /v1. Derived from Ingress when enabled.
+  # Both the Web UI and gateway API are available through the Web port.
+  publicURL: ""
+
+persistence:
+  # Existing claim must be in the installation namespace, writable by UID/GID 65532.
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: magpie.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  certificate:
+    mode: disabled
+    secretName: magpie-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

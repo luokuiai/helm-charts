@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "magpie.fullname" . }}
+  labels:
+    {{- include "magpie.labels" . | nindent 4 }}
+spec:
+  # Magpie's mutable settings, credentials, and local usage data share one volume.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "magpie.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "magpie.selectorLabels" . | nindent 8 }}
+      {{- if not .Values.auth.useExistingSecret }}
+      annotations:
+        checksum/auth: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: magpie
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - web
+            - --addr
+            - 0.0.0.0:3430
+            - --no-open
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: MAGPIE_ADDR
+              value: "0.0.0.0:3425"
+            - name: MAGPIE_WEB_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "magpie.secretName" . }}
+                  key: {{ .Values.auth.secretKey }}
+            {{- with include "magpie.publicURL" . }}
+            - name: MAGPIE_PUBLIC_URL
+              value: {{ . | quote }}
+            - name: MAGPIE_WEB_URL
+              value: {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: web
+              containerPort: 3430
+            - name: gateway
+              containerPort: 3425
+          startupProbe:
+            exec:
+              command: [/magpie, healthcheck]
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: [/magpie, healthcheck]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [/magpie, healthcheck]
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ include "magpie.claimName" . }}
