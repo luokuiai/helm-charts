@@ -1,0 +1,32 @@
+NetBird Reverse Proxy 从 {{ .Release.Namespace }} 命名空间的 Secret {{ .Values.proxy.envSecret }} 读取连接配置。
+Traefik 路由域名：{{ .Values.proxy.domain }}；Secret 中的 NB_PROXY_DOMAIN 必须与其一致。
+证书模式：{{ .Values.tls.mode }}；证书目录：{{ .Values.tls.certificateDirectory }}。
+{{- if .Values.geo.downloadUrl }}
+Geo 数据库由 init 容器在 Proxy 启动前下载；新 Pod 会重新下载。失败时查看 geo-download 容器日志。
+{{- else }}
+Geo 数据库由 NetBird 从官方地址下载。
+{{- end }}
+
+{{- if .Values.traefik.enabled }}
+TLS 通过现有 Traefik {{ .Values.traefik.entryPoint }} 入口透传。
+此路由发送 PROXY v2；在 Secret 中设置 NB_PROXY_PROXY_PROTOCOL=true，并将 NB_PROXY_TRUSTED_PROXIES 设为 Traefik 的来源 IP/CIDR。
+将 {{ .Values.proxy.domain }} 和 *.{{ .Values.proxy.domain }} 指向该入口。
+{{- if eq .Values.tls.mode "acme" }}
+NetBird Proxy 通过公网 443 端口上的 TLS-ALPN-01 签发和续期服务证书。
+若 Traefik 也配置了 TLS ACME 验证器，需在现有 Traefik 配置中设置 entryPoints.{{ .Values.traefik.entryPoint }}.allowACMEByPass=true。
+{{- end }}
+{{- else }}
+Service：{{ include "netbird-proxy.fullname" . }}（{{ .Values.service.type }}），HTTPS 端口 {{ .Values.service.httpsPort }}。
+通过四层负载均衡器或 TLS 透传路由对外开放。
+{{- end }}
+
+{{- if eq .Values.tls.mode "existingSecret" }}
+TLS Secret {{ .Values.tls.existingSecret }} 必须位于 {{ .Release.Namespace }} 命名空间。
+证书必须覆盖此 Proxy 实际处理的所有公网服务域名。
+{{- else }}
+确保公网 {{ if eq .Values.tls.acme.challengeType "http-01" }}80{{ else }}443{{ end }} 端口可到达 Proxy，以完成 ACME 验证。
+卸载 Chart 时保留证书 PVC；请单独管理。
+{{- end }}
+
+更新环境变量 Secret 后需重启 Deployment。
+更改证书来源或入口设置前，请阅读此 Chart 的 README.md。

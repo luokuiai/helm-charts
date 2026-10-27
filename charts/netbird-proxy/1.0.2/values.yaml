@@ -1,0 +1,58 @@
+image:
+  repository: netbirdio/reverse-proxy
+  tag: "0.81.4"
+  pullPolicy: IfNotPresent
+
+proxy:
+  # Existing Secret containing the user-configured NB_PROXY_* environment variables.
+  envSecret: netbird-proxy-env
+  # Traefik SNI hostname; keep it equal to NB_PROXY_DOMAIN in envSecret.
+  domain: ""
+
+geo:
+  # A gzip-compressed GeoLite2-City MMDB; set to "" to use NetBird's own download.
+  downloadUrl: https://cdn.jsdelivr.net/npm/geolite2-city/GeoLite2-City.mmdb.gz
+  # Override with a mirror if Docker Hub is unavailable to the cluster.
+  image: curlimages/curl:8.21.0
+
+tls:
+  # The proxy issues and renews certificates by default; existingSecret is optional.
+  mode: acme
+  existingSecret: ""
+  # Used for both NB_PROXY_CERTIFICATE_DIRECTORY and the volume mount.
+  certificateDirectory: /certs
+  acme:
+    challengeType: tls-alpn-01
+    directory: https://acme-v02.api.letsencrypt.org/directory
+
+service:
+  # ClusterIP can share the existing Traefik entrypoint through TLS passthrough.
+  type: ClusterIP
+  httpsPort: 443
+  httpsNodePort: 0
+  # HTTP is exposed only for ACME http-01, not for application traffic.
+  httpPort: 80
+  httpNodePort: 0
+  annotations: {}
+
+traefik:
+  # Requires Traefik v3 and the traefik.io IngressRouteTCP CRD.
+  enabled: true
+  entryPoint: websecure
+
+persistence:
+  # Used only in acme mode; certificates survive Helm uninstall.
+  existingClaim: ""
+  storageClass: local-path
+  size: 128Mi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Optional additional environment variables; chart-managed listener and TLS variables cannot be overridden.
+extraEnv: []

@@ -1,0 +1,20 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: {{ include "netbird-proxy.fullname" . }}
+  labels:
+    {{- include "netbird-proxy.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - {{ .Values.traefik.entryPoint | quote }}
+  routes:
+    - match: {{ printf "HostSNI(`%s`) || HostSNIRegexp(`^.+\\.%s$`)" .Values.proxy.domain (replace "." "\\." .Values.proxy.domain) | quote }}
+      services:
+        - name: {{ include "netbird-proxy.fullname" . }}
+          port: {{ .Values.service.httpsPort }}
+          proxyProtocol:
+            version: 2
+  tls:
+    passthrough: true
+{{- end }}

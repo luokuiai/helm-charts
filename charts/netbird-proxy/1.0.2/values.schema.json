@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "proxy", "geo", "tls", "service", "traefik", "persistence", "resources", "extraEnv"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "proxy": {
+      "type": "object",
+      "required": ["envSecret", "domain"],
+      "properties": {
+        "envSecret": {"type": "string", "minLength": 1},
+        "domain": {"type": "string", "maxLength": 253, "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"}
+      }
+    },
+    "geo": {
+      "type": "object",
+      "required": ["downloadUrl", "image"],
+      "properties": {
+        "downloadUrl": {"type": "string", "pattern": "^$|^https://[^\\s]+$"},
+        "image": {"type": "string", "minLength": 1}
+      }
+    },
+    "tls": {
+      "type": "object",
+      "required": ["mode", "existingSecret", "certificateDirectory", "acme"],
+      "properties": {
+        "mode": {"enum": ["existingSecret", "acme"]},
+        "existingSecret": {"type": "string"},
+        "certificateDirectory": {
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$",
+          "not": {"enum": ["/tmp", "/var/lib/netbird"]}
+        },
+        "acme": {
+          "type": "object",
+          "required": ["challengeType", "directory"],
+          "properties": {
+            "challengeType": {"enum": ["tls-alpn-01", "http-01"]},
+            "directory": {"type": "string", "pattern": "^https://[^\\s]+$"}
+          }
+        }
+      },
+      "if": {"properties": {"mode": {"const": "existingSecret"}}},
+      "then": {"properties": {"existingSecret": {"minLength": 1}}}
+    },
+    "service": {
+      "type": "object",
+      "required": ["type", "httpsPort", "httpsNodePort", "httpPort", "httpNodePort", "annotations"],
+      "properties": {
+        "type": {"enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+        "httpsPort": {"$ref": "#/definitions/port"},
+        "httpPort": {"$ref": "#/definitions/port"},
+        "httpsNodePort": {"$ref": "#/definitions/nodePort"},
+        "httpNodePort": {"$ref": "#/definitions/nodePort"},
+        "annotations": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "traefik": {
+      "type": "object",
+      "required": ["enabled", "entryPoint"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "entryPoint": {"type": "string", "minLength": 1}
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["existingClaim", "storageClass", "size"],
+      "properties": {
+        "existingClaim": {"type": "string"},
+        "storageClass": {"type": "string"},
+        "size": {"type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": {"$ref": "#/definitions/resources"},
+        "limits": {"$ref": "#/definitions/resources"}
+      }
+    },
+    "extraEnv": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+          "value": {"type": "string"},
+          "valueFrom": {"type": "object", "minProperties": 1}
+        },
+        "oneOf": [{"required": ["value"]}, {"required": ["valueFrom"]}]
+      }
+    }
+  },
+  "definitions": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "nodePort": {"type": "integer", "anyOf": [{"const": 0}, {"minimum": 30000, "maximum": 32767}]},
+    "resources": {
+      "type": "object",
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": {"type": "string", "pattern": "^([0-9]+m|[0-9]+([.][0-9]+)?)$"},
+        "memory": {"type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"}
+      }
+    }
+  }
+}

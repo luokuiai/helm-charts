@@ -12,7 +12,8 @@ helm-charts/                         # Git repository root
 │   │   └── 1.0.0/                   # PostgreSQL 18 + Rancher form + PVC
 │   ├── netbird-proxy/
 │   │   ├── 1.0.0/                   # Original form-based configuration
-│   │   └── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
+│   │   ├── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
+│   │   └── 1.0.2/                   # Deploy-time Geo database download
 │   ├── registry-proxy/
 │   │   └── 1.0.0/                   # Private registry + public image proxies + Rancher form
 │   └── komodo/
@@ -44,7 +45,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
 | postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and a Rancher configuration form |
-| netbird-proxy | 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, Traefik TLS passthrough, and a Rancher configuration form |
+| netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | registry-proxy | 1.0.0 | Caddy proxies for an upstream registry and public images, two Traefik HTTPS domains, and a Rancher configuration form |
 
 Komodo optionally creates an Ingress through the Rancher form, with an existing TLS Secret or cert-manager certificate issuance.
@@ -54,14 +55,14 @@ Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.exam
 
 See the [PostgreSQL README](charts/postgres/1.0.0/README.md) for PostgreSQL 18 installation and data volume details.
 
-See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.1/README.md) for environment Secret settings, certificate ownership, and sharing Rancher's Traefik entrypoint.
+See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.2/README.md) for environment Secret settings, Geo downloads, certificate ownership, and sharing Rancher's Traefik entrypoint.
 
 See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the two proxy domains, upstream authentication, and certificate configuration.
 
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/netbird-proxy/1.0.1/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/netbird-proxy/1.0.2/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.

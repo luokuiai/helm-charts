@@ -1,0 +1,21 @@
+{{- if and (eq .Values.tls.mode "acme") (not .Values.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "netbird-proxy.claimName" . }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "netbird-proxy.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if eq .Values.persistence.storageClass "-" }}
+  storageClassName: ""
+  {{- else if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+{{- end }}
