@@ -1,0 +1,181 @@
+questions:
+  - variable: replicaCount
+    label: "Number of storage nodes"
+    type: int
+    default: 1
+    min: 1
+    max: 16
+    required: true
+    group: "Deployment"
+    description: "Enter 1 for standalone, or any integer from 2 to 16 for distributed storage. Each distributed Pod needs a different schedulable Kubernetes node and its own PVC. Choose at installation; changing an existing pool requires migration. With 2 nodes, losing either node stops writes."
+  - variable: clusterDomain
+    label: "Kubernetes cluster domain"
+    type: string
+    default: cluster.local
+    required: true
+    group: "Deployment"
+    description: "Used for distributed peer DNS. Keep cluster.local unless the cluster uses a custom DNS domain."
+  - variable: image.repository
+    label: "Silo image repository"
+    type: string
+    default: pgsty/silo
+    required: true
+    group: "Images"
+    description: "Official Silo image, or a compatible mirror. Supports amd64 and arm64."
+  - variable: image.tag
+    label: "Silo image tag (optional)"
+    type: string
+    default: ""
+    group: "Images"
+    description: "Leave empty to use RELEASE.2026-10-26T00-00-00Z."
+  - variable: auth.useExistingSecret
+    label: "Use an existing root credential Secret"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Authentication"
+  - variable: auth.rootUser
+    label: "Root user"
+    type: string
+    default: silo-admin
+    required: true
+    group: "Authentication"
+    show_if: auth.useExistingSecret=false
+    description: "At least 3 characters. Create scoped access keys for applications after installation."
+  - variable: auth.rootPassword
+    label: "Root password"
+    type: password
+    default: ""
+    required: true
+    group: "Authentication"
+    show_if: auth.useExistingSecret=false
+    description: "At least 8 characters; use a long random password. Helm release values retain this password. Use an existing Secret to keep it out of values."
+  - variable: auth.existingSecret
+    label: "Existing root credential Secret name"
+    type: string
+    default: ""
+    required: true
+    group: "Authentication"
+    show_if: auth.useExistingSecret=true
+    description: "Must exist in this namespace with fields rootUser and rootPassword, containing valid Silo credentials. All Pods use the same credentials."
+  - variable: persistence.existingClaim
+    label: "Existing data PVC (single node only)"
+    type: string
+    default: ""
+    group: "Persistence"
+    show_if: replicaCount=1
+    description: "Leave empty to create a PVC. An existing claim must contain compatible standalone data and be writable by UID/GID 1000. Back up before reusing data."
+  - variable: persistence.storageClass
+    label: "Data storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    description: "Used for new PVCs. Leave empty for the cluster default. local-path stores data on the assigned K3s node. Use separate local disks for independent storage failure domains."
+  - variable: persistence.size
+    label: "Data capacity per node"
+    type: string
+    default: 10Gi
+    required: true
+    group: "Persistence"
+    description: "Per-PVC raw capacity before erasure coding overhead. All PVCs use this size. PVCs are retained on uninstall; resizing existing volumes is a separate operation."
+  - variable: ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "Requires an Ingress controller and two DNS records. TLS terminates at the controller; internal Silo traffic remains HTTP."
+  - variable: ingress.apiHost
+    label: "S3 API hostname"
+    type: hostname
+    default: s3.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "S3 applications use this host. Routes / to port 9000 without rewriting the signed path or Host."
+  - variable: ingress.consoleHost
+    label: "Console hostname"
+    type: hostname
+    default: silo.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Must differ from the API hostname. Routes / to port 9001; the browser redirect URL is derived automatically."
+  - variable: ingress.className
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Usually traefik on K3s. Leave empty for the default Ingress Class."
+  - variable: ingress.certificate.mode
+    label: "HTTPS mode"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "existing: reuse a TLS Secret covering both hosts; cert-manager: request one certificate for both hosts; disabled: HTTP."
+  - variable: ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "Select an existing, ready ClusterIssuer. Install cert-manager first."
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "Select an existing, ready Issuer in this namespace."
+  - variable: ingress.certificate.secretName
+    label: "TLS Secret name"
+    type: string
+    default: silo-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Must cover both API and Console hosts. Existing Secret in existing mode; Secret created by cert-manager in cert-manager mode. Ignored in disabled mode."
+  - variable: resources.requests.cpu
+    label: "CPU request per node"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit per node"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request per node"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit per node"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"
+    description: "Small-installation default. Increase for workload size, object counts, and erasure-coding activity."

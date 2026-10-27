@@ -1,0 +1,22 @@
+Silo is deployed with {{ .Values.replicaCount }} Pod(s), one data PVC per Pod.
+
+{{- if .Values.ingress.enabled }}
+Console: {{ include "silo.consoleURL" . }}
+S3 API: {{ ternary "https" "http" (ne .Values.ingress.certificate.mode "disabled") }}://{{ .Values.ingress.apiHost }}
+{{- else }}
+Console: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "silo.fullname" . }} 9001:9001
+S3 API: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "silo.fullname" . }} 9000:9000
+{{- end }}
+
+Credentials are in Secret {{ include "silo.secretName" . }} (rootUser / rootPassword).
+Create buckets and scoped application access keys in the Console or with mcli.
+Do not use root credentials in applications.
+
+{{- if gt (int .Values.replicaCount) 1 }}
+Distributed Pods require {{ .Values.replicaCount }} distinct schedulable Kubernetes nodes.
+{{- end }}
+{{- if eq (int .Values.replicaCount) 2 }}
+Two-node pools cannot accept writes with one node offline. Planned evictions are blocked by the PDB.
+{{- end }}
+Do not change replicaCount on an existing pool; migrate to a new release instead.
+PVCs are retained on uninstall. Back up object data, IAM, and any encryption keys separately.

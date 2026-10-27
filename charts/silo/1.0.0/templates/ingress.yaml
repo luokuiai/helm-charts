@@ -1,0 +1,49 @@
+{{- if .Values.ingress.enabled }}
+{{- $certificate := .Values.ingress.certificate }}
+{{- $annotations := deepCopy .Values.ingress.annotations }}
+{{- if eq .Values.ingress.apiHost .Values.ingress.consoleHost }}
+{{- fail "ingress.apiHost and ingress.consoleHost must be different hostnames" }}
+{{- end }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $issuer := required "ingress.certificate.issuerName is required for cert-manager" $certificate.issuerName }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- if eq $certificate.issuerKind "ClusterIssuer" }}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" $issuer }}
+{{- else }}
+{{- $_ := set $annotations "cert-manager.io/issuer" $issuer }}
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "silo.fullname" . }}
+  labels:
+    {{- include "silo.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if ne $certificate.mode "disabled" }}
+  tls:
+    - secretName: {{ required "ingress.certificate.secretName is required for HTTPS" $certificate.secretName | quote }}
+      hosts:
+        - {{ .Values.ingress.apiHost | quote }}
+        - {{ .Values.ingress.consoleHost | quote }}
+  {{- end }}
+  rules:
+    {{- range $port, $host := dict "api" .Values.ingress.apiHost "console" .Values.ingress.consoleHost }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "silo.fullname" $ }}
+                port: {name: {{ $port }}}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,151 @@
+{{- $replicas := int .Values.replicaCount }}
+{{- $name := include "silo.fullname" . }}
+{{- $existing := lookup "apps/v1" "StatefulSet" .Release.Namespace $name }}
+{{- if and $existing (ne (int $existing.spec.replicas) $replicas) }}
+{{- fail "replicaCount cannot change on an existing Silo pool; migrate data to a new release instead" }}
+{{- end }}
+{{- if and (gt $replicas 1) .Values.persistence.existingClaim }}
+{{- fail "persistence.existingClaim is only supported with replicaCount=1; distributed Pods need independent PVCs" }}
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "silo.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ $name }}-headless
+  replicas: {{ $replicas }}
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  {{- if gt $replicas 1 }}
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "silo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "silo.selectorLabels" . | nindent 8 }}
+      {{- if not .Values.auth.useExistingSecret }}
+      annotations:
+        checksum/auth: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if gt $replicas 1 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  {{- include "silo.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: silo
+          image: {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/usr/bin/silo]
+          args:
+            - server
+            - --address
+            - ":9000"
+            - --console-address
+            - ":9001"
+            {{- if eq $replicas 1 }}
+            - /data
+            {{- else }}
+            {{- range $i := until $replicas }}
+            - {{ printf "http://%s-%d.%s-headless.%s.svc.%s:9000/data" $name $i $name $.Release.Namespace $.Values.clusterDomain | quote }}
+            {{- end }}
+            {{- end }}
+          ports:
+            - name: api
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          env:
+            - name: HOME
+              value: /tmp
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "silo.secretName" . }}
+                  key: rootUser
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "silo.secretName" . }}
+                  key: rootPassword
+            {{- if .Values.ingress.enabled }}
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: {{ include "silo.consoleURL" . | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          startupProbe:
+            httpGet: {path: /minio/health/live, port: api}
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /minio/health/ready, port: api}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /minio/health/live, port: api}
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if eq $replicas 1 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "silo.claimName" . | quote }}
+      {{- end }}
+  {{- if gt $replicas 1 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "silo.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+  {{- end }}

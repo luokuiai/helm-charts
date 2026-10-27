@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "replicaCount",
+    "clusterDomain",
+    "image",
+    "auth",
+    "persistence",
+    "ingress"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": [
+        "useExistingSecret"
+      ],
+      "properties": {
+        "rootUser": {
+          "type": "string"
+        },
+        "rootPassword": {
+          "type": "string"
+        },
+        "useExistingSecret": {
+          "type": "boolean"
+        },
+        "existingSecret": {
+          "type": "string"
+        }
+      },
+      "if": {
+        "properties": {
+          "useExistingSecret": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "existingSecret"
+        ],
+        "properties": {
+          "existingSecret": {
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "rootUser",
+          "rootPassword"
+        ],
+        "properties": {
+          "rootUser": {
+            "minLength": 3,
+            "pattern": "^[^\\r\\n]+$"
+          },
+          "rootPassword": {
+            "minLength": 8,
+            "pattern": "^[^\\r\\n]+$"
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|Pi|Ei)$"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "certificate": {
+          "type": "object",
+          "required": [
+            "mode",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "disabled",
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "issuerName": {
+              "type": "string"
+            },
+            "issuerKind": {
+              "enum": [
+                "Issuer",
+                "ClusterIssuer"
+              ]
+            }
+          }
+        },
+        "apiHost": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+        },
+        "consoleHost": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16
+    },
+    "clusterDomain": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

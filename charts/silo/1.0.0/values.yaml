@@ -1,0 +1,47 @@
+# 1 = standalone; 2-16 = one distributed erasure set, one PVC per Pod.
+# Select this at installation. Changing it later is not a supported pool expansion.
+replicaCount: 1
+clusterDomain: cluster.local
+
+image:
+  repository: pgsty/silo
+  tag: "" # Defaults to Chart.appVersion.
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+auth:
+  rootUser: silo-admin
+  rootPassword: ""
+  useExistingSecret: false
+  # Required fields: rootUser and rootPassword, in the installation namespace.
+  existingSecret: ""
+
+persistence:
+  # Only supported with replicaCount=1; must be writable by UID/GID 1000.
+  existingClaim: ""
+  storageClass: local-path
+  # Per PVC, before erasure coding overhead. Empty storageClass uses the cluster default.
+  size: 10Gi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  apiHost: s3.example.com
+  consoleHost: silo.example.com
+  certificate:
+    mode: disabled # disabled | existing | cert-manager
+    secretName: silo-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []

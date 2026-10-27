@@ -1,0 +1,14 @@
+{{- if gt (int .Values.replicaCount) 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "silo.fullname" . }}
+  labels:
+    {{- include "silo.labels" . | nindent 4 }}
+spec:
+  # Two drives need both online for writes. Larger pools allow one planned eviction.
+  maxUnavailable: {{ ternary 0 1 (eq (int .Values.replicaCount) 2) }}
+  selector:
+    matchLabels:
+      {{- include "silo.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: silo
+description: Silo S3 object storage with persistent single-node or distributed deployment and a Rancher form
+type: application
+version: 1.0.0
+appVersion: RELEASE.2026-10-26T00-00-00Z
+kubeVersion: '>= 1.27.0-0'
+home: https://silo.pgsty.com/
+icon: file://charts/silo/1.0.0/icon.png
+sources:
+  - https://github.com/pgsty/silo
+keywords:
+  - silo
+  - minio
+  - s3
+  - object-storage
+annotations:
+  catalog.cattle.io/display-name: "Silo"
+  catalog.cattle.io/release-name: silo
