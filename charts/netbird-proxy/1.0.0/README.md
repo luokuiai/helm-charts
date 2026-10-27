@@ -8,8 +8,8 @@ The chart provides HTTP/HTTPS service access; additional TCP/UDP service ports a
 
 Komodo 的 HTTPS 由 Ingress 控制器终止；NetBird 的 HTTPS 由 Proxy 容器终止。这里使用 Traefik `IngressRouteTCP` 透传 TLS，不创建普通 HTTP Ingress。
 
-1. 同步 Git Chart 仓库，选择 **NetBird Reverse Proxy** `1.0.0` 和安装命名空间。填写管理端 URL、Proxy Token，或选择同命名空间的 Token Secret；不能使用 Peer Setup Key。
-2. 在“域名 / HTTPS”填写 `proxy.domain`，例如 `proxy.example.com`。保留 Traefik TLS 透传、`websecure` 入口和 `ClusterIP` Service，将 `proxy.example.com` 与 `*.proxy.example.com` 的 DNS 指向 Traefik，并保证公网 TCP 443 可达。
+1. 同步 Git Chart 仓库，选择 **NetBird Reverse Proxy** `1.0.0` 和安装命名空间。自托管管理端可填写与 Dashboard 相同的域名，例如 `https://netbird.example.com:443`；NetBird Cloud 才填写 `https://api.netbird.io:443`。填写 Proxy Token，或选择同命名空间的 Token Secret；不能使用 Peer Setup Key。
+2. 在“域名 / HTTPS”填写 `proxy.domain`，例如 `proxy.example.com`。Chart 默认使用 Traefik 的 `websecure` 入口透传 TLS，Service 默认使用 `ClusterIP`；将 `proxy.example.com` 与 `*.proxy.example.com` 的 DNS 指向 Traefik，并保证公网 TCP 443 可达。若集群改过 Traefik 入口名称，可在 YAML 中覆盖 `traefik.entryPoint`。
 3. 证书有两种配置流程：
    - **NetBird 自动签发（默认）**：保持 `tls.mode=acme` 和 `tls-alpn-01`，选择可用的存储类或已有 PVC。NetBird 自动申请、续期证书，默认持久化到 `/certs`；无需 ClusterIssuer 或 TLS Secret。
    - **使用已有证书**：选择 `tls.mode=existingSecret`，再从 `tls.existingSecret` 下拉框选择安装命名空间内的 Secret。列表不会过滤 Secret 类型，所选项必须包含 `tls.crt`、`tls.key`，证书需覆盖实际使用的服务域名，例如 `*.proxy.example.com`；若还使用 `proxy.example.com`，也需覆盖它。NetBird 从 `/certs` 只读加载证书，续期由现有证书管理流程负责；`cattle-system` 中的 Secret 不能跨命名空间直接挂载。
@@ -17,8 +17,8 @@ Komodo 的 HTTPS 由 Ingress 控制器终止；NetBird 的 HTTPS 由 Proxy 容�
 
 若 Traefik 自己配置了 TLS ACME 验证器，还需在其现有 HTTPS 入口启用 `allowACMEByPass`，让证书验证流量到达 NetBird；具体设置见下文。
 
-`questions.yaml` is Rancher's configuration form filename. Form fields map directly to `values.yaml`; all proxy settings are passed through environment variables.
-The management endpoint must expose the `/management.ProxyService/` gRPC API. A dashboard URL that returns HTML for this path will not work.
+`questions.yaml` is Rancher's configuration form filename. Form fields map directly to `values.yaml`; all proxy settings are passed through environment variables. The standard K3s form uses the existing Traefik entrypoint, TLS-ALPN challenge, certificate directory, ACME directory, and Service ports at their defaults. Dedicated endpoints and PROXY protocol settings remain available in **Edit YAML** for advanced setups.
+The management endpoint must expose the `/management.ProxyService/` gRPC API. A dashboard URL that returns HTML for this path will not work. For a self-hosted installation sharing the Dashboard hostname, add ``PathPrefix(`/management.ProxyService/`)`` to the existing Traefik gRPC router for that hostname and route it to the Management service over h2c. The HTTP backend router matching `/api` alone does not cover this gRPC path. Set `websecure`'s `transport.respondingTimeouts.idleTimeout` to `0` on the existing NetBird Traefik entrypoint so the gRPC stream stays connected. The management URL is the hostname and port only, without `/api` or a gRPC path.
 The cluster needs outbound connectivity to the management service and the NetBird signal/relay/peer endpoints used by its networks.
 
 ## Certificate ownership and sharing Rancher's entrypoint
@@ -79,7 +79,7 @@ The chart disables custom service ports and uses `NB_PROXY_CERT_LOCK_METHOD=floc
 Kubernetes Service environment injection is disabled to avoid accidental variable collisions. There is no configuration file or command-line override.
 Use `extraEnv` in YAML for additional upstream variables or Secret references; duplicate names and chart-managed variables are rejected.
 
-For client IP based restrictions, configure the upstream to send PROXY protocol v2, enable `proxy.proxyProtocol`, and list the actual upstream IPs or CIDRs in `proxy.trustedProxies`.
+For client IP based restrictions, enable `proxy.proxyProtocol` in **Edit YAML** and list the actual Traefik source IPs or CIDRs in `proxy.trustedProxies`.
 The Traefik route sends v2 when this setting is enabled. Without it, the proxy sees the upstream router's source IP.
 Do not enable PROXY protocol for direct browser connections or trust arbitrary client networks.
 

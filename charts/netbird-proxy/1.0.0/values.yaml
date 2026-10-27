@@ -4,7 +4,7 @@ image:
   pullPolicy: IfNotPresent
 
 proxy:
-  managementAddress: https://api.netbird.io:443
+  managementAddress: ""
   # Bare hostname matching the proxy cluster configured in NetBird.
   domain: ""
   logLevel: info
