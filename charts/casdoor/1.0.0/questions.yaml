@@ -1,0 +1,203 @@
+questions:
+  - variable: image.repository
+    label: "Casdoor image repository / namespace"
+    type: string
+    default: casbin
+    required: true
+    group: "Images"
+    description: "The image is repository/name:tag. For a mirror, include its registry and namespace here."
+  - variable: image.name
+    label: "Casdoor image name"
+    type: string
+    default: casdoor
+    required: true
+    group: "Images"
+  - variable: image.tag
+    label: "Casdoor image tag (optional)"
+    type: string
+    default: ""
+    group: "Images"
+    description: "Leave empty to use the pinned v4.24.0 application version."
+  - variable: database.driver
+    label: "External database type"
+    type: enum
+    default: postgres
+    required: true
+    options:
+      - postgres
+      - mysql
+    group: "External database"
+    description: "Use an existing PostgreSQL or MySQL server. This chart does not install a database."
+  - variable: database.databaseName
+    label: "Database name"
+    type: string
+    default: casdoor
+    required: true
+    group: "External database"
+    description: "Create a dedicated database and grant the user permission to create and migrate its tables."
+  - variable: database.useExistingSecret
+    label: "Use an existing database connection Secret"
+    type: boolean
+    default: "false"
+    required: true
+    group: "External database"
+    description: "Enable to read a complete connection string from a Secret; otherwise this chart creates a Secret from the fields below."
+  - variable: database.existingSecret
+    label: "Database Secret name"
+    type: string
+    default: ""
+    required: true
+    group: "External database"
+    show_if: database.useExistingSecret=true
+    description: "Secret in the installation namespace with key dataSourceName. For MySQL the connection string must end with /; Casdoor appends the database name."
+  - variable: database.host
+    label: "Database hostname / IP"
+    type: string
+    default: ""
+    required: true
+    group: "External database"
+    show_if: database.useExistingSecret=false
+    description: "For example postgres.database.svc.cluster.local. Do not include a protocol or port. Use brackets around an IPv6 address."
+  - variable: database.port
+    label: "Database port (0 = default)"
+    type: int
+    default: 0
+    min: 0
+    max: 65535
+    required: true
+    group: "External database"
+    show_if: database.useExistingSecret=false
+    description: "0 uses 5432 for PostgreSQL or 3306 for MySQL."
+  - variable: database.user
+    label: "Database username"
+    type: string
+    default: ""
+    required: true
+    group: "External database"
+    show_if: database.useExistingSecret=false
+  - variable: database.password
+    label: "Database password"
+    type: password
+    default: ""
+    required: true
+    group: "External database"
+    show_if: database.useExistingSecret=false
+    description: "Stored in a Kubernetes Secret. Helm release values also retain it; use an existing Secret to keep credentials out of Helm values."
+  - variable: database.sslMode
+    label: "PostgreSQL TLS mode"
+    type: enum
+    default: disable
+    required: true
+    options:
+      - disable
+      - require
+      - verify-ca
+      - verify-full
+    group: "External database"
+    show_if: database.useExistingSecret=false&&database.driver=postgres
+    description: "For verify modes, provide the CA through advanced volume mounts and a connection Secret. MySQL TLS uses an advanced connection configuration."
+  - variable: ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "Requires an existing Ingress controller. Configure DNS separately."
+  - variable: ingress.hosts.0.host
+    label: "Hostname"
+    type: hostname
+    default: casdoor.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Enter only the hostname, without https:// or a path."
+  - variable: ingress.className
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Usually traefik on K3s. Leave empty to use the default Ingress Class."
+  - variable: ingress.certificate.mode
+    label: "HTTPS mode"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "disabled: HTTP; existing: an existing TLS Secret; cert-manager: issue and renew a certificate using an existing issuer."
+  - variable: ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "Select an existing, ready ClusterIssuer. cert-manager must already be installed."
+  # Separate issuer selectors so Rancher remounts the selector when the kind changes.
+  - variable: ingress.certificate.secretName
+    label: "TLS Secret name"
+    type: string
+    default: casdoor-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Existing Secret in existing mode; Secret to create in cert-manager mode. Ignored in disabled mode."
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "Select an existing, ready Issuer in the installation namespace."
+  - variable: origin
+    label: "Public origin override (optional)"
+    type: string
+    default: ""
+    group: "Domain / HTTPS"
+    description: "Leave empty to derive http(s)://hostname from Ingress. Set the complete public origin when TLS terminates elsewhere."
+  - variable: defaultStorageProvider
+    label: "Default storage provider (optional)"
+    type: string
+    default: ""
+    group: "Object storage"
+    description: "Configure AWS S3 / MinIO in Casdoor's Providers page and associate it with applications. This field only selects the default provider; it does not create a provider or bucket. No file PVC is created."
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"

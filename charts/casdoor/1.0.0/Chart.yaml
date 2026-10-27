@@ -1,0 +1,33 @@
+apiVersion: v2
+name: casdoor
+description: Casdoor IAM with an external database and a Rancher configuration form
+type: application
+version: 1.0.0
+appVersion: "v4.24.0"
+home: https://casdoor.ai
+icon: file://charts/casdoor/1.0.0/icon.png
+keywords:
+  - casdoor
+  - iam
+  - sso
+  - oauth
+  - oidc
+  - saml
+  - ldap
+  - authentication
+sources:
+  - https://github.com/casdoor/casdoor
+maintainers:
+  - name: Casdoor
+    email: admin@casdoor.org
+    url: https://casdoor.ai
+annotations:
+  catalog.cattle.io/display-name: "Casdoor"
+  catalog.cattle.io/release-name: casdoor
+  artifacthub.io/category: security
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://casdoor.ai/docs/basic/try-with-helm
+    - name: Demo
+      url: https://door.casdoor.com

@@ -10,6 +10,10 @@ helm-charts/                         # Git repository root
 ├── charts/                          # Chart directory scanned by Rancher
 │   ├── postgres/
 │   │   └── 1.0.0/                   # PostgreSQL 18 + Rancher form + PVC
+│   ├── openbao/
+│   │   └── 1.0.0/                   # OpenBao standalone / Raft HA + domain + Rancher form
+│   ├── casdoor/
+│   │   └── 1.0.0/                   # Casdoor + external database + domain + Rancher form
 │   ├── netbird-proxy/
 │   │   ├── 1.0.0/                   # Original form-based configuration
 │   │   ├── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
@@ -45,6 +49,8 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
 | postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and a Rancher configuration form |
+| openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
+| casdoor | 1.0.0 | Casdoor v4.24.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | registry-proxy | 1.0.0 | Caddy proxies for an upstream registry and public images, two Traefik HTTPS domains, and a Rancher configuration form |
 
@@ -55,6 +61,10 @@ Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.exam
 
 See the [PostgreSQL README](charts/postgres/1.0.0/README.md) for PostgreSQL 18 installation and data volume details.
 
+See the [OpenBao deployment guide](docs/openbao/deployment.md) for single-node / multi-node installation, domain configuration, initialization, and unsealing. Requires Kubernetes 1.30+.
+
+See the [Casdoor deployment guide](docs/casdoor/deployment.md) for external database Secrets, domain / HTTPS, and S3 / MinIO upload configuration. Casdoor creates no database server or file PVC.
+
 See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.2/README.md) for environment Secret settings, Geo downloads, certificate ownership, and sharing Rancher's Traefik entrypoint.
 
 See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the two proxy domains, upstream authentication, and certificate configuration.
@@ -62,7 +72,7 @@ See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the t
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/netbird-proxy/1.0.2/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.0/`, `charts/netbird-proxy/1.0.2/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -94,4 +104,4 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo`, `postgres`, `netbird-proxy`, or `registry-proxy` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `netbird-proxy`, or `registry-proxy` and select the desired chart version.

@@ -1,0 +1,143 @@
+questions:
+  - variable: server.ha.enabled
+    label: "Enable multi-node Raft cluster"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Deployment"
+    description: "Disabled: one persistent OpenBao node. Enabled: a Raft HA cluster. Choose before first installation; changing storage modes requires a separate data migration."
+  - variable: server.ha.replicas
+    label: "Raft replicas"
+    type: int
+    default: 3
+    min: 3
+    max: 5
+    required: true
+    group: "Deployment"
+    show_if: server.ha.enabled=true
+    description: "Enter 3 or 5. Each replica needs a separate schedulable Kubernetes node and its own PVC. Initialize only node 0, then unseal every node with the same keys."
+  - variable: server.image.registry
+    label: "OpenBao image registry"
+    type: string
+    default: quay.io
+    required: true
+    group: "Images"
+  - variable: server.image.repository
+    label: "OpenBao image repository"
+    type: string
+    default: openbao/openbao
+    required: true
+    group: "Images"
+  - variable: server.image.tag
+    label: "OpenBao image tag (optional)"
+    type: string
+    default: ""
+    group: "Images"
+    description: "Leave empty to use the chart's pinned OpenBao 2.7.2 version. Use an image compatible with this chart."
+  - variable: server.dataStorage.storageClass
+    label: "Data storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    description: "One PVC per replica. local-path stores data on that Kubernetes node. Leave empty to use the cluster's default storage class."
+  - variable: server.dataStorage.size
+    label: "Initial data volume size per replica"
+    type: string
+    default: 10Gi
+    required: true
+    group: "Persistence"
+    description: "Set before installation. Resize existing PVCs separately if supported by the storage class. PVCs are retained on uninstall and scale-down."
+  - variable: server.ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "Requires an existing Ingress controller. Point DNS at its external address separately. HTTPS terminates at the Ingress; requests from Ingress to OpenBao use HTTP."
+  - variable: server.ingress.hosts.0.host
+    label: "Hostname"
+    type: hostname
+    default: openbao.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true
+    description: "Enter only the hostname, without https:// or a path. The UI is available at /ui/ after initialization and unsealing."
+  - variable: server.ingress.ingressClassName
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true
+    description: "Select an existing class, usually traefik on K3s. Leave empty to use the cluster's default Ingress Class."
+  - variable: server.ingress.certificate.mode
+    label: "HTTPS mode"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true
+    description: "disabled: HTTP; existing: an existing TLS Secret; cert-manager: request and renew a certificate through an existing issuer. Use HTTPS for external access."
+  - variable: server.ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager
+  - variable: server.ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager&&server.ingress.certificate.issuerKind=ClusterIssuer
+    description: "Select an existing, ready ClusterIssuer. Install cert-manager and create the issuer first."
+  # Separate issuer selectors so Rancher remounts the resource selector on kind changes.
+  - variable: server.ingress.certificate.secretName
+    label: "TLS Secret name"
+    type: string
+    default: openbao-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true
+    description: "In existing mode, enter a TLS Secret in this namespace. In cert-manager mode, enter the Secret name to create. Ignored in disabled mode."
+  - variable: server.ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager&&server.ingress.certificate.issuerKind=Issuer
+    description: "Select an existing, ready Issuer in the installation namespace."
+  - variable: server.resources.requests.cpu
+    label: "CPU request per replica"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+    description: "1000m equals 1 CPU core."
+  - variable: server.resources.limits.cpu
+    label: "CPU limit per replica"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: server.resources.requests.memory
+    label: "Memory request per replica"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: server.resources.limits.memory
+    label: "Memory limit per replica"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"
