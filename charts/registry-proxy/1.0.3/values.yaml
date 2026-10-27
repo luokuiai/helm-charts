@@ -33,6 +33,11 @@ ingress:
 publicProxy:
   enabled: true
   host: docker.example.com
+  rateLimit:
+    enabled: true
+    average: 5 # requests per second, per client IP
+    burst: 30
+    safeNaming: false # Match the Traefik Kubernetes CRD provider setting.
   # Blob GET requests redirect to the first upstream; pull clients must reach it directly.
   upstreams:
     - https://gh-proxy.org

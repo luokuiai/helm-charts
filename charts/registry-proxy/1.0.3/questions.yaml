@@ -31,6 +31,37 @@ questions:
     type: boolean
     label: 启用公共镜像代理
     group: 代理配置
+  - variable: publicProxy.rateLimit.enabled
+    default: true
+    type: boolean
+    label: 启用公共入口限流
+    description: 仅限制公网镜像域名的请求，按 Traefik 看到的客户端 IP 计数；需要集群已安装 Traefik Middleware CRD。
+    show_if: "ingress.enabled=true&&publicProxy.enabled=true"
+    group: 代理配置
+  - variable: publicProxy.rateLimit.average
+    default: 5
+    required: true
+    type: int
+    min: 1
+    label: 每秒平均请求数（每 IP）
+    show_if: "ingress.enabled=true&&publicProxy.enabled=true&&publicProxy.rateLimit.enabled=true"
+    group: 代理配置
+  - variable: publicProxy.rateLimit.burst
+    default: 30
+    required: true
+    type: int
+    min: 1
+    label: 瞬时突发请求数（每 IP）
+    description: 允许短时间连续通过的请求数，额度耗尽后按每秒平均请求数恢复；过低可能影响镜像拉取。
+    show_if: "ingress.enabled=true&&publicProxy.enabled=true&&publicProxy.rateLimit.enabled=true"
+    group: 代理配置
+  - variable: publicProxy.rateLimit.safeNaming
+    default: false
+    type: boolean
+    label: Traefik 已启用 safeNaming
+    description: 仅当 Traefik Kubernetes CRD provider 设置 safeNaming=true 时勾选，否则保持关闭。
+    show_if: "ingress.enabled=true&&publicProxy.enabled=true&&publicProxy.rateLimit.enabled=true"
+    group: 代理配置
   - variable: publicProxy.upstreams
     default:
       - https://gh-proxy.org

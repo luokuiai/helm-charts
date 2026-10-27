@@ -51,6 +51,8 @@ helm upgrade --install registry-proxy ./charts/registry-proxy/1.0.3 \
 
 Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、上游命名空间、上游令牌认证地址、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。“公共镜像上游地址”列表对应 `publicProxy.upstreams`，可直接在表单中添加、删除或修改；至少保留一个 HTTPS 地址，不带路径，且须兼容现有 gh-proxy 路径规则。第一项用于镜像层直连下载，其他请求按列表顺序选择上游。CPU/内存在 `resources` 配置。
 
+公共入口默认启用 Traefik 限流：按 Traefik 看到的来源 IP，平均每秒 5 次请求、允许短时间连续通过 30 次请求；这 30 次是额度容量，不是额外的每秒速率，耗尽后按每秒 5 次恢复。在 Rancher 表单中可调整或关闭，突发额度设得过低可能影响镜像拉取。Chart 创建 `Middleware` 并仅挂到公共 Ingress；已有的 `ingress.annotations` 中间件引用会保留，私有仓库入口不使用这条限流。集群需要安装 Traefik `Middleware` CRD 并启用 Kubernetes CRD provider。若 Traefik 设置了 `safeNaming=true`，在表单中勾选“Traefik 已启用 safeNaming”。
+
 表单参照 Komodo 按“应用”“代理配置”“域名 / HTTPS”分组。两个代理域名、Ingress Class 和证书设置集中在“域名 / HTTPS”，关闭 Ingress 时隐藏对应字段；关闭公共代理时隐藏其上游、域名和证书字段。Ingress Class 和 ClusterIssuer 都使用集群资源下拉框；TLS Secret 名称与 Komodo 一样保留文本输入，以支持自动签发时的新名称及已有证书名称。使用已有证书时清空 ClusterIssuer 选择。
 
 仓库域名默认值为示例，部署前必须替换。两个代理域名必须不同。公共上游默认第一项是 `https://gh-proxy.org`，拉取机器须能直连该地址。
@@ -67,6 +69,7 @@ Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、
 - Docker 客户端仍需能访问上游返回的对象存储地址。阿里云 ACR 个人版应填写 `crpi-...personal.cr.aliyuncs.com` 公网入口；若镜像层仍跳转到 `oss-cn-chengdu-internal.aliyuncs.com`，不能直接无条件改写为公网域名，因为 OSS 签名可能绑定 `Host`。设置 `upstreamNamespace` 不会改变该下载地址。
 - 仓库入口可转发推送请求。命名空间简写只改写 GET 令牌请求；使用 OAuth POST 表单获取令牌的客户端需使用完整镜像路径。推拉权限仍取决于上游授权。
 - 公共入口将 `/v2/library/nginx/...` 和 `/v2/nginx/...` 改写为 `/v2/docker/nginx/...`。镜像层 GET 请求返回 307，Docker 直接从 `publicProxy.upstreams` 第一项下载，镜像层字节不经过本 Chart 的 Caddy；清单、HEAD 等请求仍走 Caddy，按列表顺序使用上游和被动健康检查。
+- 公共入口限流约束进入该域名的请求，包括清单、HEAD 和镜像层跳转；307 后客户端直连上游的下载流量不受它控制。多个 Traefik 副本各自计数；多个拉取机器若共用一个公网出口 IP，也共用同一限额。
 - 直连下载要求拉取机器能访问第一项上游的镜像层地址。该跳转不会使用 Caddy 的其他上游故障切换；对私有镜像或需要跨域传递认证头的上游不适用。当前默认上游对 `Range: bytes=0-0` 返回完整层文件，因此下载中断后可能从头重下，反复中断可能导致拉取失败。
 - 公共入口不需要时设置 `publicProxy.enabled=false`，对应监听端口和 Ingress 会一起移除。
 

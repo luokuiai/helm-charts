@@ -1,0 +1,12 @@
+{{- if and .Values.ingress.enabled .Values.publicProxy.enabled .Values.publicProxy.rateLimit.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-public-ratelimit
+  namespace: {{ .Release.Namespace }}
+spec:
+  rateLimit:
+    average: {{ .Values.publicProxy.rateLimit.average }}
+    period: 1s
+    burst: {{ .Values.publicProxy.rateLimit.burst }}
+{{- end }}

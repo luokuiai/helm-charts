@@ -17,6 +17,15 @@
 {{- if .Values.ingress.clusterIssuer }}
 {{- $_ := set $annotations "cert-manager.io/cluster-issuer" .Values.ingress.clusterIssuer }}
 {{- end }}
+{{- if .Values.publicProxy.rateLimit.enabled }}
+{{- $separator := ternary "_" "-" .Values.publicProxy.rateLimit.safeNaming }}
+{{- $middlewareRef := printf "%s%s%s-public-ratelimit@kubernetescrd" .Release.Namespace $separator .Release.Name }}
+{{- $existingMiddlewares := get $annotations "traefik.ingress.kubernetes.io/router.middlewares" }}
+{{- if $existingMiddlewares }}
+{{- $middlewareRef = printf "%s,%s" $existingMiddlewares $middlewareRef }}
+{{- end }}
+{{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.middlewares" $middlewareRef }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
