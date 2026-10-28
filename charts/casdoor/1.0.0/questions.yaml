@@ -1,23 +1,18 @@
 questions:
   - variable: image.repository
-    label: "Casdoor image repository / namespace"
+    label: "Casdoor image"
     type: string
-    default: casbin
+    default: casbin/casdoor:v4.24.0
     required: true
     group: "Images"
-    description: "The image is repository/name:tag. For a mirror, include its registry and namespace here."
-  - variable: image.name
-    label: "Casdoor image name"
-    type: string
-    default: casdoor
+    description: "Full image including its version or digest, such as casbin/casdoor:v4.24.0 or registry.example.com/team/casdoor:v4.24.0."
+  - variable: casdoor.envSecret
+    label: "Casdoor environment Secret"
+    type: "reference[secret]"
+    default: casdoor-env
     required: true
-    group: "Images"
-  - variable: image.tag
-    label: "Casdoor image tag (optional)"
-    type: string
-    default: ""
-    group: "Images"
-    description: "Leave empty to use the pinned v4.24.0 application version."
+    group: "External database"
+    description: "Select an existing Secret in this namespace containing dataSourceName and other Casdoor environment variables, such as initAdminPassword. Shared with Caddy when enabled; add S3_ENDPOINT and S3_BUCKET there. Variable names are case-sensitive. Restart the Deployment after updating it. S3 providers can be automatically imported from init_data.yaml in the same Secret."
   - variable: database.driver
     label: "External database type"
     type: enum
@@ -35,67 +30,6 @@ questions:
     required: true
     group: "External database"
     description: "Create a dedicated database and grant the user permission to create and migrate its tables."
-  - variable: database.useExistingSecret
-    label: "Use an existing database connection Secret"
-    type: boolean
-    default: "false"
-    required: true
-    group: "External database"
-    description: "Enable to read a complete connection string from a Secret; otherwise this chart creates a Secret from the fields below."
-  - variable: database.existingSecret
-    label: "Database Secret name"
-    type: string
-    default: ""
-    required: true
-    group: "External database"
-    show_if: database.useExistingSecret=true
-    description: "Secret in the installation namespace with key dataSourceName. For MySQL the connection string must end with /; Casdoor appends the database name."
-  - variable: database.host
-    label: "Database hostname / IP"
-    type: string
-    default: ""
-    required: true
-    group: "External database"
-    show_if: database.useExistingSecret=false
-    description: "For example postgres.database.svc.cluster.local. Do not include a protocol or port. Use brackets around an IPv6 address."
-  - variable: database.port
-    label: "Database port (0 = default)"
-    type: int
-    default: 0
-    min: 0
-    max: 65535
-    required: true
-    group: "External database"
-    show_if: database.useExistingSecret=false
-    description: "0 uses 5432 for PostgreSQL or 3306 for MySQL."
-  - variable: database.user
-    label: "Database username"
-    type: string
-    default: ""
-    required: true
-    group: "External database"
-    show_if: database.useExistingSecret=false
-  - variable: database.password
-    label: "Database password"
-    type: password
-    default: ""
-    required: true
-    group: "External database"
-    show_if: database.useExistingSecret=false
-    description: "Stored in a Kubernetes Secret. Helm release values also retain it; use an existing Secret to keep credentials out of Helm values."
-  - variable: database.sslMode
-    label: "PostgreSQL TLS mode"
-    type: enum
-    default: disable
-    required: true
-    options:
-      - disable
-      - require
-      - verify-ca
-      - verify-full
-    group: "External database"
-    show_if: database.useExistingSecret=false&&database.driver=postgres
-    description: "For verify modes, provide the CA through advanced volume mounts and a connection Secret. MySQL TLS uses an advanced connection configuration."
   - variable: ingress.enabled
     label: "Enable domain access (Ingress)"
     type: boolean
@@ -171,12 +105,58 @@ questions:
     default: ""
     group: "Domain / HTTPS"
     description: "Leave empty to derive http(s)://hostname from Ingress. Set the complete public origin when TLS terminates elsewhere."
+  - variable: initData.enabled
+    label: "Initialize providers from a Secret"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Object storage"
+    description: "Automatically import S3 / MinIO (including Silo) providers; no manual admin-console setup is required. The initialization file can be in the same Secret as the environment variables. This does not create buckets."
+  - variable: initData.existingSecret
+    label: "Provider initialization Secret"
+    type: "reference[secret]"
+    default: ""
+    required: true
+    group: "Object storage"
+    show_if: initData.enabled=true
+    description: "Secret containing init_data.yaml with Casdoor providers and optional applications. You can select casdoor-env to keep everything in one Secret. Store S3 access keys here instead of Helm values; imported providers are retained in the database. Updates are merged; supplied fields overwrite database values."
+  - variable: initData.existingSecretKey
+    label: "Initialization Secret key"
+    type: string
+    default: init_data.yaml
+    required: true
+    group: "Object storage"
+    show_if: initData.enabled=true
+    description: "The Secret key containing initialization data; .yaml/.yml uses YAML, other extensions use JSON."
   - variable: defaultStorageProvider
     label: "Default storage provider (optional)"
     type: string
     default: ""
     group: "Object storage"
-    description: "Configure AWS S3 / MinIO in Casdoor's Providers page and associate it with applications. This field only selects the default provider; it does not create a provider or bucket. No file PVC is created."
+    description: "Name of an admin-owned provider for default avatar storage, such as storage-silo. Create it in Casdoor or import it from the initialization Secret. Applications still need their provider associations. No bucket or file PVC is created."
+  - variable: storageProxy.enabled
+    label: "Enable Caddy file proxy"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Object storage"
+    description: "Runs Caddy alongside Casdoor, reading S3_ENDPOINT and S3_BUCKET from the same environment Secret. Only GET/HEAD object reads from that bucket are allowed. Keep Silo internal and grant anonymous GetObject only on the dedicated upload bucket."
+  - variable: storageProxy.image
+    label: "Caddy image"
+    type: string
+    default: caddy:2.11.7-alpine
+    required: true
+    group: "Object storage"
+    show_if: storageProxy.enabled=true
+    description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
+  - variable: storageProxy.hostname
+    label: "File proxy hostname"
+    type: hostname
+    default: files.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: storageProxy.enabled=true
+    description: "Separate from the Casdoor hostname. Enable Ingress to create its route; it shares the Ingress Class and HTTPS settings. Existing certificates must cover both hostnames. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
   - variable: resources.requests.cpu
     label: "CPU request"
     type: string

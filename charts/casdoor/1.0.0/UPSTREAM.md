@@ -29,3 +29,22 @@ Local changes:
   retained upstream `initData` integration for declarative configuration.
 
 Icon: https://cdn.casdoor.com/static/favicon.png
+
+- Image form unified as `casbin/casdoor:v4.24.0`; legacy name/tag values remain
+  supported for untagged references.
+- Default `casdoor.envSecret: casdoor-env` imports environment entries and requires
+  `dataSourceName`. Clear it to retain legacy database credential settings.
+- Form selectors for existing provider initialization Secrets, with a Silo example.
+
+Verified against the official v4.24.0 source: `conf/conf.go` (environment priority),
+`object/init.go` (initial admin password), `object/init_data.go` (provider import),
+`object/avatar.go` (default provider name), `storage/minio_s3.go` and
+`object/storage.go` (MinIO credentials, endpoints and resource URL paths).
+GitHub's latest stable release was v4.24.0 when checked on 2026-10-28.
+
+- Optional stock Caddy `2.11.7-alpine` container in the Casdoor Pod, using the
+  same environment Secret and a separate Ingress hostname. It forwards only
+  anonymous object GET/HEAD for `S3_BUCKET`, strips credentials and query
+  parameters, and does not expose other buckets or the Silo administration API.
+  The shared certificate includes both hostnames. Caddy v2.11.7 was verified
+  against the official stable release published on 2026-10-03.

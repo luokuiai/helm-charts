@@ -3,7 +3,8 @@
   "type": "object",
   "required": [
     "database",
-    "ingress"
+    "ingress",
+    "casdoor"
   ],
   "properties": {
     "replicaCount": {
@@ -88,63 +89,7 @@
             "verify-full"
           ]
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "useExistingSecret": {
-                "const": true
-              }
-            }
-          },
-          "then": {
-            "required": [
-              "existingSecret"
-            ],
-            "properties": {
-              "existingSecret": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          },
-          "else": {
-            "required": [
-              "host",
-              "user",
-              "password"
-            ],
-            "properties": {
-              "host": {
-                "minLength": 1
-              },
-              "user": {
-                "minLength": 1
-              },
-              "password": {
-                "minLength": 1
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "driver": {
-                "const": "mysql"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "user": {
-                "pattern": "^[^:\\r\\n]*$"
-              }
-            }
-          }
-        }
-      ]
+      }
     },
     "ingress": {
       "type": "object",
@@ -207,6 +152,151 @@
             }
           }
         }
+      }
+    },
+    "casdoor": {
+      "type": "object",
+      "required": [
+        "envSecret"
+      ],
+      "properties": {
+        "envSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
+    "initData": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "merge": {
+          "type": "boolean"
+        },
+        "watchInterval": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "existingSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        },
+        "existingSecretKey": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9._-]*$"
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    "storageProxy": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "image",
+        "hostname",
+        "port"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hostname": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$",
+          "maxLength": 253
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "casdoor": {
+        "properties": {
+          "envSecret": {
+            "const": ""
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "database": {
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "useExistingSecret": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "existingSecret"
+              ],
+              "properties": {
+                "existingSecret": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "else": {
+              "required": [
+                "host",
+                "user",
+                "password"
+              ],
+              "properties": {
+                "host": {
+                  "minLength": 1
+                },
+                "user": {
+                  "minLength": 1
+                },
+                "password": {
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "driver": {
+                  "const": "mysql"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "user": {
+                  "pattern": "^[^:\\r\\n]*$"
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

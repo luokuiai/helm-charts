@@ -1,3 +1,15 @@
+{{/* Full references take precedence over the legacy separate name and tag. */}}
+{{- define "casdoor.image" -}}
+{{- $image := required "image.repository is required" .Values.image.repository -}}
+{{- if not (or (contains "@" $image) (regexMatch ":[^/]+$" $image)) -}}
+{{- with .Values.image.name -}}
+{{- $image = printf "%s/%s" $image . -}}
+{{- end -}}
+{{- $image = printf "%s:%s" $image (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- $image -}}
+{{- end -}}
+
 {{/*
 Expand the name of the chart.
 */}}
@@ -103,7 +115,9 @@ Create EnvfromConfigmap
 {{- end }}
 
 {{- define "casdoor.databaseSecretName" -}}
-{{- if .Values.database.useExistingSecret -}}
+{{- if .Values.casdoor.envSecret -}}
+{{- .Values.casdoor.envSecret -}}
+{{- else if .Values.database.useExistingSecret -}}
 {{- required "database.existingSecret is required" .Values.database.existingSecret -}}
 {{- else -}}
 {{- printf "%s-database" (include "casdoor.fullname" .) -}}

@@ -5,11 +5,28 @@
 replicaCount: 1
 
 image:
-  repository: casbin
-  name: casdoor
+  # Full image reference, including its version or digest.
+  repository: casbin/casdoor:v4.24.0
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+
+casdoor:
+  # Existing Secret containing dataSourceName and other Casdoor environment variables.
+  envSecret: casdoor-env
+
+# Optional Caddy file proxy. Silo stays internal; only the selected bucket's
+# anonymous GET/HEAD object reads are forwarded. Shares casdoor.envSecret.
+storageProxy:
+  enabled: false
+  image: caddy:2.11.7-alpine
+  hostname: files.example.com
+  port: 8080
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 # ref: https://casdoor.org/docs/basic/server-installation#via-ini-file
 config: |
@@ -35,15 +52,15 @@ config: |
   ldapServerPort = 10389
 
 # Optional advanced override for the complete app.conf. Set config: "" when
-# referring to an existing Secret. Database credentials use database.existingSecret.
+# referring to an existing Secret. Database credentials use casdoor.envSecret.
 configFromSecret: ""
 
 # Leave empty to derive the public origin from Ingress, or from the request
 # when Ingress is disabled. Set the full URL when TLS terminates elsewhere.
 origin: ""
 
-# Configure the S3 / MinIO provider in Casdoor and associate it with applications.
-# Optional defaultStorageProvider value from Casdoor. No file PVC is created.
+# Name of an admin-owned default avatar storage provider. Configure it in Casdoor
+# or import it with initData. Application provider associations are separate.
 defaultStorageProvider: ""
 
 # -- Declarative configuration: organizations, applications, users, providers, roles, permissions, ... in the
@@ -79,6 +96,7 @@ database:
   # An external database is required. No database server is installed.
   driver: postgres
 
+  # Legacy fallback used only when casdoor.envSecret is empty.
   # Existing Secret must contain the complete connection string in dataSourceName.
   # Driver and databaseName still apply; host/user/password/port/sslMode are ignored.
   useExistingSecret: false

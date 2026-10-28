@@ -18,6 +18,12 @@ spec:
       nodePort: {{ .Values.service.nodePort }}
     {{- end }}
       name: http
+    {{- if .Values.storageProxy.enabled }}
+    - port: {{ .Values.storageProxy.port }}
+      targetPort: files
+      protocol: TCP
+      name: files
+    {{- end }}
     {{- if .Values.ldap.enabled }}
     - port: {{ .Values.ldap.service.port }}
       targetPort: 10389

@@ -12,50 +12,54 @@ and migrate tables. Check network policies and database firewall rules so
 the Casdoor Pod can reach the database. This chart does not create a database
 server or manage its backups, upgrades, or data lifecycle.
 
-In **External database**, choose the driver and database name. Then choose:
+The **Casdoor image** field is one full reference, defaulting to
+`casbin/casdoor:v4.24.0`. Enter a complete mirror reference or digest when needed.
+The former `image.repository` / `image.name` / `image.tag` layout remains supported
+in YAML when the repository is untagged; an explicit tag or digest takes precedence.
 
-- Form credentials: enter host, port, username, and password. Port `0` means
-  `5432` for PostgreSQL or `3306` for MySQL. The chart generates a Secret
-  containing the connection string. Passwords are also retained in Helm
-  release values, so do not commit completed values files.
-- Existing Secret: enable **Use an existing database connection Secret** and
-  enter its name. It must be in the installation namespace with key
-  `dataSourceName`. Driver and database name still apply; host, port,
-  username, password, and the form's TLS mode are ignored in this mode.
+In **External database**, choose the driver and database name, then select
+**Casdoor environment Secret** (default `casdoor-env`). It must exist in the
+installation namespace and contain the case-sensitive key `dataSourceName`.
+All its entries become environment variables. Casdoor reads environment values
+before its configuration file, so variables such as `driverName`, `dbName`, or
+`origin` in the Secret override the corresponding form settings.
 
 For PostgreSQL, `dataSourceName` can be a PostgreSQL URL with percent-encoded
-credentials or a lib/pq connection string. The database in the connection
-string must match the database name in the form. For MySQL, use
-`user:password@tcp(host:3306)/`, ending with `/`. Casdoor appends the database
-name itself. The generated PostgreSQL connection string handles spaces,
-quotes, and URL-special characters in credentials.
+credentials or a lib/pq connection string. Match its database to the form's
+database name. For MySQL, use `user:password@tcp(host:3306)/`, ending with `/`;
+Casdoor appends the database name. Configure TLS in the connection string.
+Use Service DNS or a database IP, not `localhost`. The chart disables Casdoor's
+Docker-specific localhost rewriting. Mount trusted CAs through `extraVolumes`
+and `extraVolumeMounts` if the database connection requires them.
 
-Use service DNS or a database IP, not `localhost`. The chart disables
-Casdoor's Docker-specific localhost rewriting so Kubernetes DNS and
-credentials are used as supplied. Database names use letters, digits,
-and underscores and must begin with a letter or underscore.
-
-For PostgreSQL over an untrusted network, use TLS. `require` enables
-encryption; `verify-ca` / `verify-full` also require appropriate trusted CA
-configuration. Supply a connection Secret and CA mounts using the retained
-`extraVolumes` / `extraVolumeMounts` settings when custom certificate paths
-are needed. The form's PostgreSQL TLS setting does not configure MySQL TLS.
-
-See [database-secret.example.yaml](database-secret.example.yaml) for an
-existing Secret example. After creating it, an example installation is:
+Use [env-secret.example.yaml](env-secret.example.yaml) as a private template.
+It also demonstrates `initAdminPassword`, which only sets the password when
+Casdoor creates its initial administrator; it does not reset an existing user.
+Do not commit real credentials. An example installation is:
 
 ```bash
+kubectl create namespace identity
+kubectl apply -f /path/to/private/casdoor-env.yaml
 helm install casdoor charts/casdoor/1.0.0 \
-  --namespace identity --create-namespace \
+  --namespace identity \
+  --set casdoor.envSecret=casdoor-env \
   --set database.driver=postgres \
-  --set database.databaseName=casdoor \
-  --set database.useExistingSecret=true \
-  --set database.existingSecret=casdoor-database
+  --set database.databaseName=casdoor
 ```
 
-Changing a generated database Secret rolls the Casdoor Pod through its
-checksum annotation. After updating an existing Secret, restart the
-Deployment to load its new environment variables.
+A missing `dataSourceName` key prevents container startup. After changing this
+Secret, restart with `kubectl -n identity rollout restart deployment/casdoor`.
+Advanced `envFrom` sources remain supported; `casdoor.envSecret` is imported
+last and wins over duplicate keys in those sources. Explicit `envFromSecret`
+and `envFromConfigmap` entries still take precedence over `envFrom` entries.
+The chart supplies `RUNNING_IN_DOCKER=false` and the required database reference.
+
+To retain an existing installation's legacy database settings, set
+`casdoor.envSecret: ""`. Legacy form-generated credentials and
+`database.useExistingSecret` / `database.existingSecret` still work through YAML;
+[database-secret.example.yaml](database-secret.example.yaml) shows the legacy
+Secret format. Before switching, create `casdoor-env` with the same connection
+string. A nonempty `casdoor.envSecret` takes precedence over the legacy Secret.
 
 ## Domain and HTTPS
 
@@ -89,6 +93,21 @@ The chart derives `origin` as `http(s)://hostname` from the first Ingress
 hostname and TLS mode. Use the public-origin override when TLS terminates
 at another proxy or the controller redirects all HTTP traffic to HTTPS.
 Keep the public origin and application redirect URIs consistent.
+
+Both `origin` and `forceLanguage` can also be entries in the environment Secret.
+For example, add these fields to `stringData` in the existing `casdoor-env` Secret,
+keeping its required `dataSourceName` and other entries:
+
+```yaml
+origin: https://auth.example.com
+forceLanguage: "zh"
+```
+
+`origin` overrides the form's public origin, including an automatically derived
+Ingress origin. `forceLanguage` is supplied through the Secret rather than a
+separate form field; leave it unset for Casdoor's normal language selection.
+Environment variable names are case-sensitive. Restart the Deployment after
+changing the environment Secret.
 
 Ingress is disabled by default. To configure Casdoor before exposing it:
 
@@ -125,10 +144,120 @@ database and object bucket must both be backed up appropriately. Configure
 object storage before uploading files that must survive Pod replacement;
 existing local files are not automatically migrated to S3.
 
-For automatic initialization, the upstream `initData` options remain available
-through advanced values, including `initData.existingSecret` for declarative
-provider and application configuration. S3 access keys are not separate Helm
-form fields in this chart.
+### Initialize Silo storage from a Secret
+
+The form exposes Casdoor's existing `initData` mechanism. Enable
+**Initialize providers from a Secret**, select **Provider initialization Secret**,
+and leave its key as `init_data.yaml` for YAML. You can select the same
+`casdoor-env` Secret for both environment variables and provider initialization.
+The file can include other Casdoor initialization data. It is imported
+automatically; configuring the provider manually in the admin console is optional.
+
+Use [s3-init-secret.example.yaml](s3-init-secret.example.yaml) as a template:
+
+- `type: MinIO` connects to Silo using path-style S3 requests.
+- `clientId` / `clientSecret` are a scoped Silo access key and secret key.
+- `endpoint` is the API URL Casdoor can reach, for example
+  `http://silo.storage.svc.cluster.local:9000` for release `silo` in namespace
+  `storage`. Use port `9000`, not the Console's `9001`.
+- `bucket: casdoor` selects an existing bucket. In this example `pathPrefix`
+  also equals `casdoor`, so browser URLs use `/casdoor/<object>` while the MinIO
+  provider removes that prefix from the stored object key.
+- `domain` is the file proxy origin, e.g. `https://files.example.com`.
+  It must match the scheme and **File proxy hostname** configured in the chart.
+- `S3_ENDPOINT` / `S3_BUCKET` are Caddy's environment variables. Keep them equal
+  to the provider's `endpoint` / `bucket` in `init_data.yaml`. Casdoor does not
+  directly read `S3_*` to configure its provider.
+
+The example is one complete Secret containing the database connection, initial
+administrator password, Caddy environment variables, and provider initialization
+file. Use it instead of the database-only environment example. Enable the proxy
+and Ingress, and point both DNS names at the Ingress controller:
+
+```yaml
+casdoor:
+  envSecret: casdoor-env
+initData:
+  enabled: true
+  existingSecret: casdoor-env
+  existingSecretKey: init_data.yaml
+storageProxy:
+  enabled: true
+  hostname: files.example.com
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: auth.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  certificate:
+    mode: cert-manager
+    issuerName: letsencrypt
+```
+
+Caddy runs in the same Pod as Casdoor, using the pinned image
+`caddy:2.11.7-alpine`. The two containers share `casdoor.envSecret`. Casdoor's
+domain routes to the application port; the separate file domain routes to Caddy
+on port `8080`. No separate release or file PVC is needed. With Ingress disabled,
+the chart exposes only the Service's `files` port; configure an external route
+yourself, or port-forward that port for testing. Gateway API file routes are
+not generated automatically.
+
+The file domain shares the Ingress Class and HTTPS settings. cert-manager
+requests a certificate covering both hostnames. In `existing` mode, supply a
+certificate valid for both. For advanced `ingress.tls` lists, include the file
+hostname in the matching TLS entry yourself. The proxy's domain is configured in
+Ingress and in the provider's `domain`; it is not a separate Casdoor environment
+setting. Restart the Deployment after changing environment variables.
+
+Keep Silo API Ingress disabled. Caddy allows only GET/HEAD for
+`/<S3_BUCKET>/<object>`, rejects other buckets, bucket listings and write requests,
+and strips query parameters and S3 authorization headers. It needs no S3 keys.
+Casdoor uses the scoped provider credentials for uploads over the internal API.
+The example's `defaultStorageProvider` sets the provider for default avatars.
+
+Create a dedicated bucket for these public resources and give anonymous users
+only `s3:GetObject` on its objects. Other Silo buckets stay private. In the Silo
+Console, open **Buckets → casdoor → Summary → Access Policy → Custom**, paste
+this policy and save (do not choose the broader **Public** policy):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": ["*"]},
+    "Action": ["s3:GetObject"],
+    "Resource": ["arn:aws:s3:::casdoor/*"]
+  }]
+}
+```
+
+The policy grants no bucket listing, upload, or delete permission. Files in this
+dedicated bucket are readable without login through the proxy; keep private
+documents in another bucket. Verify an avatar URL such as
+`https://files.example.com/casdoor/<object>` and confirm a different bucket's
+path returns 404. Browser reads still require this anonymous object-read policy;
+the proxy does not sign requests to a private bucket.
+
+Importing the provider does not attach it to applications. Select `storage-silo`
+in the relevant applications' provider list after import, or include their full
+provider lists in the initialization data. Arrays are replaced during a merge,
+so preserve existing sign-in providers when managing application lists.
+The optional `defaultStorageProvider` selects an `admin`-owned provider by its
+name, such as `storage-silo`, for Casdoor's default avatar storage; it does not
+replace application provider associations or create the provider.
+
+Initialization uses `merge: true` and checks for changes every 30 seconds by
+default. Fields present in a changed file overwrite the database values; omitted
+fields are retained. Provider credentials are therefore stored in both the Secret
+and Casdoor's external database. Use an existing Secret to keep them out of Helm
+values. Setting `initData.watchInterval: 0` applies only at startup; restart the
+Deployment after changing an external initialization Secret in that mode.
+Arbitrary `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` variables do not configure
+a Casdoor storage provider; use provider initialization or the admin console.
 
 Official storage documentation:
 https://casdoor.ai/docs/provider/storage/overview/

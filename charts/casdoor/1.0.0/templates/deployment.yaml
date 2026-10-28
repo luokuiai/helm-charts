@@ -15,7 +15,10 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ tpl .Values.config . | toYaml | sha256sum }}
-        {{- if not .Values.database.useExistingSecret }}
+        {{- if .Values.storageProxy.enabled }}
+        checksum/storage-proxy: {{ include (print $.Template.BasePath "/storage-proxy-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (not .Values.casdoor.envSecret) (not .Values.database.useExistingSecret) }}
         checksum/database: {{ include (print $.Template.BasePath "/database-secret.yaml") . | sha256sum }}
         {{- end }}
         {{- if and .Values.initData.enabled (not .Values.initData.existingSecret) (eq (int .Values.initData.watchInterval) 0) }}
@@ -45,7 +48,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "casdoor.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           # command: ["sleep", "100000000"]
           env:
@@ -70,9 +73,15 @@ spec:
           {{ if .Values.envFromConfigmap }}
             {{ include "casdoor.envFromConfigmap" .Values.envFromConfigmap | indent 12 | trim }}
           {{- end }}
-          {{- if .Values.envFrom }}
+          {{- if or .Values.envFrom .Values.casdoor.envSecret }}
           envFrom:
+            {{- if .Values.envFrom }}
             {{ include "casdoor.envFrom" .Values.envFrom | indent 12 | trim }}
+            {{- end }}
+            {{- with .Values.casdoor.envSecret }}
+            - secretRef:
+                name: {{ . | quote }}
+            {{- end }}
           {{- end }}
           ports:
             - name: http
@@ -112,10 +121,64 @@ spec:
             {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
+        {{- if .Values.storageProxy.enabled }}
+        - name: storage-proxy
+          image: {{ .Values.storageProxy.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "/etc/caddy/start.sh"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - secretRef:
+                name: {{ .Values.casdoor.envSecret | quote }}
+          env:
+            - name: XDG_DATA_HOME
+              value: /tmp/caddy
+            - name: XDG_CONFIG_HOME
+              value: /tmp/caddy
+            {{- range $key := list "S3_ENDPOINT" "S3_BUCKET" }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.casdoor.envSecret | quote }}
+                  key: {{ $key }}
+            {{- end }}
+          ports:
+            - name: files
+              containerPort: {{ .Values.storageProxy.port }}
+          readinessProbe:
+            httpGet:
+              path: /_proxy/health
+              port: files
+          livenessProbe:
+            httpGet:
+              path: /_proxy/health
+              port: files
+          resources:
+            {{- toYaml .Values.storageProxy.resources | nindent 12 }}
+          volumeMounts:
+            - name: storage-proxy-config
+              mountPath: /etc/caddy
+              readOnly: true
+            - name: storage-proxy-tmp
+              mountPath: /tmp
+        {{- end }}
         {{ if .Values.extraContainersEnabled }}
           {{- .Values.extraContainers | nindent 8 }}
         {{- end }}
       volumes:
+        {{- if .Values.storageProxy.enabled }}
+        - name: storage-proxy-config
+          configMap:
+            name: {{ include "casdoor.fullname" . }}-storage-proxy
+        - name: storage-proxy-tmp
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.defaultConfigVolumeEnabled }}
         - name: config-volume
           projected:

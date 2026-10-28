@@ -6,32 +6,45 @@ Ingress / certificate form conventions.
 
 The form supports:
 
-- Database host, port, username, password, database name, and PostgreSQL TLS mode.
-- An existing Secret containing a `dataSourceName` connection string.
+- One complete image field, default `casbin/casdoor:v4.24.0`.
+- An environment Secret (default `casdoor-env`) with `dataSourceName` and
+  other Casdoor variables, such as `initAdminPassword`.
+- External database type and database name.
 - Ingress hostname, Ingress Class, an existing TLS Secret, or cert-manager.
-- A public origin override, default storage provider, image, and CPU / memory.
+- Optional provider initialization from a Secret for S3 / MinIO / Silo uploads.
+- Optional Caddy file proxy with its own hostname, sharing the environment Secret.
+- A public origin override, default storage provider, and CPU / memory.
 
 The chart installs one Casdoor replica by default. It installs no database,
-creates no file PVC, and does not create S3 buckets or storage providers.
-Configure S3 or S3-compatible storage in Casdoor and associate the provider
-with the applications that upload files. Until this is configured, local
-uploads are not persistent across Pod replacement.
+creates no file PVC, and does not create S3 buckets. Initialize storage providers
+from a Secret or configure them in Casdoor, then associate them with applications.
+Until object storage is configured, local uploads are not persistent across Pod replacement.
 
-Database credentials entered in the form are written to a Kubernetes Secret;
-Helm values also retain them. Use an existing Secret to keep the connection
-string out of Helm values. Existing database and object storage data remain
-outside this release's lifecycle.
+Environment Secret entries become environment variables. `dataSourceName` is a
+required key reference; the database must already exist. Restart the Deployment
+after updating the environment Secret. S3 credentials belong in provider data,
+not arbitrary AWS environment variables. The provider initialization Secret is
+mounted as a file, and Casdoor stores the imported provider in its database.
+The initialization file can live in the same `casdoor-env` Secret. With the file
+proxy enabled, add `S3_ENDPOINT` and `S3_BUCKET` there, enable Ingress and enter a
+separate file hostname. The proxy allows only anonymous GET/HEAD object reads
+from that bucket; keep Silo internal and grant anonymous `s3:GetObject` only on
+the dedicated upload bucket. Existing TLS certificates must cover both hostnames.
 
-See the [deployment guide](../../../docs/casdoor/deployment.md) and
-[database Secret example](../../../docs/casdoor/database-secret.example.yaml).
+For legacy database values, set `casdoor.envSecret: ""`; existing generated and
+external database Secrets remain supported. Explicit full image tags and digests
+win over legacy `image.name` / `image.tag` values.
+
+See the [deployment guide](../../../docs/casdoor/deployment.md),
+[environment Secret example](../../../docs/casdoor/env-secret.example.yaml), and
+[Silo initialization example](../../../docs/casdoor/s3-init-secret.example.yaml).
 See [UPSTREAM.md](UPSTREAM.md) for provenance and
 [README.upstream.md](README.upstream.md) for retained advanced settings.
 
-Validation (dummy credentials only):
+Validation:
 
 ```bash
-helm lint charts/casdoor/1.0.0 --strict \
-  --set database.host=db.example.com \
-  --set database.user=casdoor --set database.password=lint-only
+helm lint charts/casdoor/1.0.0 --strict
 uv run --with pyyaml python tests/casdoor/test_chart.py
+CADDY_BIN=/path/to/caddy uv run --with pyyaml python tests/casdoor/test_storage_proxy.py
 ```

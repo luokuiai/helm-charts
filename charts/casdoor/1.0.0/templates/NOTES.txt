@@ -32,3 +32,8 @@
   echo "Visit http://127.0.0.1:8080 to use your application"
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
 {{- end }}
+
+{{- if and .Values.storageProxy.enabled .Values.ingress.enabled }}
+File proxy: http{{ if or .Values.ingress.tls (ne .Values.ingress.certificate.mode "disabled") }}s{{ end }}://{{ .Values.storageProxy.hostname }}/<S3_BUCKET>/<object>
+Set the storage provider Domain to this origin and Path prefix to S3_BUCKET.
+{{- end }}
