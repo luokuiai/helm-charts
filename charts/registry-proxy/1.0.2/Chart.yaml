@@ -2,6 +2,8 @@ apiVersion: v2
 name: registry-proxy
 description: Upstream registry and public image proxies using Caddy, Traefik and cert-manager.
 type: application
+# Docker official brand assets: https://www.docker.com/company/newsroom/media-resources/
+icon: file://charts/registry-proxy/1.0.2/icon.png
 version: 1.0.2
 appVersion: "2.11.7"
 keywords:

@@ -18,4 +18,9 @@ with stable node IDs and retry-join addresses for all configured replicas;
 Ingress certificate selection and validation. The standalone backend remains
 the upstream PebbleDB default. The Rancher form supports 3 or 5 HA replicas.
 
+Server image registry and repository are combined in one form field, defaulting
+to `openbao/openbao` on Docker Hub. Server and Helm test Pods share image
+resolution. Legacy `server.image.registry` values remain supported for existing
+installations; a repository with an explicit registry takes precedence.
+
 Icon: https://github.com/openbao/artwork/blob/main/color/openbao-single-color-square.png

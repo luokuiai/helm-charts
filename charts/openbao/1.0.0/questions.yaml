@@ -16,18 +16,13 @@ questions:
     group: "Deployment"
     show_if: server.ha.enabled=true
     description: "Enter 3 or 5. Each replica needs a separate schedulable Kubernetes node and its own PVC. Initialize only node 0, then unseal every node with the same keys."
-  - variable: server.image.registry
-    label: "OpenBao image registry"
-    type: string
-    default: quay.io
-    required: true
-    group: "Images"
   - variable: server.image.repository
     label: "OpenBao image repository"
     type: string
     default: openbao/openbao
     required: true
     group: "Images"
+    description: "Defaults to Docker Hub. Enter openbao/openbao, or a full repository such as quay.io/openbao/openbao or registry.example.com/team/openbao. Configure the tag separately."
   - variable: server.image.tag
     label: "OpenBao image tag (optional)"
     type: string

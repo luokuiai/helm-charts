@@ -1364,3 +1364,13 @@ affinity for the snapshotAgent cronjob pod
           {{- end }}
   {{- end }}
 {{- end -}}
+
+{{/* Resolve one repository field while supporting legacy split registry values. */}}
+{{- define "openbao.serverImage" -}}
+{{- $repository := required "server.image.repository is required" .Values.server.image.repository -}}
+{{- $registry := .Values.server.image.registry | default "" | trimSuffix "/" -}}
+{{- if and $registry (not (regexMatch "^(localhost|[^/]*[.:][^/]*)/" $repository)) -}}
+{{- $repository = printf "%s/%s" $registry $repository -}}
+{{- end -}}
+{{- printf "%s:%s" $repository (.Values.server.image.tag | default (trimPrefix "v" .Chart.AppVersion)) -}}
+{{- end -}}

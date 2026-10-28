@@ -37,6 +37,33 @@ def resource(docs, kind, name=None):
 
 
 class OpenBaoChartTests(unittest.TestCase):
+    def test_combined_image_repository_for_server_and_test_hook(self):
+        cases = [
+            ((), "openbao/openbao:2.7.2"),
+            (("server.image.repository=docker.io/openbao/openbao",),
+             "docker.io/openbao/openbao:2.7.2"),
+            (("server.image.repository=quay.io/openbao/openbao",),
+             "quay.io/openbao/openbao:2.7.2"),
+            (("server.image.repository=registry.example.com:5000/team/openbao",
+              "server.image.tag=custom"), "registry.example.com:5000/team/openbao:custom"),
+            (("server.image.repository=localhost:5000/openbao",),
+             "localhost:5000/openbao:2.7.2"),
+            (("server.image.registry=quay.io",), "quay.io/openbao/openbao:2.7.2"),
+            (("server.image.registry=quay.io",
+              "server.image.repository=docker.io/openbao/openbao"),
+             "docker.io/openbao/openbao:2.7.2"),
+            (("server.image.registry=quay.io",
+              "server.image.repository=registry.example.com/team/openbao"),
+             "registry.example.com/team/openbao:2.7.2"),
+        ]
+        for overrides, expected in cases:
+            with self.subTest(overrides=overrides):
+                docs = manifests(*overrides)
+                server = resource(docs, "StatefulSet")["spec"]["template"]["spec"]["containers"][0]
+                hook = resource(docs, "Pod", "openbao-server-test")["spec"]["containers"][0]
+                self.assertEqual(server["image"], expected)
+                self.assertEqual(hook["image"], expected)
+
     def test_standalone_persistence_and_no_public_ingress(self):
         docs = manifests()
         stateful = resource(docs, "StatefulSet")
@@ -148,6 +175,7 @@ class OpenBaoChartTests(unittest.TestCase):
     def test_form_defaults_and_visibility_paths_exist(self):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
+        self.assertNotIn("server.image.registry", [q["variable"] for q in questions])
 
         def value_at(path):
             value = values

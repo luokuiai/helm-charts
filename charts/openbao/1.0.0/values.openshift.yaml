@@ -19,7 +19,7 @@ injector:
 
 server:
   image:
-    repository: "openbao/openbao-ubi"
+    repository: "quay.io/openbao/openbao-ubi"
     # Use the OpenBao UBI image for better OpenShift compatibility
     # See: https://openbao.org/docs/install/#container-registries
 

@@ -382,9 +382,7 @@ server:
   # By default no direct resource request is made.
 
   image:
-    # -- image registry to use for server image
-    registry: "quay.io"
-    # -- image repo to use for server image
+    # -- Image repository, optionally including a registry hostname. Defaults to Docker Hub.
     repository: "openbao/openbao"
     # -- image tag to use for server image - defaults to chart appVersion
     tag: ""
