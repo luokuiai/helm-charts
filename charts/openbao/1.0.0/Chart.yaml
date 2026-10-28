@@ -1,6 +1,5 @@
 annotations:
   catalog.cattle.io/display-name: "OpenBao"
-  catalog.cattle.io/release-name: openbao
   artifacthub.io/changes: |
     - kind: changed
       chore: update OpenBao to 2.7.2

@@ -19,21 +19,28 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: postgres
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          image: {{ include "postgres.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: postgres
               containerPort: 5432
+          {{- with .Values.postgres.envSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . | quote }}
+          {{- end }}
           env:
             - name: POSTGRES_USER
               value: {{ .Values.auth.username | quote }}
+            {{- with .Values.auth.database }}
             - name: POSTGRES_DB
-              value: {{ .Values.auth.database | quote }}
+              value: {{ . | quote }}
+            {{- end }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "postgres.secretName" . | quote }}
-                  key: {{ .Values.auth.secretKey | quote }}
+                  key: {{ ternary "POSTGRES_PASSWORD" .Values.auth.secretKey (not (empty .Values.postgres.envSecret)) | quote }}
             - name: PGDATA
               value: /var/lib/postgresql/18/docker
           volumeMounts:
@@ -44,7 +51,7 @@ spec:
               command:
                 - sh
                 - -c
-                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"'
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 60
@@ -53,7 +60,7 @@ spec:
               command:
                 - sh
                 - -c
-                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"'
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -62,7 +69,7 @@ spec:
               command:
                 - sh
                 - -c
-                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+                - 'exec pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"'
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 6

@@ -14,4 +14,3 @@ keywords:
   - gateway
 annotations:
   catalog.cattle.io/display-name: "Magpie"
-  catalog.cattle.io/release-name: magpie

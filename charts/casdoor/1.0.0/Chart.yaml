@@ -23,7 +23,6 @@ maintainers:
     url: https://casdoor.ai
 annotations:
   catalog.cattle.io/display-name: "Casdoor"
-  catalog.cattle.io/release-name: casdoor
   artifacthub.io/category: security
   artifacthub.io/license: Apache-2.0
   artifacthub.io/links: |

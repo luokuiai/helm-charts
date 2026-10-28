@@ -2,8 +2,10 @@
 
 A single PostgreSQL 18 instance with a Rancher configuration form, password Secret, ClusterIP Service, and persistent storage.
 
-- Default image: `postgres:18`.
-- On first installation, enter the initial administrator password or select an existing Secret in the same namespace.
+- One image field, defaulting to the pinned `postgres:18.6`.
+- Select an existing environment Secret in the same namespace (default: `postgres-env`) containing `POSTGRES_PASSWORD`; its entries become environment variables.
+- The initial database name is optional. When blank, use `POSTGRES_DB` from the Secret or default to the initial username.
+- Choose the installation name when creating the release; Services and PVC names follow it.
 - Defaults to the `local-path` storage class with a `10Gi` request; no manual PV creation is needed.
 - The PVC is mounted at `/var/lib/postgresql`, with the data directory fixed at `/var/lib/postgresql/18/docker`.
 - Runs one database instance. Multiple replicas alone do not configure replication or high availability.

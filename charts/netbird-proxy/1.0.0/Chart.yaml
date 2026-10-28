@@ -13,4 +13,3 @@ keywords:
   - reverse-proxy
 annotations:
   catalog.cattle.io/display-name: "NetBird Reverse Proxy"
-  catalog.cattle.io/release-name: netbird-proxy

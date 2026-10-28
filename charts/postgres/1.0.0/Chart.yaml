@@ -3,7 +3,7 @@ name: postgres
 description: PostgreSQL 18 with persistent storage and a Rancher configuration form
 type: application
 version: 1.0.0
-appVersion: "18"
+appVersion: "18.6"
 home: https://www.postgresql.org/
 icon: file://charts/postgres/1.0.0/icon.png
 sources:
@@ -14,4 +14,3 @@ keywords:
   - database
 annotations:
   catalog.cattle.io/display-name: "PostgreSQL 18"
-  catalog.cattle.io/release-name: postgres

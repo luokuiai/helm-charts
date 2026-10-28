@@ -19,6 +19,9 @@ Include `KOMODO_DATABASE_USERNAME`, `KOMODO_DATABASE_PASSWORD`, and the existing
 Both MongoDB and Core read the database credentials from this Secret; enter its name in the installation form.
 Choose the username and password yourself. When reusing an initialized MongoDB volume, use its existing credentials.
 Reuse the existing environment settings, including OIDC and JWT credentials. Set the database address to `komodo-mongo:27017`.
+This address assumes release name `komodo`; a release named `komodo-a` uses
+`komodo-a-mongo:27017`. Update `KOMODO_DATABASE_ADDRESS` in its environment
+Secret to match. `fullnameOverride` can retain an explicit resource name prefix.
 
 Optional domain access is available in the **Domain / HTTPS** form group.
 Enable Ingress, enter the hostname, and select the ingress class (usually `traefik` on K3s).

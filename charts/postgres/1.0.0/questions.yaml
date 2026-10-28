@@ -1,18 +1,18 @@
 questions:
   - variable: image.repository
-    label: "PostgreSQL image repository"
+    label: "PostgreSQL image"
     type: string
-    default: postgres
+    default: postgres:18.6
     required: true
     group: "Images"
-    description: "Use the official postgres image, or a mirror repository compatible with the official image."
-  - variable: image.tag
-    label: "PostgreSQL image tag"
-    type: string
-    default: "18"
+    description: "Full PostgreSQL 18 image including its version, such as postgres:18.6 or registry.example.com/team/postgres:18.6. This chart supports PostgreSQL 18 only."
+  - variable: postgres.envSecret
+    label: "PostgreSQL environment Secret"
+    type: "reference[secret]"
+    default: postgres-env
     required: true
-    group: "Images"
-    description: "This chart supports PostgreSQL 18 only. Use a PostgreSQL 18 tag such as 18, 18.x, or 18-alpine."
+    group: "Database and authentication"
+    description: "Select an existing Secret in the installation namespace containing POSTGRES_PASSWORD. Its entries are injected as environment variables. The password initializes empty storage only; changing the Secret does not change an existing database password."
   - variable: auth.username
     label: "Initial administrator username"
     type: string
@@ -21,41 +21,11 @@ questions:
     group: "Database and authentication"
     description: "Used only when initializing an empty data directory. This user has superuser privileges."
   - variable: auth.database
-    label: "Initial database name"
-    type: string
-    default: postgres
-    required: true
-    group: "Database and authentication"
-    description: "Used only when initializing an empty data directory. You can create additional databases in PostgreSQL later."
-  - variable: auth.useExistingSecret
-    label: "Use an existing password Secret"
-    type: boolean
-    default: "false"
-    required: true
-    group: "Database and authentication"
-  - variable: auth.password
-    label: "Initial administrator password"
-    type: password
-    default: ""
-    required: true
-    group: "Database and authentication"
-    show_if: auth.useExistingSecret=false
-    description: "Sets the database password only when initializing an empty data directory. Editing this form does not change the password of an existing database."
-  - variable: auth.existingSecret
-    label: "Existing Secret name"
+    label: "Initial database name (optional)"
     type: string
     default: ""
-    required: true
     group: "Database and authentication"
-    show_if: auth.useExistingSecret=true
-    description: "Must be in the namespace where this application is installed."
-  - variable: auth.secretKey
-    label: "Password key in Secret"
-    type: string
-    default: password
-    required: true
-    group: "Database and authentication"
-    show_if: auth.useExistingSecret=true
+    description: "Leave empty to use POSTGRES_DB from the environment Secret, or default to the initial username. Used only when initializing empty storage. Additional databases can be created later."
   - variable: persistence.existingClaim
     label: "Existing PVC name (optional)"
     type: string

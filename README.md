@@ -56,7 +56,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | Chart | Chart version | Contents |
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
-| postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and a Rancher configuration form |
+| postgres | 1.0.0 | PostgreSQL 18.6, persistent storage, environment Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.0 | Casdoor v4.24.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
 | magpie | 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
@@ -125,3 +125,8 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 Configure Git credentials if the repository is private.
 
 After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.
+
+For new installations, the release name is editable; these charts do not force
+`catalog.cattle.io/release-name`. Installed Helm releases keep their original
+name during upgrades. A separate release can use another name; configure any
+shared resource names and environment Secret references for that installation.

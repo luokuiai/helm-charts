@@ -9,5 +9,8 @@ Created PVC: data-{{ include "postgres.fullname" . }}-0
 {{- end }}
 
 POSTGRES_USER / POSTGRES_DB / POSTGRES_PASSWORD initialize EMPTY storage only.
+When the initial database name is empty, the image uses POSTGRES_DB from the
+environment Secret, or defaults to POSTGRES_USER.
 Changing these Helm values does not alter an initialized database or its password.
+Restart the StatefulSet after changing an existing Secret to reload its environment.
 See the chart README before changing storage or reinstalling the release.

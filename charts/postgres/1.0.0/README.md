@@ -1,19 +1,28 @@
 # PostgreSQL 18
 
-A locally maintained, single-instance chart starting at version `1.0.0`, using the official PostgreSQL image `postgres:18`.
+A locally maintained, single-instance chart starting at version `1.0.0`, using the pinned official PostgreSQL image `postgres:18.6`.
 `questions.yaml` is the filename Rancher uses for the configuration form.
 
 ## Installing in Rancher
 
 1. Sync this Git chart repository, then search for `postgres` or `PostgreSQL 18`.
 2. Select a namespace, such as `prod`, and a release name, such as `postgres`.
-3. Enter the initial username, database name, and password in the form. Alternatively, select an existing Secret and specify its name and password key.
+3. Select an existing environment Secret containing `POSTGRES_PASSWORD` (default name: `postgres-env`). Enter the initial username; the initial database name is optional.
 4. Storage defaults to `local-path` and `10Gi`. Leave the existing PVC name empty to provision a PVC and PV automatically.
 5. Adjust CPU and memory settings for the expected workload, then install.
 
-By default, the chart creates a StatefulSet, a ClusterIP Service, a headless Service, a password Secret, and a data PVC.
+By default, the chart creates a StatefulSet, a ClusterIP Service, a headless Service, and a data PVC. The environment Secret must already exist in the installation namespace.
 It runs a single instance; increasing replicas does not configure PostgreSQL replication.
 It does not create an Ingress, domain, or certificate.
+
+The image and version share one field, `image.repository`, defaulting to
+`postgres:18.6`. Full references such as `registry.example.com/team/postgres:18.6`
+and PostgreSQL 18 image digests are supported. An untagged reference uses
+`Chart.appVersion` (or a legacy `image.tag`). Explicit tags take precedence
+and must be PostgreSQL 18 tags because the data layout is fixed to that major.
+
+The Rancher installation name can be edited for a new release. Resource names,
+Service addresses, and generated PVC names follow the release name.
 
 ## Data volume
 
@@ -67,11 +76,13 @@ Reinstalling with a different release name generates a different PVC name. To re
 ## Passwords and initialization
 
 - `auth.username` defaults to `postgres`. This initialization user has superuser privileges; create regular application users separately in PostgreSQL.
-- Unless using an existing Secret, set `auth.password` through the Rancher form or a local values file that is not committed to Git.
-- To use an existing Secret, set `auth.useExistingSecret: true`, `auth.existingSecret`, and `auth.secretKey`.
+- Create an environment Secret in the installation namespace using [env-secret.example.yaml](../../../docs/postgres/env-secret.example.yaml). Replace its placeholder with your password before applying it.
+- Select the Secret through `postgres.envSecret` (default: `postgres-env`). Its entries become environment variables; `POSTGRES_PASSWORD` is required. There are no password inputs or password-key selectors in the form.
+- `auth.database` is optional. When blank, the chart omits `POSTGRES_DB`; the official image uses the Secret's `POSTGRES_DB`, or defaults to the initial username. This still creates the default database during initialization.
+- The chart explicitly sets `POSTGRES_USER` from `auth.username` and fixes `PGDATA`. A nonempty `auth.database` also takes precedence over the Secret's `POSTGRES_DB`.
 - The username, database name, and password apply only when the data directory is empty. Updating a Secret or Helm values does not change the password in an initialized database; change it within PostgreSQL.
-- The password form field only masks its display. A directly entered password is still stored in the Helm release configuration and a Kubernetes Secret.
-  Choose an existing Secret to keep the password out of Helm values. Base64 encoding in Kubernetes Secrets is not encryption.
+- After changing the environment Secret, restart the StatefulSet to reload its environment. This does not update existing database accounts.
+- When upgrading an existing installation, put its existing password in `POSTGRES_PASSWORD`. To retain legacy `auth.password` / `auth.existingSecret` values instead, explicitly set `postgres.envSecret: ""` in YAML; this keeps the old Secret behavior available.
 - If initialization fails, inspect the logs first. Do not delete a PVC containing existing data without investigating.
 
 ## Connecting and checking status
@@ -89,11 +100,12 @@ Adjust the username and database name in the last command to match your settings
 Startup, readiness, and liveness probes use `pg_isready` to check the TCP listener.
 The startup probe allows approximately 10 minutes for initialization.
 
-Local validation using a placeholder password:
+Local validation:
 
 ```bash
-helm lint charts/postgres/1.0.0 --strict --set-string auth.password=lint-only-placeholder
-helm template postgres charts/postgres/1.0.0 --namespace prod --set-string auth.password=lint-only-placeholder
+helm lint charts/postgres/1.0.0 --strict
+helm template postgres charts/postgres/1.0.0 --namespace prod
+uv run --with pyyaml python tests/postgres/test_chart.py
 ```
 
 ## References

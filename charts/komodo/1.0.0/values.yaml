@@ -1,5 +1,5 @@
 nameOverride: ""
-fullnameOverride: komodo
+fullnameOverride: ""
 # Legacy fallback used only when komodo.envSecret is empty.
 existingSecret:
   name: ""

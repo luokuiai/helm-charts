@@ -1,12 +1,17 @@
 image:
-  repository: postgres
-  tag: "18"
+  # Full PostgreSQL 18 image reference, including its version or digest.
+  repository: postgres:18.6
   pullPolicy: IfNotPresent
+
+postgres:
+  # Existing Secret containing POSTGRES_PASSWORD and other initialization variables.
+  envSecret: postgres-env
 
 auth:
   username: postgres
-  database: postgres
-  # Required on first install unless useExistingSecret is true. Do not commit real passwords.
+  # Empty uses POSTGRES_DB from the environment Secret, or the initial username.
+  database: ""
+  # Legacy fallback used only when postgres.envSecret is empty.
   password: ""
   useExistingSecret: false
   existingSecret: ""

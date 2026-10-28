@@ -55,8 +55,11 @@ Core reads this environment Secret, and the chart maps the same two keys to Mong
 There is no separate database credential Secret or username field in the form.
 When reusing an initialized MongoDB volume, use its existing credentials; editing the Secret does not change the account in MongoDB.
 
-The database address is `komodo-mongo:27017`; the default component name prefix is fixed at `komodo`.
-If you change `fullnameOverride`, also update the database address in the Secret.
+For release `komodo`, the database address remains `komodo-mongo:27017`.
+Names now follow the release name: for example, release `komodo-a` uses
+`komodo-a-mongo:27017`. Set `KOMODO_DATABASE_ADDRESS` in the environment Secret
+to the matching Service address. An explicit `fullnameOverride` remains supported;
+existing installations that require a fixed prefix can retain `fullnameOverride: komodo`.
 Reuse the existing OIDC, JWT, and Webhook credentials from the old `.env` where possible. Do not share these values in chat.
 Keep `KOMODO_HOST` as `https://komodo.luokuiai.com`, the application's callback address.
 If you change the hostname or HTTPS mode, update this value to the matching complete public URL yourself.

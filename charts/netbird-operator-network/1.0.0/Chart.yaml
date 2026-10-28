@@ -14,4 +14,3 @@ keywords:
   - vpn
 annotations:
   catalog.cattle.io/display-name: "NetBird Operator Network"
-  catalog.cattle.io/release-name: netbird-operator-network

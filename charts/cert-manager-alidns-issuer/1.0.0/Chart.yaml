@@ -14,4 +14,3 @@ keywords:
   - letsencrypt
 annotations:
   catalog.cattle.io/display-name: "AliDNS ClusterIssuer"
-  catalog.cattle.io/release-name: cert-manager-alidns-issuer
