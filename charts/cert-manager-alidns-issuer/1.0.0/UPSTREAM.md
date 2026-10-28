@@ -11,5 +11,7 @@ Chart version: `1.0.0`. `appVersion: 0.8.3` identifies the separately installed 
 
 The solver name is `alidns-solver`; its config references `accessTokenSecretRef`, `secretKeySecretRef`, and `regionId`. `accessTokenSecretRef` contains Alibaba Cloud AccessKey ID, despite the upstream token terminology. Secrets are loaded from the challenge's resource namespace.
 
+This Chart fixes the credential Secret keys to `ACCESS_TOKEN` and `SECRET_KEY`. The upstream examples' lowercase keys are not required by the webhook API. The ACME server is fixed to Let's Encrypt production.
+
 The bundled icon is an original certificate and verification-check design.
 Its editable source is `icon.svg`; `icon.png` is rendered at 512 × 512 for Rancher.

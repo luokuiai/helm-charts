@@ -26,8 +26,10 @@ In Rancher, create a generic Secret in cert-manager's cluster resource namespace
 | Setting | Value |
 | --- | --- |
 | Name | `alidns-secrets` |
-| Key `access-token` | Alibaba Cloud AccessKey ID |
-| Key `secret-key` | Alibaba Cloud AccessKey Secret |
+| Key `ACCESS_TOKEN` | Alibaba Cloud AccessKey ID |
+| Key `SECRET_KEY` | Alibaba Cloud AccessKey Secret |
+
+The key names are fixed and are not environment variables. If the Secret was created using the upstream example's lowercase keys, add `ACCESS_TOKEN` and `SECRET_KEY` with the corresponding values before installing. The Chart's form selects the Secret but does not ask for key names.
 
 Use a dedicated RAM identity with the required AliDNS permissions: `alidns:DescribeDomains`, `alidns:DescribeDomainRecords`, `alidns:AddDomainRecord`, and `alidns:DeleteDomainRecord`. Do not put credential values in Git or in this Chart's values.
 
@@ -35,9 +37,9 @@ For a `ClusterIssuer`, the credential lookup namespace is cert-manager's cluster
 
 ## Install through Rancher
 
-Refresh this Git repository, select **AliDNS ClusterIssuer** `1.0.0`, and install in the namespace containing the credentials. Enter your email, the Alibaba-hosted DNS zone such as `luokuiai.com`, select the credential Secret, and verify the webhook group name. Keep `letsencrypt-alidns` unless that issuer name is already in use.
+Refresh this Git repository, select **AliDNS ClusterIssuer** `1.0.0`, and install in the namespace containing the credentials. Enter your email, the Alibaba-hosted DNS zone such as `luokuiai.com`, select the credential Secret, and enter the actual webhook group name. The group name has no default and must match the webhook's installed Helm values. Keep `letsencrypt-alidns` unless that issuer name is already in use. Let's Encrypt production is always used; there is no environment selector.
 
-The release creates one `ClusterIssuer` with no `metadata.namespace`. cert-manager creates its ACME account Secret as `<issuer-name>-<environment>-account-key`; the Chart does not own that Secret.
+The release creates one `ClusterIssuer` with no `metadata.namespace`. cert-manager creates its ACME account Secret as `<issuer-name>-production-account-key`; the Chart does not own that Secret.
 
 If a manually imported issuer already has this name, Helm will not automatically adopt it. Choose a distinct new issuer name for this release and update application references. Do not delete a working issuer to make room for this Chart.
 
@@ -70,4 +72,4 @@ kubectl -n infra get challenges.acme.cert-manager.io
 
 Replace `infra` with the application namespace. `ClusterIssuer Ready=True` confirms ACME account registration; it does not prove webhook access or AliDNS permissions. The application's `Certificate Ready=True` and the expected TLS Secret confirm successful issuance.
 
-Keep the issuer name stable during upgrades. Staging and production use separate account Secret names, and staging certificates are not browser-trusted. Uninstalling this Chart removes the issuer and prevents new issuance or renewal through that issuer. Keep the webhook, credentials, and issuer available while applications depend on them.
+Keep the issuer name stable during upgrades. Uninstalling this Chart removes the issuer and prevents new issuance or renewal through that issuer. Keep the webhook, credentials, and issuer available while applications depend on them.

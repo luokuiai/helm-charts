@@ -13,7 +13,8 @@ CHART = ROOT / "charts/cert-manager-alidns-issuer/1.0.0"
 
 def render(overrides=None, namespace="cert-manager"):
     values = {"acme": {"email": "admin@example.com"},
-              "alidns": {"dnsZone": "example.com"}}
+              "alidns": {"dnsZone": "example.com"},
+              "webhook": {"groupName": "acme.example.com"}}
     for section, entries in (overrides or {}).items():
         values.setdefault(section, {}).update(entries)
     return subprocess.run(
@@ -46,40 +47,34 @@ class AliDNSIssuerTests(unittest.TestCase):
         webhook = solver["dns01"]["webhook"]
         self.assertEqual(webhook["solverName"], "alidns-solver")
         self.assertEqual(webhook["config"]["accessTokenSecretRef"],
-                         {"name": "alidns-secrets", "key": "access-token"})
+                         {"name": "alidns-secrets", "key": "ACCESS_TOKEN"})
         self.assertEqual(webhook["config"]["secretKeySecretRef"],
-                         {"name": "alidns-secrets", "key": "secret-key"})
+                         {"name": "alidns-secrets", "key": "SECRET_KEY"})
 
-    def test_staging_uses_separate_account_and_custom_secret_keys(self):
-        production = manifest()["spec"]["acme"]
+    def test_fixed_production_and_keys_ignore_legacy_overrides(self):
         doc = manifest(overrides={"issuer": {"name": "test-alidns"},
                                   "acme": {"environment": "staging"},
                                   "alidns": {"existingSecret": "dns-credentials",
-                                             "accessKeyIdKey": "AccessKeyId",
-                                             "accessKeySecretKey": "AccessKeySecret"},
+                                             "accessKeyIdKey": "access-token",
+                                             "accessKeySecretKey": "secret-key"},
                                   "webhook": {"groupName": "acme.example.com"}})
         acme = doc["spec"]["acme"]
-        self.assertEqual(acme["server"], "https://acme-staging-v02.api.letsencrypt.org/directory")
-        self.assertEqual(acme["privateKeySecretRef"], {"name": "test-alidns-staging-account-key"})
-        same_name_staging = manifest(overrides={"acme": {"environment": "staging"}})["spec"]["acme"]
-        self.assertNotEqual(production["privateKeySecretRef"], same_name_staging["privateKeySecretRef"])
+        self.assertEqual(acme["server"], "https://acme-v02.api.letsencrypt.org/directory")
+        self.assertEqual(acme["privateKeySecretRef"], {"name": "test-alidns-production-account-key"})
         config = acme["solvers"][0]["dns01"]["webhook"]
         self.assertEqual(config["groupName"], "acme.example.com")
         self.assertEqual(config["config"]["accessTokenSecretRef"],
-                         {"name": "dns-credentials", "key": "AccessKeyId"})
+                         {"name": "dns-credentials", "key": "ACCESS_TOKEN"})
         self.assertEqual(config["config"]["secretKeySecretRef"],
-                         {"name": "dns-credentials", "key": "AccessKeySecret"})
+                         {"name": "dns-credentials", "key": "SECRET_KEY"})
 
     def test_blank_or_malformed_form_values_are_rejected(self):
         for values in [
             {"acme": {"email": ""}}, {"acme": {"email": "a b@example.com"}},
-            {"acme": {"environment": "invalid"}},
             {"alidns": {"dnsZone": ""}}, {"alidns": {"dnsZone": "*.example.com"}},
             {"alidns": {"dnsZone": "https://example.com"}},
             {"alidns": {"existingSecret": ""}},
             {"alidns": {"existingSecret": "cert-manager/credentials"}},
-            {"alidns": {"accessKeyIdKey": ""}},
-            {"alidns": {"accessKeySecretKey": "has spaces"}},
             {"webhook": {"groupName": ""}},
             {"issuer": {"name": "Invalid Name"}},
         ]:
@@ -91,6 +86,10 @@ class AliDNSIssuerTests(unittest.TestCase):
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         by_variable = {item["variable"]: item for item in questions}
         self.assertEqual(by_variable["alidns.existingSecret"]["type"], "reference[secret]")
+        self.assertNotIn("acme.environment", by_variable)
+        self.assertNotIn("alidns.accessKeyIdKey", by_variable)
+        self.assertNotIn("alidns.accessKeySecretKey", by_variable)
+        self.assertEqual(values["webhook"]["groupName"], "")
         self.assertEqual(set(by_variable),
                          {f"{section}.{key}" for section, entries in values.items() for key in entries})
         for question in questions:

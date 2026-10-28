@@ -5,12 +5,14 @@ Check account registration:
 
 AliDNS credentials must exist in cert-manager's cluster resource namespace:
   Secret: {{ .Values.alidns.existingSecret }}
-  AccessKey ID key: {{ .Values.alidns.accessKeyIdKey }}
-  AccessKey Secret key: {{ .Values.alidns.accessKeySecretKey }}
+  AccessKey ID key: ACCESS_TOKEN
+  AccessKey Secret key: SECRET_KEY
 
 The AliDNS webhook must already use groupName {{ .Values.webhook.groupName }}.
 cert-manager creates the ACME account Secret automatically:
-  {{ .Values.issuer.name }}-{{ .Values.acme.environment }}-account-key
+  {{ .Values.issuer.name }}-production-account-key
+
+Let's Encrypt production is always used.
 
 Applications select ClusterIssuer {{ .Values.issuer.name }} in their certificate
 settings, or use the annotation cert-manager.io/cluster-issuer on an Ingress
@@ -18,7 +20,3 @@ with spec.tls. VPN applications keep ingressClassName: traefik-vpn.
 
 Ready confirms ACME account registration. Request an actual certificate to
 verify DNS credentials, webhook configuration, and DNS-01 validation.
-{{- if eq .Values.acme.environment "staging" }}
-
-Staging certificates are for testing and are not trusted by browsers.
-{{- end }}

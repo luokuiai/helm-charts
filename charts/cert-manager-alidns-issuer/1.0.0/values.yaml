@@ -6,17 +6,14 @@ issuer:
 acme:
   # Required. Used for Let's Encrypt account registration.
   email: ""
-  environment: production
 
 alidns:
   # Required. The DNS zone hosted by Alibaba Cloud, without a wildcard or URL.
   dnsZone: ""
   existingSecret: alidns-secrets
-  # These keys hold AccessKey ID and AccessKey Secret respectively.
-  accessKeyIdKey: access-token
-  accessKeySecretKey: secret-key
+  # The Secret must contain ACCESS_TOKEN (AccessKey ID) and SECRET_KEY (AccessKey Secret).
   regionId: cn-beijing
 
 webhook:
   # Must exactly match groupName in the existing AliDNS webhook installation.
-  groupName: acme.luokuiai.com
+  groupName: ""

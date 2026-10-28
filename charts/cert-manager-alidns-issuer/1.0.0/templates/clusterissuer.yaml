@@ -10,13 +10,9 @@ metadata:
 spec:
   acme:
     email: {{ .Values.acme.email | quote }}
-    {{- if eq .Values.acme.environment "staging" }}
-    server: https://acme-staging-v02.api.letsencrypt.org/directory
-    {{- else }}
     server: https://acme-v02.api.letsencrypt.org/directory
-    {{- end }}
     privateKeySecretRef:
-      name: {{ printf "%s-%s-account-key" .Values.issuer.name .Values.acme.environment | quote }}
+      name: {{ printf "%s-production-account-key" .Values.issuer.name | quote }}
     solvers:
       - selector:
           dnsZones:
@@ -29,7 +25,7 @@ spec:
               regionId: {{ .Values.alidns.regionId | quote }}
               accessTokenSecretRef:
                 name: {{ .Values.alidns.existingSecret | quote }}
-                key: {{ .Values.alidns.accessKeyIdKey | quote }}
+                key: ACCESS_TOKEN
               secretKeySecretRef:
                 name: {{ .Values.alidns.existingSecret | quote }}
-                key: {{ .Values.alidns.accessKeySecretKey | quote }}
+                key: SECRET_KEY

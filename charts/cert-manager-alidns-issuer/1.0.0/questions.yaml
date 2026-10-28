@@ -26,42 +26,18 @@ questions:
     default: alidns-secrets
     required: true
     group: "Certificate issuer"
-    description: "Select an existing Secret holding AccessKey ID and AccessKey Secret. Install this Chart in cert-manager's cluster resource namespace, normally cert-manager, so the dropdown lists the correct Secrets."
-  - variable: acme.environment
-    label: "Let's Encrypt environment"
-    type: enum
-    options:
-      - production
-      - staging
-    default: production
-    required: true
-    group: "Certificate issuer"
-    description: "production issues browser-trusted certificates; staging is for testing and is not browser-trusted."
+    description: "Select an existing Secret with ACCESS_TOKEN containing AccessKey ID and SECRET_KEY containing AccessKey Secret. Install this Chart in cert-manager's cluster resource namespace, normally cert-manager, so the dropdown lists the correct Secrets."
   - variable: webhook.groupName
     label: "AliDNS webhook group name"
     type: hostname
-    default: acme.luokuiai.com
+    default: ""
     required: true
-    group: "Webhook and Secret keys"
+    group: "Webhook"
     description: "Must exactly match groupName in your existing AliDNS webhook's Helm values. It is an API identifier, not a DNS record to create."
-  - variable: alidns.accessKeyIdKey
-    label: "AccessKey ID Secret key"
-    type: string
-    default: access-token
-    required: true
-    group: "Webhook and Secret keys"
-    description: "Key within the selected Secret containing Alibaba Cloud AccessKey ID. The DEVmachine-fr webhook examples call this access-token."
-  - variable: alidns.accessKeySecretKey
-    label: "AccessKey Secret Secret key"
-    type: string
-    default: secret-key
-    required: true
-    group: "Webhook and Secret keys"
-    description: "Key within the selected Secret containing Alibaba Cloud AccessKey Secret. Enter the key name, not the credential value."
   - variable: alidns.regionId
     label: "Alibaba Cloud API region"
     type: string
     default: cn-beijing
     required: true
-    group: "Webhook and Secret keys"
+    group: "Webhook"
     description: "AliDNS API client region, matching the webhook's upstream example."
