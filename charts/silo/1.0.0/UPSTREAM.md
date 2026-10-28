@@ -25,6 +25,17 @@ Verified on 2026-10-28. The chart executes `/usr/bin/silo` directly with
 `MINIO_BROWSER_REDIRECT_URL`, `/minio/health/*`, and `.minio.sys` interfaces.
 It does not change the server's storage format or erasure-coding defaults.
 
+The form combines repository and version into one full image reference.
+Untagged references retain support for legacy `image.tag` and fall back to
+`appVersion`; explicit tags and digests take precedence.
+
+`ingress.apiEnabled` and `ingress.consoleEnabled` independently select the
+domain routes. Both default to true to preserve earlier values when the main
+Ingress switch is enabled. TLS contains only enabled hosts, and the Console
+redirect is set only when its route is enabled. The embedded Console uses a
+loopback API endpoint by default (`consoleMinIOServerEnv` in `cmd/common-main.go`),
+so a Console route does not require exposing the S3 API route.
+
 One PVC is attached to each distributed Pod. Distinct Kubernetes hostnames are
 required by Pod anti-affinity. This creates separate node failure domains;
 independence of the backing disks remains the storage administrator's responsibility.

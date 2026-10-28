@@ -10,7 +10,8 @@ Linux amd64 / arm64.
 - Each distributed Pod requires a different schedulable Kubernetes node and
   one independent PVC. Defaults: `local-path`, `10Gi` per PVC.
 - Generated or existing root credential Secret; no default password.
-- Separate S3 API and Console domains, existing TLS or cert-manager.
+- One full image field, defaulting to `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`.
+- Independently enabled S3 API and Console domains, existing TLS or cert-manager.
 - PVC retention, stable peer DNS, nonroot Pods, health probes, and a PDB
   for distributed installations.
 
@@ -18,6 +19,20 @@ Node count is an installation choice. This chart rejects count changes during
 an upgrade against the live cluster; migrate to a new release to change topology.
 It does not implement multi-pool expansion, automatic bucket creation, or a
 MinIO operator. Use the Console or `mcli` to create buckets and scoped access keys.
+
+For Console-only domain access, enable Ingress, turn off **Expose S3 API through
+Ingress**, and keep **Expose Console through Ingress** enabled. S3 remains
+available through the cluster-internal Service on port `9000`. The Console
+uses the API internally. TLS includes only the enabled hostnames; enabled routes
+share the Ingress Class and certificate settings.
+
+`clusterDomain` is the internal Kubernetes DNS suffix used for distributed
+peer addresses. Keep `cluster.local` on standard K3s; it is unrelated to
+the external S3 API and Console domains.
+
+Include a version or digest in `image.repository`. Untagged references fall
+back to `Chart.appVersion` or a legacy `image.tag`; explicit tags and digests
+take precedence over the separate legacy tag.
 
 Two nodes with one PVC each use `EC:1`: loss of one node stops writes; intact
 existing objects may remain readable. With three nodes and default `EC:1`,

@@ -118,6 +118,12 @@
         "enabled": {
           "type": "boolean"
         },
+        "apiEnabled": {
+          "type": "boolean"
+        },
+        "consoleEnabled": {
+          "type": "boolean"
+        },
         "className": {
           "type": "string"
         },
@@ -159,15 +165,13 @@
         },
         "apiHost": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 253,
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+          "pattern": "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
         },
         "consoleHost": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 253,
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+          "pattern": "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
         }
       }
     },

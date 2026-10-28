@@ -1,10 +1,14 @@
 Silo is deployed with {{ .Values.replicaCount }} Pod(s), one data PVC per Pod.
 
-{{- if .Values.ingress.enabled }}
+{{- if and .Values.ingress.enabled .Values.ingress.consoleEnabled }}
 Console: {{ include "silo.consoleURL" . }}
-S3 API: {{ ternary "https" "http" (ne .Values.ingress.certificate.mode "disabled") }}://{{ .Values.ingress.apiHost }}
 {{- else }}
 Console: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "silo.fullname" . }} 9001:9001
+{{- end }}
+{{- if and .Values.ingress.enabled .Values.ingress.apiEnabled }}
+S3 API: {{ ternary "https" "http" (ne .Values.ingress.certificate.mode "disabled") }}://{{ .Values.ingress.apiHost }}
+{{- else }}
+S3 API (cluster-internal): http://{{ include "silo.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:9000
 S3 API: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "silo.fullname" . }} 9000:9000
 {{- end }}
 

@@ -11,7 +11,13 @@ class, with **10Gi per node** before erasure-coding overhead.
 Set a root password or select an existing Secret with `rootUser` and
 `rootPassword`. Create scoped application credentials in Silo after installation.
 The optional Ingress uses separate hostnames for S3 API and Console, with
-HTTP, an existing certificate, or cert-manager issuance for both hosts.
+independent exposure switches. Disable API Ingress to expose only the Console;
+S3 remains accessible inside the cluster on port 9000. HTTP, an existing
+certificate, or cert-manager issuance covers only the enabled hosts.
+
+The image and version share one field, defaulting to
+`pgsty/silo:RELEASE.2026-10-26T00-00-00Z`. The Kubernetes cluster domain is an
+internal DNS suffix; keep `cluster.local` on standard K3s.
 
 Two-node installations stop accepting writes if either node goes offline.
 Node count cannot be changed on an existing pool through this chart. Migrate

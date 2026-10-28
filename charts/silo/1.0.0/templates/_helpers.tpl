@@ -2,6 +2,15 @@
 {{- .Release.Name | trunc 50 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* Full references take precedence over the legacy separate image.tag. */}}
+{{- define "silo.image" -}}
+{{- $image := required "image.repository is required" .Values.image.repository -}}
+{{- if not (or (contains "@" $image) (regexMatch ":[^/]+$" $image)) -}}
+{{- $image = printf "%s:%s" $image (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- $image -}}
+{{- end -}}
+
 {{- define "silo.selectorLabels" -}}
 app.kubernetes.io/name: {{ .Chart.Name }}
 app.kubernetes.io/instance: {{ .Release.Name }}

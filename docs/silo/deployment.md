@@ -19,6 +19,12 @@ Sync this Git repository, then select **Apps → Charts → Silo → 1.0.0**.
 5. Tune resources per node, then install. Defaults suit small installations,
    not a production sizing recommendation.
 
+The **Silo image** field includes the version in the same value:
+`pgsty/silo:RELEASE.2026-10-26T00-00-00Z`. For a mirror, enter a full reference
+such as `registry.example.com/team/silo:RELEASE.2026-10-26T00-00-00Z`.
+Digest references are supported. Untagged references use `Chart.appVersion`
+or a legacy `image.tag`; an explicit tag or digest takes precedence.
+
 Distributed Pods have required anti-affinity on `kubernetes.io/hostname`.
 A pool of N Pods needs at least N schedulable Kubernetes nodes with matching
 storage capacity, selectors, and tolerations. For example, two Pods need two
@@ -29,6 +35,9 @@ The headless Service publishes unready addresses and Pods start in parallel,
 so all peers can resolve and format their data together. Each Pod has a stable
 address and its own ReadWriteOnce claim. The default DNS suffix is
 `cluster.local`; change `clusterDomain` for clusters with custom DNS domains.
+This is Kubernetes' internal DNS suffix, not the external S3 or Console domain.
+Standard K3s installations should keep `cluster.local`; standalone storage
+does not use distributed peer addresses.
 
 ## Node count and availability
 
@@ -120,6 +129,8 @@ auth:
 replicaCount: 3
 ingress:
   enabled: true
+  apiEnabled: true
+  consoleEnabled: true
   className: traefik
   apiHost: s3.example.com
   consoleHost: silo.example.com
@@ -130,14 +141,35 @@ ingress:
     issuerName: letsencrypt
 ```
 
-Point both DNS records at the Ingress controller. `apiHost` serves S3 on port
-9000; `consoleHost` serves the Web Console on port 9001. Both paths are `/`.
-The chart sets `MINIO_BROWSER_REDIRECT_URL` from the Console hostname and
-certificate mode. S3 clients use the API endpoint, without a `/v1` suffix.
+**Expose S3 API through Ingress** and **Expose Console through Ingress**
+are independent switches. Both default to enabled for compatibility when the
+main Ingress switch is on. To expose only Web administration, set:
 
-With `mode: existing`, provide a TLS Secret covering **both hostnames**.
+```yaml
+ingress:
+  enabled: true
+  apiEnabled: false
+  consoleEnabled: true
+  consoleHost: silo.example.com
+```
+
+No API domain route or API certificate name is created in that mode, and
+`apiHost` can be left empty. The Console connects to the API internally.
+Cluster applications still use `http://silo.storage.svc.cluster.local:9000`.
+Likewise, disable `consoleEnabled` for API-only exposure. If neither route
+is enabled, no Ingress or Console redirect is generated. The underlying
+cluster-internal Service always retains both ports.
+
+Point DNS records for the enabled routes at the Ingress controller. `apiHost`
+serves S3 on port 9000; `consoleHost` serves the Web Console on port 9001.
+Both paths are `/`. Enabled routes share the Ingress Class and certificate
+settings. The chart sets `MINIO_BROWSER_REDIRECT_URL` only for an enabled
+Console route, from its hostname and certificate mode. S3 clients use the
+API endpoint, without a `/v1` suffix.
+
+With `mode: existing`, provide a TLS Secret covering **the enabled hostnames**.
 With `mode: cert-manager`, install cert-manager and a ready `Issuer` or
-`ClusterIssuer` first. One certificate covers both names. `disabled` uses HTTP.
+`ClusterIssuer` first. One certificate covers only the enabled names. `disabled` uses HTTP.
 TLS terminates at Ingress; peer and Service traffic remains HTTP inside the
 cluster. The chart does not provision internal TLS.
 

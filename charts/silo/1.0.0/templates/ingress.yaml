@@ -1,7 +1,14 @@
-{{- if .Values.ingress.enabled }}
+{{- if and .Values.ingress.enabled (or .Values.ingress.apiEnabled .Values.ingress.consoleEnabled) }}
 {{- $certificate := .Values.ingress.certificate }}
 {{- $annotations := deepCopy .Values.ingress.annotations }}
-{{- if eq .Values.ingress.apiHost .Values.ingress.consoleHost }}
+{{- $routes := dict }}
+{{- if .Values.ingress.apiEnabled }}
+{{- $_ := set $routes "api" (required "ingress.apiHost is required when API ingress is enabled" .Values.ingress.apiHost) }}
+{{- end }}
+{{- if .Values.ingress.consoleEnabled }}
+{{- $_ := set $routes "console" (required "ingress.consoleHost is required when Console ingress is enabled" .Values.ingress.consoleHost) }}
+{{- end }}
+{{- if and .Values.ingress.apiEnabled .Values.ingress.consoleEnabled (eq .Values.ingress.apiHost .Values.ingress.consoleHost) }}
 {{- fail "ingress.apiHost and ingress.consoleHost must be different hostnames" }}
 {{- end }}
 {{- if eq $certificate.mode "cert-manager" }}
@@ -31,11 +38,12 @@ spec:
   tls:
     - secretName: {{ required "ingress.certificate.secretName is required for HTTPS" $certificate.secretName | quote }}
       hosts:
-        - {{ .Values.ingress.apiHost | quote }}
-        - {{ .Values.ingress.consoleHost | quote }}
+        {{- range $host := $routes }}
+        - {{ $host | quote }}
+        {{- end }}
   {{- end }}
   rules:
-    {{- range $port, $host := dict "api" .Values.ingress.apiHost "console" .Values.ingress.consoleHost }}
+    {{- range $port, $host := $routes }}
     - host: {{ $host | quote }}
       http:
         paths:

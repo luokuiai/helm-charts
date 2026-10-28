@@ -57,6 +57,26 @@ def ingress(mode="disabled", **certificate):
 
 
 class SiloChartTests(unittest.TestCase):
+    def test_full_image_references_in_single_and_distributed_modes(self):
+        pinned = "RELEASE.2026-10-26T00-00-00Z"
+        digest = "sha256:" + "a" * 64
+        cases = [
+            ({}, f"pgsty/silo:{pinned}"),
+            ({"repository": "pgsty/silo"}, f"pgsty/silo:{pinned}"),
+            ({"repository": "registry.example.com:5000/team/silo"},
+             f"registry.example.com:5000/team/silo:{pinned}"),
+            ({"repository": f"registry.example.com:5000/team/silo:{pinned}", "tag": "legacy"},
+             f"registry.example.com:5000/team/silo:{pinned}"),
+            ({"repository": f"pgsty/silo@{digest}", "tag": "legacy"}, f"pgsty/silo@{digest}"),
+            ({"repository": "pgsty/silo", "tag": "custom"}, "pgsty/silo:custom"),
+        ]
+        for replicas in (1, 3):
+            for image, expected in cases:
+                with self.subTest(replicas=replicas, image=image):
+                    app = container(manifests({"replicaCount": replicas, "image": image}))
+                    self.assertEqual(app["image"], expected)
+                    self.assertEqual(app["imagePullPolicy"], "IfNotPresent")
+
     def test_standalone_persists_data_and_retains_claim(self):
         docs = manifests()
         stateful = resource(docs, "StatefulSet")["spec"]
@@ -181,6 +201,44 @@ class SiloChartTests(unittest.TestCase):
         self.assertEqual(environment(docs)["MINIO_BROWSER_REDIRECT_URL"]["value"],
                          "http://console.example.org")
 
+    def test_api_and_console_ingress_can_be_enabled_independently(self):
+        for replicas in (1, 3):
+            for api, console in ((False, True), (True, False), (False, False)):
+                with self.subTest(replicas=replicas, api=api, console=console):
+                    values = ingress("cert-manager", issuerName="letsencrypt")
+                    values["replicaCount"] = replicas
+                    values["ingress"].update({"apiEnabled": api, "consoleEnabled": console})
+                    if not api:
+                        values["ingress"]["apiHost"] = ""
+                    if not console:
+                        values["ingress"]["consoleHost"] = ""
+                    docs = manifests(values)
+                    routes = [doc for doc in docs if doc["kind"] == "Ingress"]
+                    expected = {}
+                    if api:
+                        expected["s3.example.org"] = "api"
+                    if console:
+                        expected["console.example.org"] = "console"
+                    if expected:
+                        route, = routes
+                        self.assertEqual({rule["host"]: rule["http"]["paths"][0]["backend"][
+                            "service"]["port"]["name"] for rule in route["spec"]["rules"]}, expected)
+                        self.assertEqual(set(route["spec"]["tls"][0]["hosts"]), set(expected))
+                    else:
+                        self.assertFalse(routes)
+                    self.assertEqual("MINIO_BROWSER_REDIRECT_URL" in environment(docs), console)
+                    self.assertEqual({port["name"]: port["port"]
+                                      for port in resource(docs, "Service", "silo")["spec"]["ports"]},
+                                     {"api": 9000, "console": 9001})
+
+    def test_disabled_endpoints_do_not_require_a_hostname_or_certificate(self):
+        values = ingress("cert-manager")
+        values["ingress"].update({"apiEnabled": False, "consoleEnabled": False,
+                                  "apiHost": "", "consoleHost": ""})
+        docs = manifests(values)
+        self.assertFalse(any(doc["kind"] == "Ingress" for doc in docs))
+        self.assertNotIn("MINIO_BROWSER_REDIRECT_URL", environment(docs))
+
     def test_certificate_issuer_selectors(self):
         for kind, key in [("Issuer", "cert-manager.io/issuer"),
                           ("ClusterIssuer", "cert-manager.io/cluster-issuer")]:
@@ -203,7 +261,7 @@ class SiloChartTests(unittest.TestCase):
             ingress("invalid"), ingress("existing", secretName=""), ingress("cert-manager"),
             {"ingress": {"enabled": True, "apiHost": "same.test", "consoleHost": "same.test"}},
             {"ingress": {"apiHost": "https://example.org"}},
-            {"ingress": {"consoleHost": ""}},
+            {"ingress": {"enabled": True, "consoleHost": ""}},
         ]
         for values in cases:
             with self.subTest(values=values):
@@ -212,6 +270,7 @@ class SiloChartTests(unittest.TestCase):
     def test_form_defaults_and_numeric_node_input(self):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
+        self.assertNotIn("image.tag", [question["variable"] for question in questions])
 
         def value_at(path):
             value = values

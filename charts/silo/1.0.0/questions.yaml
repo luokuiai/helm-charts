@@ -14,20 +14,14 @@ questions:
     default: cluster.local
     required: true
     group: "Deployment"
-    description: "Used for distributed peer DNS. Keep cluster.local unless the cluster uses a custom DNS domain."
+    description: "Internal Kubernetes DNS suffix for distributed peer addresses. Keep cluster.local on standard K3s. Unused for standalone; unrelated to the external S3 API and Console domains."
   - variable: image.repository
-    label: "Silo image repository"
+    label: "Silo image"
     type: string
-    default: pgsty/silo
+    default: pgsty/silo:RELEASE.2026-10-26T00-00-00Z
     required: true
     group: "Images"
-    description: "Official Silo image, or a compatible mirror. Supports amd64 and arm64."
-  - variable: image.tag
-    label: "Silo image tag (optional)"
-    type: string
-    default: ""
-    group: "Images"
-    description: "Leave empty to use RELEASE.2026-10-26T00-00-00Z."
+    description: "Full image including its version, such as pgsty/silo:RELEASE.2026-10-26T00-00-00Z or registry.example.com/team/silo:RELEASE.2026-10-26T00-00-00Z. Supports amd64 and arm64."
   - variable: auth.useExistingSecret
     label: "Use an existing root credential Secret"
     type: boolean
@@ -84,23 +78,39 @@ questions:
     default: "false"
     required: true
     group: "Domain / HTTPS"
-    description: "Requires an Ingress controller and two DNS records. TLS terminates at the controller; internal Silo traffic remains HTTP."
+    description: "Choose below whether to expose the S3 API, Console, or both. Requires an Ingress controller and DNS records for the enabled routes. TLS terminates at the controller; internal Silo traffic remains HTTP."
+  - variable: ingress.apiEnabled
+    label: "Expose S3 API through Ingress"
+    type: boolean
+    default: "true"
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Disable to keep S3 access inside the cluster on port 9000. The Console can still be exposed independently."
   - variable: ingress.apiHost
     label: "S3 API hostname"
     type: hostname
     default: s3.example.com
     required: true
     group: "Domain / HTTPS"
-    show_if: ingress.enabled=true
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true
     description: "S3 applications use this host. Routes / to port 9000 without rewriting the signed path or Host."
+  - variable: ingress.consoleEnabled
+    label: "Expose Console through Ingress"
+    type: boolean
+    default: "true"
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Expose Web administration on port 9001. This does not require an external S3 API endpoint."
   - variable: ingress.consoleHost
     label: "Console hostname"
     type: hostname
     default: silo.example.com
     required: true
     group: "Domain / HTTPS"
-    show_if: ingress.enabled=true
-    description: "Must differ from the API hostname. Routes / to port 9001; the browser redirect URL is derived automatically."
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true
+    description: "Must differ from the API hostname when both routes are enabled. Routes / to port 9001; the browser redirect URL is derived automatically."
   - variable: ingress.className
     label: "Ingress Class"
     type: "reference[networking.k8s.io.ingressclass]"
@@ -119,7 +129,7 @@ questions:
       - cert-manager
     group: "Domain / HTTPS"
     show_if: ingress.enabled=true
-    description: "existing: reuse a TLS Secret covering both hosts; cert-manager: request one certificate for both hosts; disabled: HTTP."
+    description: "existing: reuse a TLS Secret covering the enabled hosts; cert-manager: request one certificate for the enabled hosts; disabled: HTTP."
   - variable: ingress.certificate.issuerKind
     label: "Certificate issuer kind"
     type: enum
@@ -153,7 +163,7 @@ questions:
     required: true
     group: "Domain / HTTPS"
     show_if: ingress.enabled=true
-    description: "Must cover both API and Console hosts. Existing Secret in existing mode; Secret created by cert-manager in cert-manager mode. Ignored in disabled mode."
+    description: "Must cover the enabled API and/or Console hosts. Existing Secret in existing mode; Secret created by cert-manager in cert-manager mode. Ignored in disabled mode."
   - variable: resources.requests.cpu
     label: "CPU request per node"
     type: string
