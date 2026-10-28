@@ -23,7 +23,9 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- end -}}
 
 {{- define "silo.secretName" -}}
-{{- if .Values.auth.useExistingSecret -}}
+{{- if .Values.silo.envSecret -}}
+{{- .Values.silo.envSecret -}}
+{{- else if .Values.auth.useExistingSecret -}}
 {{- required "auth.existingSecret is required when auth.useExistingSecret=true" .Values.auth.existingSecret -}}
 {{- else -}}
 {{- printf "%s-root" (include "silo.fullname" .) -}}

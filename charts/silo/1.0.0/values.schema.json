@@ -5,6 +5,7 @@
     "replicaCount",
     "clusterDomain",
     "image",
+    "silo",
     "auth",
     "persistence",
     "ingress"
@@ -61,39 +62,6 @@
         },
         "existingSecret": {
           "type": "string"
-        }
-      },
-      "if": {
-        "properties": {
-          "useExistingSecret": {
-            "const": true
-          }
-        }
-      },
-      "then": {
-        "required": [
-          "existingSecret"
-        ],
-        "properties": {
-          "existingSecret": {
-            "minLength": 1
-          }
-        }
-      },
-      "else": {
-        "required": [
-          "rootUser",
-          "rootPassword"
-        ],
-        "properties": {
-          "rootUser": {
-            "minLength": 3,
-            "pattern": "^[^\\r\\n]+$"
-          },
-          "rootPassword": {
-            "minLength": 8,
-            "pattern": "^[^\\r\\n]+$"
-          }
         }
       }
     },
@@ -199,6 +167,69 @@
       "type": "array",
       "items": {
         "type": "object"
+      }
+    },
+    "silo": {
+      "type": "object",
+      "required": [
+        "envSecret"
+      ],
+      "properties": {
+        "envSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "silo": {
+        "properties": {
+          "envSecret": {
+            "const": ""
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "auth": {
+        "if": {
+          "properties": {
+            "useExistingSecret": {
+              "const": true
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "existingSecret"
+          ],
+          "properties": {
+            "existingSecret": {
+              "minLength": 1
+            }
+          }
+        },
+        "else": {
+          "required": [
+            "rootUser",
+            "rootPassword"
+          ],
+          "properties": {
+            "rootUser": {
+              "minLength": 3,
+              "pattern": "^[^\\r\\n]+$"
+            },
+            "rootPassword": {
+              "minLength": 8,
+              "pattern": "^[^\\r\\n]+$"
+            }
+          }
+        }
       }
     }
   }

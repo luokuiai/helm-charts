@@ -9,7 +9,7 @@ Linux amd64 / arm64.
   one distributed erasure set. Odd counts such as 3 and 5 are supported.
 - Each distributed Pod requires a different schedulable Kubernetes node and
   one independent PVC. Defaults: `local-path`, `10Gi` per PVC.
-- Generated or existing root credential Secret; no default password.
+- Environment variables from an existing Secret, including root credentials; no default password.
 - One full image field, defaulting to `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`.
 - Independently enabled S3 API and Console domains, existing TLS or cert-manager.
 - PVC retention, stable peer DNS, nonroot Pods, health probes, and a PDB
@@ -39,12 +39,16 @@ existing objects may remain readable. With three nodes and default `EC:1`,
 two healthy nodes can satisfy the ordinary read/write quorum. Failover still
 depends on the affected objects, disks, metadata, and successful initialization.
 
+Select an existing `silo.envSecret` (default `silo-env`) containing
+`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. Its entries become environment
+variables; Silo retains these MinIO-compatible variable names.
+
 See [the deployment guide](../../../docs/silo/deployment.md) for installation,
 domain configuration, storage sizing, and maintenance.
 
 ```bash
-helm lint charts/silo/1.0.0 --strict --set auth.useExistingSecret=true --set auth.existingSecret=silo-root
+helm lint charts/silo/1.0.0 --strict
 helm template silo charts/silo/1.0.0 --namespace storage \
-  --set auth.useExistingSecret=true --set auth.existingSecret=silo-root \
+  --set silo.envSecret=silo-env \
   --set replicaCount=3
 ```

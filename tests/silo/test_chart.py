@@ -14,7 +14,7 @@ PASSWORD = "test-password-123456"
 
 
 def render(values=None, *, with_password=True, release="silo"):
-    supplied = {"auth": {"rootPassword": PASSWORD}} if with_password else {}
+    supplied = {"silo": {"envSecret": ""}, "auth": {"rootPassword": PASSWORD}} if with_password else {}
     for key, value in (values or {}).items():
         if isinstance(value, dict) and key in supplied:
             supplied[key].update(value)
@@ -57,6 +57,30 @@ def ingress(mode="disabled", **certificate):
 
 
 class SiloChartTests(unittest.TestCase):
+    def test_environment_secret_is_the_default_credential_source(self):
+        for replicas in (1, 3):
+            for secret in ("silo-env", "custom-env"):
+                with self.subTest(replicas=replicas, secret=secret):
+                    docs = manifests({"replicaCount": replicas, "silo": {"envSecret": secret}},
+                                     with_password=False)
+                    self.assertFalse(any(doc["kind"] == "Secret" for doc in docs))
+                    self.assertEqual(container(docs)["envFrom"], [{"secretRef": {"name": secret}}])
+                    for key in ("MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD"):
+                        self.assertEqual(environment(docs)[key]["valueFrom"]["secretKeyRef"],
+                                         {"name": secret, "key": key})
+                    pod = resource(docs, "StatefulSet")["spec"]["template"]
+                    self.assertNotIn("checksum/auth", pod["metadata"].get("annotations", {}))
+        self.assertEqual(render(with_password=False).returncode, 0)
+
+    def test_environment_secret_takes_precedence_over_legacy_credentials(self):
+        docs = manifests({"silo": {"envSecret": "silo-env"}, "auth": {
+            "useExistingSecret": True, "existingSecret": "legacy-root",
+            "rootUser": "ab", "rootPassword": "short"}})
+        self.assertFalse(any(doc["kind"] == "Secret" for doc in docs))
+        for key in ("MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD"):
+            self.assertEqual(environment(docs)[key]["valueFrom"]["secretKeyRef"],
+                             {"name": "silo-env", "key": key})
+
     def test_full_image_references_in_single_and_distributed_modes(self):
         pinned = "RELEASE.2026-10-26T00-00-00Z"
         digest = "sha256:" + "a" * 64
@@ -128,7 +152,8 @@ class SiloChartTests(unittest.TestCase):
                          "http://silo-2.silo-headless.storage.svc.kube.internal:9000/data")
 
     def test_existing_secret_and_standalone_claim(self):
-        docs = manifests({"auth": {"useExistingSecret": True, "existingSecret": "object-credentials"},
+        docs = manifests({"silo": {"envSecret": ""},
+                          "auth": {"useExistingSecret": True, "existingSecret": "object-credentials"},
                           "persistence": {"existingClaim": "existing-objects"}}, with_password=False)
         self.assertFalse(any(d["kind"] in ("Secret", "PersistentVolumeClaim") for d in docs))
         for variable, key in [("MINIO_ROOT_USER", "rootUser"), ("MINIO_ROOT_PASSWORD", "rootPassword")]:
@@ -252,8 +277,8 @@ class SiloChartTests(unittest.TestCase):
                 self.assertEqual(route["spec"]["tls"][0]["secretName"], "silo-tls")
 
     def test_invalid_configurations_are_rejected(self):
-        self.assertNotEqual(render(with_password=False).returncode, 0)
-        cases = [{"replicaCount": n} for n in [0, -1, 17, 2.5, "3", True]] + [
+        self.assertNotEqual(render({"silo": {"envSecret": ""}}, with_password=False).returncode, 0)
+        cases = [{"silo": {"envSecret": "bad/name"}}, {"silo": {"envSecret": 123}}] + [{"replicaCount": n} for n in [0, -1, 17, 2.5, "3", True]] + [
             {"auth": {"rootUser": "ab"}}, {"auth": {"rootPassword": "short"}},
             {"auth": {"useExistingSecret": True}},
             {"replicaCount": 2, "persistence": {"existingClaim": "shared-data"}},
@@ -270,7 +295,11 @@ class SiloChartTests(unittest.TestCase):
     def test_form_defaults_and_numeric_node_input(self):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
-        self.assertNotIn("image.tag", [question["variable"] for question in questions])
+        variables = {question["variable"]: question for question in questions}
+        self.assertNotIn("image.tag", variables)
+        self.assertFalse(any(variable.startswith("auth.") for variable in variables))
+        self.assertEqual(variables["silo.envSecret"]["type"], "reference[secret]")
+        self.assertTrue(variables["silo.envSecret"]["required"])
 
         def value_at(path):
             value = values

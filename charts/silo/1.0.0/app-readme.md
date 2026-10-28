@@ -8,8 +8,10 @@ distributed erasure coding. Each distributed Pod needs a distinct schedulable
 Kubernetes node and its own data PVC. K3s `local-path` is the default storage
 class, with **10Gi per node** before erasure-coding overhead.
 
-Set a root password or select an existing Secret with `rootUser` and
-`rootPassword`. Create scoped application credentials in Silo after installation.
+Select an existing environment Secret (default `silo-env`) containing
+`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. Its entries become environment
+variables. Silo preserves these MinIO-compatible names. Restart the StatefulSet
+after updating the Secret. Create scoped application credentials after installation.
 The optional Ingress uses separate hostnames for S3 API and Console, with
 independent exposure switches. Disable API Ingress to expose only the Console;
 S3 remains accessible inside the cluster on port 9000. HTTP, an existing

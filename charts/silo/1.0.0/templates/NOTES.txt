@@ -12,7 +12,7 @@ S3 API (cluster-internal): http://{{ include "silo.fullname" . }}.{{ .Release.Na
 S3 API: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "silo.fullname" . }} 9000:9000
 {{- end }}
 
-Credentials are in Secret {{ include "silo.secretName" . }} (rootUser / rootPassword).
+Credentials are in Secret {{ include "silo.secretName" . }} ({{ ternary "MINIO_ROOT_USER / MINIO_ROOT_PASSWORD" "rootUser / rootPassword" (not (empty .Values.silo.envSecret)) }}).
 Create buckets and scoped application access keys in the Console or with mcli.
 Do not use root credentials in applications.
 

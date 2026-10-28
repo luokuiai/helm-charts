@@ -22,36 +22,13 @@ questions:
     required: true
     group: "Images"
     description: "Full image including its version, such as pgsty/silo:RELEASE.2026-10-26T00-00-00Z or registry.example.com/team/silo:RELEASE.2026-10-26T00-00-00Z. Supports amd64 and arm64."
-  - variable: auth.useExistingSecret
-    label: "Use an existing root credential Secret"
-    type: boolean
-    default: "false"
+  - variable: silo.envSecret
+    label: "Silo environment Secret"
+    type: "reference[secret]"
+    default: silo-env
     required: true
     group: "Authentication"
-  - variable: auth.rootUser
-    label: "Root user"
-    type: string
-    default: silo-admin
-    required: true
-    group: "Authentication"
-    show_if: auth.useExistingSecret=false
-    description: "At least 3 characters. Create scoped access keys for applications after installation."
-  - variable: auth.rootPassword
-    label: "Root password"
-    type: password
-    default: ""
-    required: true
-    group: "Authentication"
-    show_if: auth.useExistingSecret=false
-    description: "At least 8 characters; use a long random password. Helm release values retain this password. Use an existing Secret to keep it out of values."
-  - variable: auth.existingSecret
-    label: "Existing root credential Secret name"
-    type: string
-    default: ""
-    required: true
-    group: "Authentication"
-    show_if: auth.useExistingSecret=true
-    description: "Must exist in this namespace with fields rootUser and rootPassword, containing valid Silo credentials. All Pods use the same credentials."
+    description: "Select an existing Secret in the installation namespace containing MINIO_ROOT_USER (at least 3 characters), MINIO_ROOT_PASSWORD (at least 8 characters), and other Silo environment variables. All Pods use the same Secret. Restart the StatefulSet after updating it. Create scoped access keys for applications after installation."
   - variable: persistence.existingClaim
     label: "Existing data PVC (single node only)"
     type: string

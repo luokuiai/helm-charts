@@ -10,8 +10,9 @@ Sync this Git repository, then select **Apps → Charts → Silo → 1.0.0**.
 
 1. Enter **Number of storage nodes** directly. `1` starts standalone storage;
    any integer `2–16`, including 3 and 5, starts a distributed pool.
-2. Enter a root user and random password, or select an existing credential
-   Secret containing `rootUser` and `rootPassword` in the same namespace.
+2. Select **Silo environment Secret** (default `silo-env`) in the same namespace.
+   It must contain `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. All entries
+   are injected as environment variables.
 3. Select the storage class and raw capacity **per node**. Defaults are
    `local-path` and `10Gi`. An existing PVC is supported only for one node.
 4. Optionally enable Ingress, enter separate S3 API and Console hostnames,
@@ -101,31 +102,43 @@ supported procedure when available.
 
 ## Credentials and CLI installation
 
-Use [root-secret.example.yaml](root-secret.example.yaml) as a local template.
+Use [env-secret.example.yaml](env-secret.example.yaml) as a local template.
 Replace the placeholder before applying it; do not commit real credentials.
+Silo retains the MinIO-compatible environment names `MINIO_ROOT_USER` (at least
+3 characters) and `MINIO_ROOT_PASSWORD` (at least 8 characters).
 
 ```bash
 kubectl create namespace storage
-kubectl apply -f /path/to/private/silo-root.yaml
+kubectl apply -f /path/to/private/silo-env.yaml
 helm upgrade --install silo charts/silo/1.0.0 --namespace storage \
-  --set auth.useExistingSecret=true \
-  --set auth.existingSecret=silo-root \
+  --set silo.envSecret=silo-env \
   --set replicaCount=3
 ```
 
 For standalone installation set `replicaCount=1`; for two nodes set it to `2`.
-All peers use the same Secret. When chart-managed credentials change, a checksum
-rolls Pods. After updating an externally managed Secret, restart the StatefulSet
-manually with `kubectl -n storage rollout restart statefulset/silo`.
-Account for two-node write downtime. Chart-managed password values are stored
-in Helm release records; an existing Secret keeps them out of values.
+All peers use the same Secret. Both root variables are required Secret key
+references, so a missing key prevents the container from starting. Other Secret
+entries are injected through `envFrom`; chart-managed variables such as `HOME`
+and the Console redirect URL take precedence when set by the chart.
+
+After updating the environment Secret, restart the StatefulSet manually with
+`kubectl -n storage rollout restart statefulset/silo`. Account for two-node
+write downtime.
+
+For an existing installation using legacy `auth` values, set `silo.envSecret: ""`
+to keep using its credentials. The legacy [root-secret.example.yaml](root-secret.example.yaml)
+uses `rootUser` / `rootPassword` with `auth.useExistingSecret: true` and
+`auth.existingSecret: silo-root`. Alternatively, create the environment Secret
+with the same credentials before switching to `silo.envSecret`. A nonempty
+`silo.envSecret` takes precedence over all legacy authentication settings.
+Legacy chart-managed credentials still trigger Pod rollouts through a checksum;
+those password values remain in Helm release records.
 
 ## Domains and HTTPS
 
 ```yaml
-auth:
-  useExistingSecret: true
-  existingSecret: silo-root
+silo:
+  envSecret: silo-env
 replicaCount: 3
 ingress:
   enabled: true

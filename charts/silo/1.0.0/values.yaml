@@ -9,7 +9,12 @@ image:
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
+silo:
+  # Existing Secret containing MINIO_ROOT_USER, MINIO_ROOT_PASSWORD and other environment variables.
+  envSecret: silo-env
+
 auth:
+  # Legacy fallback used only when silo.envSecret is empty.
   rootUser: silo-admin
   rootPassword: ""
   useExistingSecret: false

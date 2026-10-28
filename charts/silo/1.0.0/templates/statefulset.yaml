@@ -31,7 +31,7 @@ spec:
     metadata:
       labels:
         {{- include "silo.selectorLabels" . | nindent 8 }}
-      {{- if not .Values.auth.useExistingSecret }}
+      {{- if and (not .Values.silo.envSecret) (not .Values.auth.useExistingSecret) }}
       annotations:
         checksum/auth: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       {{- end }}
@@ -87,6 +87,11 @@ spec:
               containerPort: 9000
             - name: console
               containerPort: 9001
+          {{- with .Values.silo.envSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . | quote }}
+          {{- end }}
           env:
             - name: HOME
               value: /tmp
@@ -94,12 +99,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "silo.secretName" . }}
-                  key: rootUser
+                  key: {{ ternary "MINIO_ROOT_USER" "rootUser" (not (empty .Values.silo.envSecret)) }}
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "silo.secretName" . }}
-                  key: rootPassword
+                  key: {{ ternary "MINIO_ROOT_PASSWORD" "rootPassword" (not (empty .Values.silo.envSecret)) }}
             {{- if and .Values.ingress.enabled .Values.ingress.consoleEnabled }}
             - name: MINIO_BROWSER_REDIRECT_URL
               value: {{ include "silo.consoleURL" . | quote }}
