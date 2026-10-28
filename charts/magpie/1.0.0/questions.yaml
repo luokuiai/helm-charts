@@ -1,47 +1,18 @@
 questions:
   - variable: image.repository
-    label: "Magpie image repository"
+    label: "Magpie image"
     type: string
-    default: ghcr.io/yetone/magpie
+    default: ghcr.io/yetone/magpie:0.1.1836
     required: true
     group: "Images"
-    description: "Official headless Magpie image, or a compatible mirror. Supports amd64 and arm64."
-  - variable: image.tag
-    label: "Magpie image tag (optional)"
-    type: string
-    default: ""
-    group: "Images"
-    description: "Leave empty to use the pinned 0.1.1734 version. Upstream Docker tags omit the leading v."
-  - variable: auth.useExistingSecret
-    label: "Use an existing Web key Secret"
-    type: boolean
-    default: "false"
+    description: "Full image including its version, such as ghcr.io/yetone/magpie:0.1.1836 or registry.example.com/team/magpie:0.1.1836. Official headless image supports amd64 and arm64."
+  - variable: magpie.envSecret
+    label: "Magpie environment Secret"
+    type: "reference[secret]"
+    default: magpie-env
     required: true
-    group: "Web administration"
-    description: "The Web key gives administrative access, including provider credentials. API clients use separate gateway keys created in Magpie."
-  - variable: auth.webKey
-    label: "Web administration key"
-    type: password
-    default: ""
-    required: true
-    group: "Web administration"
-    show_if: auth.useExistingSecret=false
-    description: "Use a random key of at least 16 characters: letters, digits, - . _ ~. Generate one with openssl rand -hex 16. Helm release values retain this key; use an existing Secret to keep it out of values."
-  - variable: auth.existingSecret
-    label: "Existing Web key Secret name"
-    type: string
-    default: ""
-    required: true
-    group: "Web administration"
-    show_if: auth.useExistingSecret=true
-    description: "Must exist in the installation namespace."
-  - variable: auth.secretKey
-    label: "Web key field in Secret"
-    type: string
-    default: MAGPIE_WEB_KEY
-    required: true
-    group: "Web administration"
-    description: "The Secret field mapped to MAGPIE_WEB_KEY. Applies to generated and existing Secrets."
+    group: "Environment"
+    description: "Select an existing Secret in the installation namespace containing MAGPIE_WEB_KEY and other Magpie environment variables. The Web key needs at least 16 characters: letters, digits, - . _ ~. Restart the Deployment after updating the Secret. API clients use separate gateway keys created in Magpie."
   - variable: persistence.existingClaim
     label: "Existing config PVC (optional)"
     type: string

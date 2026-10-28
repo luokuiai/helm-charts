@@ -18,9 +18,14 @@ with stable node IDs and retry-join addresses for all configured replicas;
 Ingress certificate selection and validation. The standalone backend remains
 the upstream PebbleDB default. The Rancher form supports 3 or 5 HA replicas.
 
-Server image registry and repository are combined in one form field, defaulting
-to `openbao/openbao` on Docker Hub. Server and Helm test Pods share image
-resolution. Legacy `server.image.registry` values remain supported for existing
-installations; a repository with an explicit registry takes precedence.
+Server image registry, repository, and tag are combined in one form field,
+defaulting to `openbao/openbao:2.7.2` on Docker Hub with pull policy `IfNotPresent`.
+Server and Helm test Pods share image resolution. Legacy `server.image.registry`
+and `server.image.tag` values remain supported when the corresponding parts
+are omitted from the full image reference. Explicit registry, tag, and digest
+values take precedence. Untagged references fall back to the version pinned by
+`appVersion`. The OpenShift server override explicitly retains its previous
+UBI 2.7.2 version. OpenBao 2.7.2 was verified as the latest stable release on
+2026-10-28; its Docker Hub version tag was also verified published.
 
 Icon: https://github.com/openbao/artwork/blob/main/color/openbao-single-color-square.png

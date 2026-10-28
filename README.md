@@ -59,7 +59,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | postgres | 1.0.0 | PostgreSQL 18, persistent storage, password Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.0 | Casdoor v4.24.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
-| magpie | 1.0.0 | Magpie 0.1.1734 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
+| magpie | 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | netbird-operator-network | 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown and a Rancher configuration form |

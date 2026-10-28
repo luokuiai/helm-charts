@@ -1,12 +1,11 @@
 image:
-  repository: ghcr.io/yetone/magpie
-  # Empty uses Chart.appVersion; upstream Docker tags omit the leading v.
-  tag: ""
+  # Full image reference, including its version or digest.
+  repository: ghcr.io/yetone/magpie:0.1.1836
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
 auth:
-  # Supply a stable Web administration key, or use an existing Secret.
+  # Legacy fallback used only when magpie.envSecret is empty.
   # Allowed characters: letters, digits, - . _ ~; minimum length: 16.
   webKey: ""
   useExistingSecret: false
@@ -14,6 +13,8 @@ auth:
   secretKey: MAGPIE_WEB_KEY
 
 magpie:
+  # Existing Secret containing MAGPIE_WEB_KEY and other Magpie environment variables.
+  envSecret: magpie-env
   # Optional external base URL, without /v1. Derived from Ingress when enabled.
   # Both the Web UI and gateway API are available through the Web port.
   publicURL: ""

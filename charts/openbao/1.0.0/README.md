@@ -8,10 +8,11 @@ The form supports one persistent standalone node, or a 3 / 5 replica Raft HA
 cluster. Each replica has its own PVC. HA replicas are scheduled on different
 Kubernetes nodes using the upstream required pod anti-affinity.
 
-Set the image repository in one field: `server.image.repository` defaults to
-`openbao/openbao` on Docker Hub. For another registry, enter the full repository,
-such as `quay.io/openbao/openbao` or `registry.example.com/team/openbao`.
-The optional tag remains separate and defaults to `2.7.2`.
+Set the full image in one field: `server.image.repository` defaults to
+`openbao/openbao:2.7.2` on Docker Hub. Include the version directly, such as
+`openbao/openbao:2.7.2` or `registry.example.com/team/openbao:2.7.2`.
+References without a tag use the chart's pinned version, `2.7.2`. The default
+pull policy is `IfNotPresent`.
 
 Enable domain access to set the hostname and Ingress Class. HTTPS can use an
 existing TLS Secret or cert-manager with an existing Issuer / ClusterIssuer.

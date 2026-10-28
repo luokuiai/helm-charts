@@ -1,19 +1,20 @@
 # Deploying OpenBao from Rancher
 
 Add this Git repository to Rancher Apps and select `openbao` version `1.0.0`.
-The chart uses OpenBao 2.7.2 and requires Kubernetes 1.30 or newer.
+The default server image is `openbao/openbao:2.7.2`; Kubernetes 1.30 or newer is required.
 
 ## Choose the image
 
-The form has one **OpenBao image repository** field, defaulting to
-`openbao/openbao` on Docker Hub. To use another registry, enter the full path,
-such as `quay.io/openbao/openbao` or `registry.example.com/team/openbao`.
-The optional image tag defaults to `2.7.2`; do not append it to the repository.
+The form has one **OpenBao image** field, defaulting to
+`openbao/openbao:2.7.2` on Docker Hub. Include the version in the same field,
+such as `quay.io/openbao/openbao:2.7.2` or
+`registry.example.com/team/openbao:2.7.2`. A reference without a tag uses the
+chart's pinned version, `2.7.2`. The default pull policy is `IfNotPresent`.
 
-Old values with `server.image.registry` remain supported. An explicitly qualified
-repository overrides that legacy registry. If reusing values from an earlier
-installation, use `docker.io/openbao/openbao` to explicitly select Docker Hub,
-or remove the old registry override from the release values.
+Old values with `server.image.registry` and `server.image.tag` remain supported
+when the corresponding parts are omitted from the full image reference.
+If reusing earlier values, enter `docker.io/openbao/openbao:2.7.2` to explicitly
+override both legacy fields, or remove the old overrides from the release values.
 
 ## Choose the deployment mode
 

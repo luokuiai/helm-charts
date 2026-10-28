@@ -382,11 +382,9 @@ server:
   # By default no direct resource request is made.
 
   image:
-    # -- Image repository, optionally including a registry hostname. Defaults to Docker Hub.
-    repository: "openbao/openbao"
-    # -- image tag to use for server image - defaults to chart appVersion
-    tag: ""
-    # -- image pull policy to use for server image. if tag is "latest", set to "Always"
+    # -- Full server image reference, including its tag or digest. Defaults to Docker Hub / pinned release.
+    repository: "openbao/openbao:2.7.2"
+    # -- Image pull policy for the pinned server image.
     pullPolicy: IfNotPresent
 
   # Configure the Update Strategy Type for the StatefulSet

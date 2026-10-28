@@ -2,6 +2,15 @@
 {{- .Release.Name | trunc 50 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* Full references take precedence over the legacy separate image.tag. */}}
+{{- define "magpie.image" -}}
+{{- $image := required "image.repository is required" .Values.image.repository -}}
+{{- if not (or (contains "@" $image) (regexMatch ":[^/]+$" $image)) -}}
+{{- $image = printf "%s:%s" $image (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- $image -}}
+{{- end -}}
+
 {{- define "magpie.selectorLabels" -}}
 app.kubernetes.io/name: {{ .Chart.Name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
@@ -14,7 +23,9 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- end -}}
 
 {{- define "magpie.secretName" -}}
-{{- if .Values.auth.useExistingSecret -}}
+{{- if .Values.magpie.envSecret -}}
+{{- .Values.magpie.envSecret -}}
+{{- else if .Values.auth.useExistingSecret -}}
 {{- required "auth.existingSecret is required when auth.useExistingSecret=true" .Values.auth.existingSecret -}}
 {{- else -}}
 {{- printf "%s-web" (include "magpie.fullname" .) -}}

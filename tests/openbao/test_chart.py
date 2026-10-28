@@ -37,13 +37,18 @@ def resource(docs, kind, name=None):
 
 
 class OpenBaoChartTests(unittest.TestCase):
-    def test_combined_image_repository_for_server_and_test_hook(self):
+    def test_full_image_reference_for_server_and_test_hook(self):
+        digest = "sha256:" + "a" * 64
         cases = [
             ((), "openbao/openbao:2.7.2"),
+            (("server.image.repository=openbao/openbao",), "openbao/openbao:2.7.2"),
+            (("server.image.repository=openbao/openbao:2.7.2",), "openbao/openbao:2.7.2"),
             (("server.image.repository=docker.io/openbao/openbao",),
              "docker.io/openbao/openbao:2.7.2"),
             (("server.image.repository=quay.io/openbao/openbao",),
              "quay.io/openbao/openbao:2.7.2"),
+            (("server.image.repository=registry.example.com:5000/team/openbao:custom",),
+             "registry.example.com:5000/team/openbao:custom"),
             (("server.image.repository=registry.example.com:5000/team/openbao",
               "server.image.tag=custom"), "registry.example.com:5000/team/openbao:custom"),
             (("server.image.repository=localhost:5000/openbao",),
@@ -53,8 +58,14 @@ class OpenBaoChartTests(unittest.TestCase):
               "server.image.repository=docker.io/openbao/openbao"),
              "docker.io/openbao/openbao:2.7.2"),
             (("server.image.registry=quay.io",
-              "server.image.repository=registry.example.com/team/openbao"),
-             "registry.example.com/team/openbao:2.7.2"),
+              "server.image.repository=registry.example.com/team/openbao:2.7.2",
+              "server.image.tag=legacy"), "registry.example.com/team/openbao:2.7.2"),
+            (("server.image.repository=openbao/openbao:2.7.1", "server.image.tag=legacy"),
+             "openbao/openbao:2.7.1"),
+            (("server.image.repository=openbao/openbao", "server.image.tag=2.7.2"),
+             "openbao/openbao:2.7.2"),
+            ((f"server.image.repository=openbao/openbao@{digest}",),
+             f"openbao/openbao@{digest}"),
         ]
         for overrides, expected in cases:
             with self.subTest(overrides=overrides):
@@ -63,6 +74,8 @@ class OpenBaoChartTests(unittest.TestCase):
                 hook = resource(docs, "Pod", "openbao-server-test")["spec"]["containers"][0]
                 self.assertEqual(server["image"], expected)
                 self.assertEqual(hook["image"], expected)
+                self.assertEqual(server["imagePullPolicy"], "IfNotPresent")
+                self.assertEqual(hook["imagePullPolicy"], "IfNotPresent")
 
     def test_standalone_persistence_and_no_public_ingress(self):
         docs = manifests()
@@ -176,6 +189,7 @@ class OpenBaoChartTests(unittest.TestCase):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         self.assertNotIn("server.image.registry", [q["variable"] for q in questions])
+        self.assertNotIn("server.image.tag", [q["variable"] for q in questions])
 
         def value_at(path):
             value = values

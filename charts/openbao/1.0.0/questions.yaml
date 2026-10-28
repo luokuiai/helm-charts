@@ -17,18 +17,12 @@ questions:
     show_if: server.ha.enabled=true
     description: "Enter 3 or 5. Each replica needs a separate schedulable Kubernetes node and its own PVC. Initialize only node 0, then unseal every node with the same keys."
   - variable: server.image.repository
-    label: "OpenBao image repository"
+    label: "OpenBao image"
     type: string
-    default: openbao/openbao
+    default: openbao/openbao:2.7.2
     required: true
     group: "Images"
-    description: "Defaults to Docker Hub. Enter openbao/openbao, or a full repository such as quay.io/openbao/openbao or registry.example.com/team/openbao. Configure the tag separately."
-  - variable: server.image.tag
-    label: "OpenBao image tag (optional)"
-    type: string
-    default: ""
-    group: "Images"
-    description: "Leave empty to use the chart's pinned OpenBao 2.7.2 version. Use an image compatible with this chart."
+    description: "Full image including its version, such as openbao/openbao:2.7.2 or registry.example.com/team/openbao:2.7.2. Defaults to Docker Hub and the pinned 2.7.2 release."
   - variable: server.dataStorage.storageClass
     label: "Data storage class"
     type: storageclass

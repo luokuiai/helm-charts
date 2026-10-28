@@ -1,12 +1,12 @@
 # Magpie
 
-Magpie 0.1.1734 with a Rancher configuration form, one persistent gateway,
+Magpie 0.1.1836 with a Rancher configuration form, one persistent gateway,
 and browser-based administration. Uses the official headless Docker image,
 not the desktop GUI. Supports amd64 and arm64, including K3s installations.
 
 The form configures:
 
-- A stable Web administration key, supplied directly or through an existing Secret.
+- An existing environment Secret containing `MAGPIE_WEB_KEY` and other settings.
 - A `1Gi` config PVC using `local-path` by default, or an existing claim.
 - Ingress hostname, Ingress Class, an existing TLS Secret, or cert-manager.
 - A public URL override, image settings, and CPU / memory.
@@ -20,16 +20,22 @@ Ingress hostname is sufficient. The Service also exposes the direct gateway
 on port `3425` inside the cluster. Ingress is disabled by default.
 
 The Web key grants administrative access and is separate from the gateway
-keys used by API clients. Keys entered in the form are retained in Helm
-values; use an existing Secret to keep the Web key out of release values.
+keys used by API clients. Select the environment Secret in the form;
+the default name is `magpie-env`. Its entries are injected as environment
+variables, with `MAGPIE_WEB_KEY` required. Restart the Deployment after
+changing the Secret.
+
+The image uses one field, `image.repository`, defaulting to the pinned
+`ghcr.io/yetone/magpie:0.1.1836`. Include a tag or digest in the same field.
+An untagged reference falls back to `Chart.appVersion` (or a legacy `image.tag`).
 
 See the [deployment guide](../../../docs/magpie/deployment.md),
 [Secret example](../../../docs/magpie/web-secret.example.yaml), and
 [upstream details](UPSTREAM.md).
 
-Validate using a dummy key:
+Validate:
 
 ```bash
-helm lint charts/magpie/1.0.0 --strict --set auth.webKey=test-web-key-1234567890
+helm lint charts/magpie/1.0.0 --strict
 uv run --with pyyaml python tests/magpie/test_chart.py
 ```

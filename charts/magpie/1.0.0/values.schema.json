@@ -43,63 +43,17 @@
         }
       }
     },
-    "auth": {
-      "type": "object",
-      "required": [
-        "useExistingSecret",
-        "secretKey"
-      ],
-      "properties": {
-        "useExistingSecret": {
-          "type": "boolean"
-        },
-        "webKey": {
-          "type": "string"
-        },
-        "existingSecret": {
-          "type": "string"
-        },
-        "secretKey": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[A-Za-z0-9._-]+$"
-        }
-      },
-      "if": {
-        "properties": {
-          "useExistingSecret": {
-            "const": true
-          }
-        }
-      },
-      "then": {
-        "required": [
-          "existingSecret"
-        ],
-        "properties": {
-          "existingSecret": {
-            "minLength": 1
-          }
-        }
-      },
-      "else": {
-        "required": [
-          "webKey"
-        ],
-        "properties": {
-          "webKey": {
-            "minLength": 16,
-            "pattern": "^[A-Za-z0-9._~-]+$"
-          }
-        }
-      }
-    },
     "magpie": {
       "type": "object",
       "properties": {
         "publicURL": {
           "type": "string",
           "pattern": "^$|^https?://[^/\\s?#@]+/?$"
+        },
+        "envSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
         }
       }
     },
@@ -183,6 +137,78 @@
     },
     "resources": {
       "type": "object"
+    }
+  },
+  "if": {
+    "required": [
+      "magpie"
+    ],
+    "properties": {
+      "magpie": {
+        "required": [
+          "envSecret"
+        ],
+        "properties": {
+          "envSecret": {
+            "const": ""
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "auth": {
+        "type": "object",
+        "required": [
+          "useExistingSecret",
+          "secretKey"
+        ],
+        "properties": {
+          "useExistingSecret": {
+            "type": "boolean"
+          },
+          "webKey": {
+            "type": "string"
+          },
+          "existingSecret": {
+            "type": "string"
+          },
+          "secretKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$"
+          }
+        },
+        "if": {
+          "properties": {
+            "useExistingSecret": {
+              "const": true
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "existingSecret"
+          ],
+          "properties": {
+            "existingSecret": {
+              "minLength": 1
+            }
+          }
+        },
+        "else": {
+          "required": [
+            "webKey"
+          ],
+          "properties": {
+            "webKey": {
+              "minLength": 16,
+              "pattern": "^[A-Za-z0-9._~-]+$"
+            }
+          }
+        }
+      }
     }
   }
 }

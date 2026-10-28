@@ -1,11 +1,20 @@
 # Deploying Magpie from Rancher
 
 Select `magpie` version `1.0.0` from this Git chart repository. This deploys
-the official Magpie 0.1.1734 headless container, with gateway and Web management.
+the official Magpie 0.1.1836 headless container, with gateway and Web management.
 It does not run a desktop window or install agents on client machines.
 The published image supports Linux amd64 and arm64.
 
-## Web administration key
+## Image
+
+The form has one **Magpie image** field, defaulting to
+`ghcr.io/yetone/magpie:0.1.1836`. Include the version in the same field when
+using a mirror, for example `registry.example.com/team/magpie:0.1.1836`.
+Digest references are also supported. Untagged references fall back to
+the chart's pinned version; an explicit tag or digest takes precedence
+over the legacy separate `image.tag` value.
+
+## Environment Secret and Web administration key
 
 Generate a random stable Web key:
 
@@ -14,23 +23,37 @@ openssl rand -hex 16
 ```
 
 The accepted characters are letters, digits, `- . _ ~`, with at least 16
-characters. In **Web administration**, enter this key or choose an existing
-Secret. The default Secret field is `MAGPIE_WEB_KEY`; it can be changed in
-the form. The Secret must be in the installation namespace.
+characters. Create an environment Secret in the installation namespace,
+using `MAGPIE_WEB_KEY` as the field name. In **Environment**, select that
+Secret; its default name is `magpie-env`. All its entries are injected as
+environment variables, and `MAGPIE_WEB_KEY` is required.
 
 See [web-secret.example.yaml](web-secret.example.yaml). Replace its placeholder
-before applying it. Form-entered keys are stored in a Kubernetes Secret and
-are also retained in Helm release values. Use an existing Secret to keep
-the Web key out of Helm values and completed values files out of Git.
+before applying it:
 
-For an existing `magpie-web` Secret in namespace `ai`:
+```bash
+kubectl apply -f docs/magpie/web-secret.example.yaml
+```
+
+Keep the completed Secret out of Git. The form stores only the Secret name.
+
+For an existing `magpie-env` Secret in namespace `ai`:
 
 ```bash
 helm install magpie charts/magpie/1.0.0 \
   --namespace ai \
-  --set auth.useExistingSecret=true \
-  --set auth.existingSecret=magpie-web
+  --set magpie.envSecret=magpie-env
 ```
+
+`MAGPIE_ADDR` is set by the chart for its gateway port. The chart also sets
+`MAGPIE_PUBLIC_URL` and `MAGPIE_WEB_URL` when a public URL is configured;
+these explicit values take precedence over entries in the environment Secret.
+Other Magpie environment variables can be added directly to the Secret.
+
+For an existing installation using `auth.webKey` or `auth.existingSecret`,
+reuse the same Web key in the environment Secret. To retain the old YAML
+configuration instead, explicitly set `magpie.envSecret: ""`; the legacy
+`auth` values and generated-Secret checksum continue to work in that mode.
 
 The Web key grants administrative access, including access to provider
 credentials. The application's startup log also includes a keyed login
@@ -145,10 +168,12 @@ memory, and storage if needed for the chosen plugins and provider tools.
 
 ## Updates
 
-Use Helm and the image tag to update the application. The chart's default
-tag is fixed; an empty tag selects the version in `Chart.yaml`.
-Back up `/config` first. Updating a chart-managed Web key triggers a Pod
-restart through a checksum annotation. Updating an existing Secret requires
-a Deployment restart to reload its environment variables.
+Use Helm and the full image reference to update the application. The default
+image version is fixed. Back up `/config` first. After changing the environment
+Secret, restart the Deployment to reload its environment variables:
+
+```bash
+kubectl -n ai rollout restart deployment/magpie
+```
 
 Official Docker documentation: https://usemagpie.ai/docs/zh/docker
