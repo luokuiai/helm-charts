@@ -24,6 +24,8 @@ helm-charts/                         # Git repository root
 │   │   └── 1.0.2/                   # Deploy-time Geo database download
 │   ├── netbird-operator-network/
 │   │   └── 1.0.0/                   # Operator routing + shared VPN ingress Service + Rancher form
+│   ├── cert-manager-alidns-issuer/
+│   │   └── 1.0.0/                   # AliDNS DNS-01 ClusterIssuer + Rancher form
 │   ├── registry-proxy/
 │   │   └── 1.0.0/                   # Private registry + public image proxies + Rancher form
 │   └── komodo/
@@ -61,10 +63,11 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | netbird-operator-network | 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown and a Rancher configuration form |
+| cert-manager-alidns-issuer | 1.0.0 | Let's Encrypt DNS-01 ClusterIssuer for an existing AliDNS webhook, existing credential Secret selection, and a Rancher configuration form |
 | registry-proxy | 1.0.0 | Caddy proxies for an upstream registry and public images, two Traefik HTTPS domains, and a Rancher configuration form |
 
 Komodo optionally creates an Ingress through the Rancher form, with an existing TLS Secret or cert-manager certificate issuance.
-Ingress is disabled by default. DNS, cert-manager installation, and Issuer / ClusterIssuer creation are managed separately.
+Ingress is disabled by default. DNS, cert-manager, and DNS webhook installations are managed separately. AliDNS ClusterIssuers can be created through the `cert-manager-alidns-issuer` Chart.
 See the [Komodo migration guide](docs/komodo/migration.md) for installation and migration steps.
 Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.example.yaml).
 
@@ -82,12 +85,14 @@ See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.2/README.md) for
 
 See the [NetBird Operator Network deployment guide](docs/netbird-operator-network/deployment.md) for routing a shared private ingress Service through NetBird, DNS aliases, and access policies. Install the official Operator separately and install this configuration Chart in the ingress Service's namespace.
 
+See the [AliDNS ClusterIssuer deployment guide](docs/cert-manager-alidns-issuer/deployment.md) for a Rancher form to configure DNS-01 issuance, existing credential Secrets, webhook compatibility, and application certificate settings.
+
 See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the two proxy domains, upstream authentication, and certificate configuration.
 
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.0/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.0/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.0/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -119,4 +124,4 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `netbird-proxy`, `netbird-operator-network`, or `registry-proxy` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.

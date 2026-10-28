@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["issuer", "acme", "alidns", "webhook"],
+  "properties": {
+    "issuer": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        }
+      }
+    },
+    "acme": {
+      "type": "object",
+      "required": ["email", "environment"],
+      "properties": {
+        "email": {"type": "string", "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"},
+        "environment": {"type": "string", "enum": ["production", "staging"]}
+      }
+    },
+    "alidns": {
+      "type": "object",
+      "required": ["dnsZone", "existingSecret", "accessKeyIdKey", "accessKeySecretKey", "regionId"],
+      "properties": {
+        "dnsZone": {"$ref": "#/definitions/dnsZone"},
+        "existingSecret": {"$ref": "#/definitions/resourceName"},
+        "accessKeyIdKey": {"$ref": "#/definitions/secretKey"},
+        "accessKeySecretKey": {"$ref": "#/definitions/secretKey"},
+        "regionId": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"}
+      }
+    },
+    "webhook": {
+      "type": "object",
+      "required": ["groupName"],
+      "properties": {
+        "groupName": {"$ref": "#/definitions/dnsZone"}
+      }
+    }
+  },
+  "definitions": {
+    "dnsZone": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
+    },
+    "resourceName": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
+    },
+    "secretKey": {"type": "string", "maxLength": 253, "pattern": "^[A-Za-z0-9._-]+$"}
+  }
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Certificate with a verification check</title>
+  <path d="M136 58h142l100 100v244a26 26 0 0 1-26 26H136a26 26 0 0 1-26-26V84a26 26 0 0 1 26-26Z"
+        fill="#fff" stroke="#2563eb" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M278 58v100h100" fill="#dbeafe" stroke="#2563eb" stroke-width="20" stroke-linejoin="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="18" stroke-linecap="round">
+    <path d="M160 218h164"/>
+    <path d="M160 270h120"/>
+    <path d="M160 322h64"/>
+  </g>
+  <circle cx="342" cy="376" r="78" fill="#16a34a" stroke="#fff" stroke-width="12"/>
+  <path d="m306 376 24 25 48-51" fill="none" stroke="#fff" stroke-width="20"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

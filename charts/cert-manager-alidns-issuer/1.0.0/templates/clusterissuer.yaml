@@ -1,0 +1,35 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.issuer.name | quote }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
+spec:
+  acme:
+    email: {{ .Values.acme.email | quote }}
+    {{- if eq .Values.acme.environment "staging" }}
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    {{- else }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    {{- end }}
+    privateKeySecretRef:
+      name: {{ printf "%s-%s-account-key" .Values.issuer.name .Values.acme.environment | quote }}
+    solvers:
+      - selector:
+          dnsZones:
+            - {{ .Values.alidns.dnsZone | quote }}
+        dns01:
+          webhook:
+            groupName: {{ .Values.webhook.groupName | quote }}
+            solverName: alidns-solver
+            config:
+              regionId: {{ .Values.alidns.regionId | quote }}
+              accessTokenSecretRef:
+                name: {{ .Values.alidns.existingSecret | quote }}
+                key: {{ .Values.alidns.accessKeyIdKey | quote }}
+              secretKeySecretRef:
+                name: {{ .Values.alidns.existingSecret | quote }}
+                key: {{ .Values.alidns.accessKeySecretKey | quote }}

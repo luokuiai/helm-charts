@@ -1,0 +1,17 @@
+apiVersion: v2
+name: cert-manager-alidns-issuer
+description: Let's Encrypt DNS-01 ClusterIssuer using an existing AliDNS webhook, with a Rancher form
+type: application
+version: 1.0.0
+appVersion: "0.8.3"
+home: https://cert-manager.io/
+icon: file://charts/cert-manager-alidns-issuer/1.0.0/icon.png
+sources:
+  - https://github.com/DEVmachine-fr/cert-manager-alidns-webhook
+keywords:
+  - cert-manager
+  - alidns
+  - letsencrypt
+annotations:
+  catalog.cattle.io/display-name: "AliDNS ClusterIssuer"
+  catalog.cattle.io/release-name: cert-manager-alidns-issuer

@@ -1,0 +1,67 @@
+questions:
+  - variable: issuer.name
+    label: "ClusterIssuer name"
+    type: string
+    default: letsencrypt-alidns
+    required: true
+    group: "Certificate issuer"
+    description: "Cluster-wide name applications will select. Keep stable during upgrades. If this name was already imported manually, use a new name instead of creating a second owner."
+  - variable: acme.email
+    label: "Let's Encrypt account email"
+    type: string
+    default: ""
+    required: true
+    group: "Certificate issuer"
+    description: "A real contact email for your Let's Encrypt account."
+  - variable: alidns.dnsZone
+    label: "Alibaba Cloud DNS zone"
+    type: hostname
+    default: ""
+    required: true
+    group: "Certificate issuer"
+    description: "Public DNS zone hosted by Alibaba Cloud, for example luokuiai.com. Enter the zone, not an application hostname, wildcard, URL, or NetBird internal zone."
+  - variable: alidns.existingSecret
+    label: "AliDNS credential Secret"
+    type: "reference[secret]"
+    default: alidns-secrets
+    required: true
+    group: "Certificate issuer"
+    description: "Select an existing Secret holding AccessKey ID and AccessKey Secret. Install this Chart in cert-manager's cluster resource namespace, normally cert-manager, so the dropdown lists the correct Secrets."
+  - variable: acme.environment
+    label: "Let's Encrypt environment"
+    type: enum
+    options:
+      - production
+      - staging
+    default: production
+    required: true
+    group: "Certificate issuer"
+    description: "production issues browser-trusted certificates; staging is for testing and is not browser-trusted."
+  - variable: webhook.groupName
+    label: "AliDNS webhook group name"
+    type: hostname
+    default: acme.luokuiai.com
+    required: true
+    group: "Webhook and Secret keys"
+    description: "Must exactly match groupName in your existing AliDNS webhook's Helm values. It is an API identifier, not a DNS record to create."
+  - variable: alidns.accessKeyIdKey
+    label: "AccessKey ID Secret key"
+    type: string
+    default: access-token
+    required: true
+    group: "Webhook and Secret keys"
+    description: "Key within the selected Secret containing Alibaba Cloud AccessKey ID. The DEVmachine-fr webhook examples call this access-token."
+  - variable: alidns.accessKeySecretKey
+    label: "AccessKey Secret Secret key"
+    type: string
+    default: secret-key
+    required: true
+    group: "Webhook and Secret keys"
+    description: "Key within the selected Secret containing Alibaba Cloud AccessKey Secret. Enter the key name, not the credential value."
+  - variable: alidns.regionId
+    label: "Alibaba Cloud API region"
+    type: string
+    default: cn-beijing
+    required: true
+    group: "Webhook and Secret keys"
+    description: "AliDNS API client region, matching the webhook's upstream example."
