@@ -22,6 +22,8 @@ helm-charts/                         # Git repository root
 │   │   ├── 1.0.0/                   # Original form-based configuration
 │   │   ├── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
 │   │   └── 1.0.2/                   # Deploy-time Geo database download
+│   ├── netbird-operator-network/
+│   │   └── 1.0.0/                   # Operator routing + shared VPN ingress Service + Rancher form
 │   ├── registry-proxy/
 │   │   └── 1.0.0/                   # Private registry + public image proxies + Rancher form
 │   └── komodo/
@@ -58,6 +60,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | magpie | 1.0.0 | Magpie 0.1.1734 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
+| netbird-operator-network | 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown and a Rancher configuration form |
 | registry-proxy | 1.0.0 | Caddy proxies for an upstream registry and public images, two Traefik HTTPS domains, and a Rancher configuration form |
 
 Komodo optionally creates an Ingress through the Rancher form, with an existing TLS Secret or cert-manager certificate issuance.
@@ -77,12 +80,14 @@ See the [Silo deployment guide](docs/silo/deployment.md) for single-node / distr
 
 See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.2/README.md) for environment Secret settings, Geo downloads, certificate ownership, and sharing Rancher's Traefik entrypoint.
 
+See the [NetBird Operator Network deployment guide](docs/netbird-operator-network/deployment.md) for routing a shared private ingress Service through NetBird, DNS aliases, and access policies. Install the official Operator separately and install this configuration Chart in the ingress Service's namespace.
+
 See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the two proxy domains, upstream authentication, and certificate configuration.
 
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.0/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/netbird-proxy/1.0.2/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.0/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -114,4 +119,4 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `netbird-proxy`, or `registry-proxy` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `netbird-proxy`, `netbird-operator-network`, or `registry-proxy` and select the desired chart version.

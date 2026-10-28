@@ -1,0 +1,13 @@
+# Requires an existing NetBird Operator, DNS zone, destination groups, and access policy.
+router:
+  name: vpn-entry
+  dnsZone: k3s.netbird.internal
+  # Routing client replicas, not Operator replicas. Use 1 for the initial single-node cluster.
+  replicas: 1
+
+resource:
+  # Shared VPN ingress controller Service in this release namespace, not a business application Service.
+  serviceName: traefik-vpn
+  # Existing destination groups in NetBird; access policies are configured in NetBird separately.
+  groupNames:
+    - k3s-web

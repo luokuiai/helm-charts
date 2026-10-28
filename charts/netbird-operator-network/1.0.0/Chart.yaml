@@ -1,0 +1,17 @@
+apiVersion: v2
+name: netbird-operator-network
+description: NetBird Operator routing and shared VPN ingress Service configuration with a Rancher form
+type: application
+version: 1.0.0
+appVersion: "0.8.0"
+home: https://netbird.io/
+icon: file://charts/netbird-operator-network/1.0.0/icon.png
+sources:
+  - https://github.com/netbirdio/kubernetes-operator/tree/v0.8.0
+keywords:
+  - netbird
+  - operator
+  - vpn
+annotations:
+  catalog.cattle.io/display-name: "NetBird Operator Network"
+  catalog.cattle.io/release-name: netbird-operator-network
