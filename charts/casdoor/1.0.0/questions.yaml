@@ -12,18 +12,20 @@ questions:
     default: casdoor-env
     required: true
     group: "Environment variables"
-    description: |-
-      Select an existing Secret in this namespace. Entries become environment variables; names are case-sensitive. Configure these keys in the Secret:
-      dataSourceName (required): database connection string, including host, port, username, password and TLS options. PostgreSQL: include dbname matching dbName; MySQL: end the DSN with / because Casdoor appends dbName. Use the database Service DNS, not localhost. Create the database and grant the user permission to create and migrate tables first; no database server is installed.
-      driverName (optional): postgres or mysql; defaults to postgres. Set mysql explicitly when using MySQL.
-      dbName (optional): database name; defaults to casdoor.
-      initAdminPassword (recommended on first installation): password for the initial administrator, used only when that account is created; does not reset an existing account.
-      origin (optional): full public Casdoor URL, such as https://auth.example.com; otherwise derived from the Domain / HTTPS settings.
-      forceLanguage (optional): interface language, such as zh; leave unset for normal language selection.
-      defaultStorageProvider (optional): name of an existing admin-owned provider for default avatar storage, such as storage-silo. Create it in the Casdoor admin console first; applications still need their provider associations. Leave unset to use Casdoor's default behavior.
-      S3_ENDPOINT (required only with Caddy): internal Silo / S3 API origin including scheme and port, such as http://silo.storage.svc.cluster.local:9000.
-      S3_BUCKET (required only with Caddy): dedicated bucket served by the file proxy, such as casdoor. These two S3 variables configure Caddy only; configure the provider's endpoint, bucket, access key and secret key in the Casdoor admin console. They do not create a provider or bucket.
-      RUNNING_IN_DOCKER=false is supplied by the chart; do not override it. Restart the Deployment after updating this Secret.
+    # Reference descriptions collapse ordinary newlines; use Unicode line separators.
+    description: "Required:\u2028\
+      dataSourceName: database connection string.\u2028\
+      Optional:\u2028\
+      driverName: postgres (default) or mysql.\u2028\
+      dbName: database name (default: casdoor).\u2028\
+      initAdminPassword: initial admin credential; new account only.\u2028\
+      origin: public URL; defaults to the Ingress URL.\u2028\
+      forceLanguage: interface language, e.g. zh.\u2028\
+      defaultStorageProvider: existing Provider name for avatars.\u2028\
+      Caddy only (both required when enabled):\u2028\
+      S3_ENDPOINT: internal S3 API URL, including scheme and port.\u2028\
+      S3_BUCKET: bucket served by the proxy.\u2028\
+      Case-sensitive. Restart the Deployment after changes."
   - variable: storageProxy.enabled
     label: "Enable Caddy file proxy"
     type: boolean
