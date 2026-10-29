@@ -8,13 +8,24 @@ Initial administrator: admin, using WARPGATE_ADMIN_PASSWORD from {{ .Values.warp
 {{- if .Values.oidc.enabled }}
 OIDC callback: https://{{ include "warpgate.externalHost" . }}{{ if ne (int (include "warpgate.externalPort" .)) 443 }}:{{ include "warpgate.externalPort" . }}{{ end }}/@warpgate/api/sso/return
 {{- end }}
-Restart the Deployment after updating environment variables or an external backend TLS Secret.
+Restart the {{ ternary "StatefulSet" "Deployment" .Values.ha.enabled }} after updating environment variables or an external backend TLS Secret.
 Database: external PostgreSQL, using WARPGATE_DATABASE_URL from {{ .Values.warpgate.envSecret }}.
 {{- if .Values.recordings.s3.enabled }}
 Recordings: S3 bucket {{ .Values.recordings.s3.bucket }}, prefix {{ .Values.recordings.s3.prefix }}.
 {{- end }}
 {{- if .Values.persistence.enabled }}
+{{- if .Values.ha.enabled }}
+HA: {{ .Values.ha.replicas }} Pod(s), one retained data PVC per Pod.
+WARPGATE_ENCRYPTION_KEY is required in {{ .Values.warpgate.envSecret }} and must remain stable.
+Pods require different schedulable nodes and direct Pod-IP connectivity on HTTPS port 8888.
+{{- if not .Values.recordings.s3.enabled }}
+Shared file recordings: {{ .Values.ha.sharedRecordingsClaim }} mounted at /data/recordings (ReadWriteMany).
+{{- end }}
+Expose native SSH through a stable TCP load balancer; a single node IP is not an HA entry point.
+An instance failure ends its active SSH connections; clients must reconnect.
+{{- else }}
 Configuration, backend certificates and local recording files use the data PVC.
+{{- end }}
 {{- else }}
 Local files and active upload buffers use emptyDir and are lost when the Pod is deleted.
 {{- end }}

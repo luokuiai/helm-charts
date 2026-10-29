@@ -12,7 +12,167 @@ questions:
     default: warpgate-env
     required: true
     group: "Basic settings"
-    description: "Existing Secret in this namespace. Requires WARPGATE_DATABASE_URL and WARPGATE_ADMIN_PASSWORD. Add WARPGATE_OIDC_CLIENT_SECRET for OIDC; AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3. All containers import it. URL and Client Secret must be single-line. Restart the Deployment after changing it."
+    description: "Existing Secret in this namespace. Requires WARPGATE_DATABASE_URL and WARPGATE_ADMIN_PASSWORD. Add WARPGATE_ENCRYPTION_KEY for HA; WARPGATE_OIDC_CLIENT_SECRET for OIDC; AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3. All Pods import the same Secret. URL and Client Secret must be single-line. Restart the workload after changing it."
+  - variable: ha.enabled
+    label: "Enable HA deployment"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Basic settings"
+    description: "Uses a StatefulSet with independent retained data PVCs. Requires the same external PostgreSQL, WARPGATE_ENCRYPTION_KEY and shared recording storage for all Pods. Changing this mode requires stopping the previous workload and migrating recordings first."
+  - variable: ha.replicas
+    label: "Warpgate replicas"
+    type: int
+    default: 2
+    min: 1
+    required: true
+    group: "Basic settings"
+    show_if: ha.enabled=true
+    description: "Use 2 or more for redundancy. Enter any positive count; each Pod requires a different schedulable node. Setting 1 keeps the StatefulSet and its PVCs but provides no redundancy."
+  - variable: oidc.enabled
+    label: "Enable OpenID Connect login"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Authentication / OIDC"
+    description: "Configure a generic OIDC provider, including Casdoor. Requires a public HTTPS hostname and WARPGATE_OIDC_CLIENT_SECRET in the environment Secret."
+  - variable: oidc.issuerURL
+    label: "OIDC Issuer URL"
+    type: string
+    default: ""
+    required: true
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+    description: "Issuer advertised by the provider's discovery document, e.g. https://auth.example.com for Casdoor. Use the exact issuer; Warpgate must be able to reach its discovery, token and JWKS endpoints."
+  - variable: oidc.clientID
+    label: "OIDC Client ID"
+    type: string
+    default: ""
+    required: true
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+    description: "Client ID of the application registered in the identity provider. Keep its Client Secret in WARPGATE_OIDC_CLIENT_SECRET."
+  - variable: oidc.name
+    label: "OIDC provider name"
+    type: string
+    default: oidc
+    required: true
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+    description: "Stable identifier using letters, digits, underscores or hyphens. Renaming it affects stored SSO credential bindings."
+  - variable: oidc.label
+    label: "Login button label"
+    type: string
+    default: "Single sign-on"
+    required: true
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+  - variable: oidc.autoCreateUsers
+    label: "Automatically create OIDC users"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+    description: "Disabled: bind an existing Warpgate user's SSO credentials first. Enabled: create users after successful provider authentication. Target access still requires Warpgate role grants."
+  - variable: oidc.rolesClaim
+    label: "Role / group claim (optional)"
+    type: string
+    default: ""
+    group: "Authentication / OIDC"
+    show_if: oidc.enabled=true
+    description: "Leave empty for Warpgate's warpgate_roles claim, or enter groups and configure oidc.roleMappings in YAML. Maps access roles, not administrator permissions."
+  - variable: persistence.enabled
+    label: "Retain local data (PVC)"
+    type: boolean
+    default: "true"
+    group: "Persistence"
+    description: "Retains configuration, certificates, local recordings and active S3 upload buffers across Pod replacement. Required for HA, which creates an independent data PVC per Pod. Independent of the recording switch. Disabling uses emptyDir and loses local files when the Pod is deleted."
+  - variable: persistence.existingClaim
+    label: "Existing data PVC (optional)"
+    type: string
+    default: ""
+    group: "Persistence"
+    show_if: persistence.enabled=true&&ha.enabled=false
+    description: "Leave empty to create a PVC. Existing claims must be writable by UID/GID 1000. Stores generated configuration, backend certificates and local recordings. Users, credentials and host keys are stored in external PostgreSQL. Do not switch without migrating the files."
+  - variable: persistence.storageClass
+    label: "Data storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    show_if: persistence.enabled=true
+    description: "Used for new data PVCs; HA creates one per Pod. Empty uses the cluster default. local-path keeps each Pod's data on its assigned K3s node; use storage that can move between nodes for automatic recovery of that Pod after node loss. Shared file recordings use a separate RWX PVC below."
+  - variable: persistence.size
+    label: "Local storage capacity"
+    type: string
+    default: 1Gi
+    required: true
+    group: "Persistence"
+    description: "PVC request per Pod in HA, or emptyDir limit when persistence is disabled. PVCs are retained on uninstall and HA scale-down; resize existing claims separately. Active S3 recordings also need local buffer space."
+  - variable: warpgate.recordSessions
+    label: "Enable session recording on first setup"
+    type: boolean
+    default: "true"
+    group: "Session recording"
+    description: "Enabled by default. Uses local storage unless S3 is enabled below. Applied only when the database is first initialized; change recording settings in Warpgate's admin UI after installation."
+  - variable: recordings.s3.enabled
+    label: "Use S3 instead of local recording storage"
+    type: boolean
+    default: "false"
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true
+    description: "Leave disabled for local recording storage on a new installation. Enable to configure S3 at startup using AWS credentials from the environment Secret. Existing recordings are not moved. On an existing installation, disabling this option stops chart management; select local storage in Warpgate's admin UI to switch back."
+  - variable: recordings.s3.bucket
+    label: "S3 bucket"
+    type: string
+    default: ""
+    required: true
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: ha.sharedRecordingsClaim
+    label: "Shared file recordings PVC (RWX)"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    required: true
+    group: "Session recording"
+    show_if: ha.enabled=true&&recordings.s3.enabled=false
+    description: "Existing ReadWriteMany PVC in this namespace, writable by UID/GID 1000. Its root is mounted at /data/recordings on every Pod. Required without chart-managed S3, even if first-setup recording is off, because an existing database keeps its recording settings. K3s local-path is not shared storage. Migrate existing recording files first; use Disk path /data/recordings in Warpgate."
+  - variable: recordings.s3.endpoint
+    label: "S3 endpoint"
+    type: string
+    default: ""
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "Leave empty for AWS. For Silo use its S3 API HTTPS address, reachable by both Warpgate and the playback browser. Configure bucket CORS for your Warpgate origin."
+  - variable: recordings.s3.region
+    label: "S3 region"
+    type: string
+    default: us-east-1
+    required: true
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: recordings.s3.prefix
+    label: "S3 object prefix"
+    type: string
+    default: warpgate
+    required: true
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: recordings.s3.pathStyle
+    label: "S3 path-style addressing"
+    type: boolean
+    default: "true"
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "Usually enabled for Silo / MinIO. Disable for AWS virtual-hosted bucket addresses."
+  - variable: recordings.s3.setupImage
+    label: "S3 configuration image"
+    type: string
+    default: postgres:18.6-alpine
+    required: true
+    group: "Session recording"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "Complete PostgreSQL client image. A short init container sets only Warpgate's database-backed recording storage settings, after native setup."
   - variable: ingress.enabled
     label: "Enable domain access (Ingress)"
     type: boolean
@@ -102,7 +262,7 @@ questions:
     required: true
     options: [ClusterIP, NodePort, LoadBalancer]
     group: "Service / protocols"
-    description: "ClusterIP is internal; NodePort or LoadBalancer exposes enabled SSH/database listeners and HTTPS. HTTP Ingress does not forward these TCP protocols."
+    description: "ClusterIP is internal; NodePort or LoadBalancer exposes enabled SSH/database listeners and HTTPS. For HA, use a stable VPN-reachable TCP load balancer; a single node IP is not redundant. HTTP Ingress does not forward these TCP protocols."
   - variable: service.httpsNodePort
     label: "HTTPS NodePort"
     type: int
@@ -164,142 +324,6 @@ questions:
     group: "Service / protocols"
     show_if: service.type=NodePort&&protocols.postgres.enabled=true
     description: "0 assigns a NodePort automatically."
-  - variable: oidc.enabled
-    label: "Enable OpenID Connect login"
-    type: boolean
-    default: "false"
-    required: true
-    group: "Authentication / OIDC"
-    description: "Configure a generic OIDC provider, including Casdoor. Requires a public HTTPS hostname and WARPGATE_OIDC_CLIENT_SECRET in the environment Secret."
-  - variable: oidc.issuerURL
-    label: "OIDC Issuer URL"
-    type: string
-    default: ""
-    required: true
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-    description: "Issuer advertised by the provider's discovery document, e.g. https://auth.example.com for Casdoor. Use the exact issuer; Warpgate must be able to reach its discovery, token and JWKS endpoints."
-  - variable: oidc.clientID
-    label: "OIDC Client ID"
-    type: string
-    default: ""
-    required: true
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-    description: "Client ID of the application registered in the identity provider. Keep its Client Secret in WARPGATE_OIDC_CLIENT_SECRET."
-  - variable: oidc.name
-    label: "OIDC provider name"
-    type: string
-    default: oidc
-    required: true
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-    description: "Stable identifier using letters, digits, underscores or hyphens. Renaming it affects stored SSO credential bindings."
-  - variable: oidc.label
-    label: "Login button label"
-    type: string
-    default: "Single sign-on"
-    required: true
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-  - variable: oidc.autoCreateUsers
-    label: "Automatically create OIDC users"
-    type: boolean
-    default: "false"
-    required: true
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-    description: "Disabled: bind an existing Warpgate user's SSO credentials first. Enabled: create users after successful provider authentication. Target access still requires Warpgate role grants."
-  - variable: oidc.rolesClaim
-    label: "Role / group claim (optional)"
-    type: string
-    default: ""
-    group: "Authentication / OIDC"
-    show_if: oidc.enabled=true
-    description: "Leave empty for Warpgate's warpgate_roles claim, or enter groups and configure oidc.roleMappings in YAML. Maps access roles, not administrator permissions."
-  - variable: persistence.enabled
-    label: "Retain local data (PVC)"
-    type: boolean
-    default: "true"
-    group: "Persistence"
-    description: "Retains configuration, certificates, local recordings and active S3 upload buffers across Pod replacement. Independent of the recording switch; keep enabled for persistent local recordings. Disabling uses emptyDir and loses local files when the Pod is deleted."
-  - variable: persistence.existingClaim
-    label: "Existing data PVC (optional)"
-    type: string
-    default: ""
-    group: "Persistence"
-    show_if: persistence.enabled=true
-    description: "Leave empty to create a PVC. Existing claims must be writable by UID/GID 1000. Stores generated configuration, backend certificates and local recordings. Users, credentials and host keys are stored in external PostgreSQL. Do not switch without migrating the files."
-  - variable: persistence.storageClass
-    label: "Data storage class"
-    type: storageclass
-    default: local-path
-    group: "Persistence"
-    show_if: persistence.enabled=true
-    description: "Used for a new PVC; empty uses the cluster default. local-path keeps data on the assigned K3s node."
-  - variable: persistence.size
-    label: "Local storage capacity"
-    type: string
-    default: 1Gi
-    required: true
-    group: "Persistence"
-    description: "PVC request, or emptyDir limit when persistence is disabled. The chart keeps PVCs on uninstall; resize existing claims separately. Active S3 recordings also need local buffer space."
-  - variable: warpgate.recordSessions
-    label: "Enable session recording on first setup"
-    type: boolean
-    default: "true"
-    group: "Session recording"
-    description: "Enabled by default. Uses local storage unless S3 is enabled below. Applied only when the database is first initialized; change recording settings in Warpgate's admin UI after installation."
-  - variable: recordings.s3.enabled
-    label: "Use S3 instead of local recording storage"
-    type: boolean
-    default: "false"
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true
-    description: "Leave disabled for local recording storage on a new installation. Enable to configure S3 at startup using AWS credentials from the environment Secret. Existing recordings are not moved. On an existing installation, disabling this option stops chart management; select local storage in Warpgate's admin UI to switch back."
-  - variable: recordings.s3.bucket
-    label: "S3 bucket"
-    type: string
-    default: ""
-    required: true
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-  - variable: recordings.s3.endpoint
-    label: "S3 endpoint"
-    type: string
-    default: ""
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-    description: "Leave empty for AWS. For Silo use its S3 API HTTPS address, reachable by both Warpgate and the playback browser. Configure bucket CORS for your Warpgate origin."
-  - variable: recordings.s3.region
-    label: "S3 region"
-    type: string
-    default: us-east-1
-    required: true
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-  - variable: recordings.s3.prefix
-    label: "S3 object prefix"
-    type: string
-    default: warpgate
-    required: true
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-  - variable: recordings.s3.pathStyle
-    label: "S3 path-style addressing"
-    type: boolean
-    default: "true"
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-    description: "Usually enabled for Silo / MinIO. Disable for AWS virtual-hosted bucket addresses."
-  - variable: recordings.s3.setupImage
-    label: "S3 configuration image"
-    type: string
-    default: postgres:18.6-alpine
-    required: true
-    group: "Session recording"
-    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
-    description: "Complete PostgreSQL client image. A short init container sets only Warpgate's database-backed recording storage settings, after native setup."
   - variable: resources.requests.cpu
     label: "CPU request"
     type: string

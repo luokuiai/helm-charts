@@ -6,7 +6,7 @@ and create a retained `1Gi` PVC for configuration, certificates and recording fi
 The image is one complete reference:
 `ghcr.io/warp-tech/warpgate:0.30.2`. The release name is editable.
 
-The chart runs one replica using external PostgreSQL. Native initialization
+The chart defaults to one replica using external PostgreSQL. Native initialization
 migrates the database and creates the administrator and SSH keys once;
 subsequent starts preserve existing accounts.
 The official image provides both native initialization commands. Enabling S3
@@ -42,12 +42,21 @@ See the [deployment guide](../../../docs/warpgate/deployment.md),
 [environment Secret example](../../../docs/warpgate/env-secret.example.yaml),
 and [Casdoor OIDC example](../../../docs/warpgate/oidc-values.example.yaml).
 An [S3 without PVC example](../../../docs/warpgate/s3-values.example.yaml) is also included.
+For HA, enable `ha.enabled`, set `ha.replicas` (default `2`), and add a stable
+`WARPGATE_ENCRYPTION_KEY` to the same environment Secret. HA uses a StatefulSet
+with independent retained data PVCs and one Pod per Kubernetes node. Recordings
+require either an existing RWX `ha.sharedRecordingsClaim` mounted at
+`/data/recordings`, or the same S3 bucket on all replicas. PostgreSQL remains
+external. Use a stable TCP load balancer for native SSH; HTTP Ingress covers the
+website separately. See the [HA example](../../../docs/warpgate/ha-values.example.yaml)
+and the deployment guide before switching an existing installation: stop the old
+workload and migrate recording files first. Data is not moved automatically.
 Source and icon provenance are in [UPSTREAM.md](UPSTREAM.md).
 
 ```bash
 helm lint charts/warpgate/1.0.0 --strict
 uv run --with pyyaml python tests/warpgate/test_chart.py
-# Include native configuration, bootstrap, TLS and OIDC redirect checks:
+# Include native bootstrap, TLS, OIDC, two-node peer login and failure checks:
 WARPGATE_BIN=/path/to/warpgate uv run --with pyyaml python tests/warpgate/test_chart.py
-# The native test requires Docker with a cached postgres:16-alpine image.
+# Requires Docker, ssh-keyscan and a cached postgres:16-alpine image.
 ```

@@ -1,0 +1,13 @@
+{{- if and .Values.ha.enabled (gt (int .Values.ha.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "warpgate.fullname" . }}
+  labels:
+    {{- include "warpgate.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "warpgate.selectorLabels" . | nindent 6 }}
+{{- end }}

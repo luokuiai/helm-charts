@@ -19,7 +19,7 @@ helm-charts/                         # Git repository root
 │   ├── silo/
 │   │   └── 1.0.0/                   # Silo S3 storage + 1-16 nodes + Rancher form
 │   ├── warpgate/
-│   │   └── 1.0.0/                   # Warpgate + PostgreSQL + OIDC + S3 / PVC + Rancher form
+│   │   └── 1.0.0/                   # Warpgate + optional HA + external PostgreSQL + OIDC + S3 / PVC
 │   ├── netbird-proxy/
 │   │   ├── 1.0.0/                   # Original form-based configuration
 │   │   ├── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
@@ -63,7 +63,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | casdoor | 1.0.0 | Casdoor v4.24.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
 | magpie | 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
-| warpgate | 1.0.0 | Warpgate 0.30.2, external PostgreSQL, OIDC, S3 / local recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
+| warpgate | 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | netbird-operator-network | 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown and a Rancher configuration form |
 | cert-manager-alidns-issuer | 1.0.0 | Let's Encrypt DNS-01 ClusterIssuer for an existing AliDNS webhook, existing credential Secret selection, and a Rancher configuration form |
@@ -84,7 +84,7 @@ See the [Magpie deployment guide](docs/magpie/deployment.md) for Web administrat
 
 See the [Silo deployment guide](docs/silo/deployment.md) for single-node / distributed object storage, numeric node counts, per-node PVCs, and separate S3 API / Console domains.
 
-See the [Warpgate deployment guide](docs/warpgate/deployment.md) for external PostgreSQL, environment Secrets, OIDC / Casdoor login, persistent recordings, domain / HTTPS, and native TCP protocol exposure.
+See the [Warpgate deployment guide](docs/warpgate/deployment.md) for optional HA, external PostgreSQL, environment Secrets, OIDC / Casdoor login, persistent recordings, domain / HTTPS, and native TCP protocol exposure.
 
 See the [NetBird Reverse Proxy README](charts/netbird-proxy/1.0.2/README.md) for environment Secret settings, Geo downloads, certificate ownership, and sharing Rancher's Traefik entrypoint.
 

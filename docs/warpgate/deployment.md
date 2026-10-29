@@ -1,7 +1,7 @@
 # Deploying Warpgate
 
 Select `warpgate` chart version `1.0.0` in Rancher Apps. It runs the official
-`ghcr.io/warp-tech/warpgate:0.30.2` image, with one replica and external PostgreSQL.
+`ghcr.io/warp-tech/warpgate:0.30.2` image, with one replica by default and external PostgreSQL.
 New installations enable local session recording and create a retained `1Gi` PVC
 for recordings, configuration and certificates. K3s supports its usual
 `local-path` StorageClass and Traefik
@@ -31,7 +31,7 @@ All containers import `warpgate.envSecret`, default `warpgate-env`, through
 | `WARPGATE_OIDC_CLIENT_SECRET` | Required only with OIDC enabled. Raw, single-line provider Client Secret. |
 | `AWS_ACCESS_KEY_ID` | Required with chart-managed S3 recording storage. Dedicated S3 access identity. |
 | `AWS_SECRET_ACCESS_KEY` | Required with chart-managed S3 recording storage. Secret key for that identity. |
-| `WARPGATE_ENCRYPTION_KEY` | Optional upstream credential encryption key. Generate using `openssl rand -base64 32`, keep it stable and include it in backups. |
+| `WARPGATE_ENCRYPTION_KEY` | Required in HA; optional for one node. Generate once using `openssl rand -base64 32`, use the same key on every replica, keep it stable and include it in backups. |
 
 The chart uses Warpgate's native `internal-install-files` and
 `unattended-setup --if-config-exists=bootstrap` commands. No shell is needed.
@@ -90,7 +90,7 @@ PVC, disable recording in the admin UI first and preserve any old recording file
 Recordings can exhaust a small volume; choose a suitable initial size and resize
 existing claims using the StorageClass's supported procedure. Back up the full
 PostgreSQL database and data volume consistently, together with the environment
-Secret and encryption keys. The chart does not support multiple replicas.
+Secret and encryption keys. HA has additional shared-storage requirements below.
 
 After updating environment variables, restart the Deployment:
 
@@ -102,6 +102,127 @@ The ConfigMap owns the generated Warpgate configuration. Each Pod start copies
 it onto the data volume, so make file configuration changes through chart values.
 Targets, users and roles managed in the database are retained. With S3 enabled,
 the chart reapplies its recording storage settings at startup as described below.
+
+## HA deployment
+
+Enable **HA deployment** and enter a positive **Warpgate replicas** count.
+The default HA count is `2`; setting `1` retains the HA StatefulSet and its PVCs
+for maintenance but provides no redundancy. With HA disabled, the original
+single-replica Deployment and data PVC are unchanged.
+
+Use [ha-values.example.yaml](ha-values.example.yaml) for shared file recordings:
+
+```yaml
+ha:
+  enabled: true
+  replicas: 2
+  sharedRecordingsClaim: warpgate-recordings
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 1Gi
+```
+
+Create the shared recordings claim first in the installation namespace, using
+storage supporting `ReadWriteMany`, such as NFS. Its root is mounted at
+`/data/recordings` on every Pod and must be writable by UID/GID `1000`.
+K3s `local-path` is node-local and cannot provide this shared filesystem.
+For an existing database, verify **Config > Global parameters > Session recordings**
+uses the Disk backend with path `/data/recordings`; chart values do not reset an
+existing database's local recording path or recording switch. The shared claim
+is required without chart-managed S3 even when `warpgate.recordSessions` is false,
+because the initial setup switch does not disable recording in an existing DB.
+The chart checks a claim's RWX access mode when Helm can read it from the cluster;
+offline rendering cannot validate an existing claim's access modes.
+
+Alternatively enable `recordings.s3.enabled` and set the same S3 bucket, endpoint
+and prefix for all replicas. Then `ha.sharedRecordingsClaim` is unused. S3 keeps
+the existing private-bucket / presigned-playback behavior described below;
+enabling HA does not proxy S3 playback through Warpgate.
+
+All replicas use the same external PostgreSQL and environment Secret. Add one
+stable `WARPGATE_ENCRYPTION_KEY` to that Secret before enabling HA. Never replace
+an existing key merely to enable HA. PostgreSQL deployment and PostgreSQL HA are
+outside this chart's scope.
+
+HA uses a StatefulSet with OrderedReady startup: Pod 0 completes native setup and
+becomes ready before Pod 1 starts. Upstream PostgreSQL migration locking also
+protects concurrent migration attempts. Each Pod gets its own retained `data`
+PVC (`data-<release>-0`, `data-<release>-1`, ...), containing configuration,
+backend TLS files and S3 upload buffers. `persistence.existingClaim` is single-node
+only; `persistence.enabled` must remain true in HA. Scaling down or deleting the
+StatefulSet retains these claims. Resize existing claims separately; changing a
+StatefulSet's volume claim template requires a planned StatefulSet recreation.
+The backend TLS Secret remains shared and retained; restarts do not regenerate it.
+
+Required Pod anti-affinity places each replica on a different Kubernetes node;
+the chosen node selectors and tolerations must allow enough nodes. Fewer eligible
+nodes leave extra replicas Pending. `local-path` works for each Pod's private PVC,
+but a failed node's local volume cannot move to another node. Other replicas
+continue serving; use movable persistent storage if that Pod must also recover
+automatically on another node. Shared recordings storage is itself a dependency
+and must stay available for recording access.
+
+The main container gets `POD_IP` through the Downward API. Peers advertise that IP
+and must reach one another directly on HTTPS port `8888`; permit this in any
+existing NetworkPolicies. Every Pod must also reach the target SSH servers.
+If the environment Secret sets an outbound HTTP(S) proxy, include
+`warpgate-cluster.internal` in both `NO_PROXY` and `no_proxy`, alongside your
+existing exclusions; upstream uses this TLS SNI name with direct Pod-IP resolution.
+HA adds a headless peer Service and a PodDisruptionBudget allowing one planned
+eviction at a time when there are at least two replicas. StatefulSet updates
+replace Pods one at a time; replacing a Pod still ends its active connections.
+
+For native SSH, use a stable VPN-reachable TCP load balancer in front of the
+Service: either a functioning `LoadBalancer` implementation or an existing TCP
+load balancer forwarding to multiple K3s NodePorts. A single node's IP remains a
+single point of failure even when Warpgate has multiple replicas. The chart does
+not install a load balancer or provision a VPN address. HTTP Ingress continues
+to serve the website; it does not expose raw SSH. If a Warpgate instance fails,
+its established SSH connections end; reconnect through the same entry point.
+
+After changing the shared environment Secret or backend TLS Secret, restart HA:
+
+```bash
+kubectl -n access rollout restart statefulset/warpgate
+```
+
+### Switching an existing installation between single-node and HA
+
+Changing `ha.enabled` changes the workload kind and data PVC layout. Plan a
+maintenance window; the chart does not copy files or migrate storage automatically.
+
+1. Back up PostgreSQL, existing data/recording volumes and the environment / TLS
+   Secrets. Keep the same database URL, encryption key and retained backend TLS
+   Secret. Prepare the shared RWX claim or S3 bucket and ensure the database's
+   selected recording backend/path matches the destination.
+2. Stop the current workload and wait for all its Pods to terminate:
+
+   ```bash
+   kubectl -n access scale deployment/warpgate --replicas=0
+   kubectl -n access wait --for=delete pod -l app.kubernetes.io/instance=warpgate,app.kubernetes.io/name=warpgate --timeout=120s
+   ```
+
+3. For file recordings, copy the **contents** of the old data PVC's `recordings/`
+   directory to the **root** of the shared recordings claim, preserving paths and
+   UID/GID `1000` access. Use a temporary copy Pod appropriate to your storage;
+   a node-local source PVC requires that Pod on its original node. Do not copy
+   only database rows: recording files must also exist at the new location.
+   For S3, keep the same bucket/prefix, or migrate existing objects separately.
+4. Upgrade with `ha.enabled=true` and the desired HA values. On a cluster-connected
+   upgrade, the chart refuses a mode switch while the previous workload has
+   nonzero desired or reported replicas. With offline GitOps, stop the previous
+   workload and apply the mode change as separate operations; live lookup cannot
+   protect it.
+5. Verify administrator login, unchanged SSH host keys, target access and playback
+   of an old recording before ending maintenance. Keep the original PVC for
+   rollback until migration is verified.
+
+To return to the single-node Deployment, first scale the **StatefulSet** to `0`,
+wait for its Pods to terminate, and copy any new file recordings back into the
+original single-node PVC's `recordings/` directory before disabling `ha.enabled`.
+If retaining S3, keep its chart settings enabled in both modes. Normal changes to
+`ha.replicas` do not change the workload kind and retain per-Pod PVCs.
 
 ## S3 / Silo recording storage without a PVC
 
@@ -193,7 +314,7 @@ The backend TLS Secret is retained and reused by a cluster-connected Helm upgrad
 Plain `helm template` cannot read the installed Secret and generates a fresh one.
 For GitOps or repeated offline rendering, provide `warpgate.backendTLSSecret`
 instead: its keys must be `tls.crt`, `tls.key` and `ca.crt`, with a certificate SAN
-containing `<release>.<namespace>.svc`. Restart the Deployment after changing an
+containing `<release>.<namespace>.svc`. Restart the workload after changing an
 external backend TLS Secret. The public Ingress certificate is separate.
 
 Without Ingress, access the native HTTPS endpoint through a tunnel:

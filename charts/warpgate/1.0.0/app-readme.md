@@ -49,8 +49,24 @@ private network or VPN; allow the Warpgate origin in bucket CORS. Completed
 recordings use signed GET links; unfinished buffers can be lost with the Pod.
 S3 settings are reapplied at each startup; existing recordings are not moved.
 
-Restart the Deployment after changing the environment Secret. PostgreSQL stores
+Restart the Deployment (or StatefulSet in HA) after changing the environment Secret. PostgreSQL stores
 users, credentials and SSH keys; the retained PVC stores configuration, certificates
 and local recordings (or active S3 buffers). Back up the selected recording store,
 PostgreSQL and the environment Secret along with any credential
-encryption key. This chart supports one replica and creates no database server.
+encryption key. The chart creates no database server.
+
+**Enable HA deployment** switches to a StatefulSet. Set **Warpgate replicas** to
+2 or more; each Pod requires a different schedulable Kubernetes node. All Pods
+use the same external PostgreSQL and environment Secret, including a stable
+`WARPGATE_ENCRYPTION_KEY`. Independent retained data PVCs store configuration,
+certificates and S3 buffers. Without S3, select an existing **Shared file recordings
+PVC (RWX)**, mounted at `/data/recordings` on every Pod. Its root must contain the
+recording files and be writable by UID/GID 1000. K3s `local-path` cannot provide
+the shared recordings volume; use a storage backend that supports RWX.
+
+Use a stable VPN-reachable TCP load balancer for SSH, through LoadBalancer Service
+or multiple NodePorts. A single node IP is not an HA entry point. Pods must reach
+each other directly on HTTPS port 8888 and reach the target servers. An instance
+failure ends that instance's active SSH connections; reconnect through the same
+entry point. Before changing HA mode on an existing release, stop the previous
+workload and migrate recording files as described in the deployment guide.

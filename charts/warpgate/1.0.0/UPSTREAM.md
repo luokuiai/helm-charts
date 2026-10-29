@@ -42,9 +42,17 @@ Verified upstream behavior:
   quoted psql variables; credentials remain in the environment. This SQL is
   verified against the pinned application version and must be checked on upgrade.
 
-The chart limits deployment to one replica with local recording files / upload buffers
-and external PostgreSQL. S3 supports temporary `emptyDir` buffers without a PVC.
-It deliberately does not bundle a database or implement clustered deployment.
+The chart defaults to one Deployment replica. Optional HA uses an OrderedReady
+StatefulSet, independent retained data PVCs, required host anti-affinity, a headless
+peer Service and a disruption budget. `POD_IP` advertises each node's direct peer
+address; `warpgate-core/src/cluster.rs` uses the HTTPS listener for peer traffic.
+`warpgate-db-migrations/src/lib.rs` locks PostgreSQL migrations; native bootstrap
+preserves existing users/keys. Ordered startup completes initial setup before
+starting the next replica. HA requires a shared recordings PVC (RWX) or S3 and a
+common `WARPGATE_ENCRYPTION_KEY` from the existing environment Secret. Changing
+workload mode requires stopping the previous workload and migrating files first.
+S3 supports temporary `emptyDir` buffers without a PVC in single-node mode only.
+The chart does not bundle PostgreSQL or a TCP load balancer.
 Administrator role mappings are empty; OIDC access-role mappings are optional.
 
 Traefik's `ServersTransport.rootCAsSecrets` is used for compatibility with

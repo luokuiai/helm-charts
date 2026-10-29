@@ -1,0 +1,38 @@
+# Create the environment Secret and shared RWX PVC before installation.
+# WARPGATE_ENCRYPTION_KEY is required; generate it ONCE with openssl rand -base64 32.
+# At least two schedulable nodes are required for two Pods.
+ha:
+  enabled: true
+  replicas: 2
+  # Existing RWX claim, writable by UID/GID 1000. Its root contains the recordings.
+  # K3s local-path cannot provide this shared filesystem; use e.g. NFS.
+  sharedRecordingsClaim: warpgate-recordings
+warpgate:
+  envSecret: warpgate-env
+  recordSessions: true
+persistence:
+  enabled: true
+  # Independent retained configuration / buffer PVC per Pod (1Gi each).
+  storageClass: local-path
+  size: 1Gi
+recordings:
+  s3:
+    enabled: false
+service:
+  # Requires a functioning load balancer. Use a stable address reachable over VPN.
+  # Alternatively use NodePort behind your own TCP load balancer.
+  type: LoadBalancer
+protocols:
+  ssh:
+    enabled: true
+  mysql:
+    enabled: false
+  postgres:
+    enabled: false
+ingress:
+  enabled: true
+  hostname: warpgate.example.com
+  className: traefik
+  certificate:
+    mode: existing
+    secretName: warpgate-tls

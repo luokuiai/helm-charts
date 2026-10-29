@@ -3,6 +3,7 @@
   "type": "object",
   "required": [
     "image",
+    "ha",
     "warpgate",
     "oidc",
     "recordings",
@@ -12,6 +13,19 @@
     "ingress"
   ],
   "properties": {
+    "ha": {
+      "type": "object",
+      "required": ["enabled", "replicas", "sharedRecordingsClaim"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicas": {"type": "integer", "minimum": 1},
+        "sharedRecordingsClaim": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
     "image": {
       "type": "object",
       "required": [

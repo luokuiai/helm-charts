@@ -4,6 +4,15 @@ image:
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
+ha:
+  # Keep the existing Deployment for single-node installations. HA uses an
+  # OrderedReady StatefulSet with one retained data PVC per Pod.
+  enabled: false
+  replicas: 2
+  # Existing ReadWriteMany PVC; its root is mounted at /data/recordings.
+  # Required in HA unless recordings.s3.enabled. No bucket/claim is created.
+  sharedRecordingsClaim: ""
+
 warpgate:
   # Existing Secret containing WARPGATE_DATABASE_URL (external PostgreSQL),
   # WARPGATE_ADMIN_PASSWORD and, with OIDC, WARPGATE_OIDC_CLIENT_SECRET.
@@ -50,7 +59,7 @@ recordings:
 persistence:
   # Retain local recordings, configuration and certificates across Pod replacement.
   enabled: true
-  existingClaim: ""
+  existingClaim: "" # Single-node only; HA creates a separate PVC per Pod.
   storageClass: local-path
   size: 1Gi # PVC request, or emptyDir size limit when disabled.
 
