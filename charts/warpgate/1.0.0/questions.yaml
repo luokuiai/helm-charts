@@ -1,0 +1,326 @@
+questions:
+  - variable: image.repository
+    label: "Warpgate image"
+    type: string
+    default: ghcr.io/warp-tech/warpgate:0.30.2
+    required: true
+    group: "Images"
+    description: "Full image including its version or digest. The chart uses native setup commands from Warpgate 0.30 or newer."
+  - variable: warpgate.envSecret
+    label: "Warpgate environment Secret"
+    type: "reference[secret]"
+    default: warpgate-env
+    required: true
+    group: "Environment"
+    description: "Existing Secret in this namespace. Requires WARPGATE_DATABASE_URL and WARPGATE_ADMIN_PASSWORD. Add WARPGATE_OIDC_CLIENT_SECRET for OIDC; AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3. All containers import it. URL and Client Secret must be single-line. Restart the Deployment after changing it."
+  - variable: recordings.s3.enabled
+    label: "Store recordings in S3"
+    type: boolean
+    default: "false"
+    group: "Recordings / S3"
+    show_if: warpgate.recordSessions=true
+    description: "Configures native S3 storage at startup. Uses AWS credentials from the environment Secret. Existing recordings are not moved."
+  - variable: recordings.s3.setupImage
+    label: "S3 configuration image"
+    type: string
+    default: postgres:18.6-alpine
+    required: true
+    group: "Images"
+    show_if: recordings.s3.enabled=true
+    description: "Complete PostgreSQL client image. A short init container sets only Warpgate's database-backed recording storage settings, after native setup."
+  - variable: recordings.s3.bucket
+    label: "S3 bucket"
+    type: string
+    default: ""
+    required: true
+    group: "Recordings / S3"
+    show_if: recordings.s3.enabled=true
+  - variable: recordings.s3.endpoint
+    label: "S3 endpoint"
+    type: string
+    default: ""
+    group: "Recordings / S3"
+    show_if: recordings.s3.enabled=true
+    description: "Leave empty for AWS. For Silo use its S3 API HTTPS address, reachable by both Warpgate and the playback browser. Configure bucket CORS for your Warpgate origin."
+  - variable: recordings.s3.region
+    label: "S3 region"
+    type: string
+    default: us-east-1
+    required: true
+    group: "Recordings / S3"
+    show_if: recordings.s3.enabled=true
+  - variable: recordings.s3.prefix
+    label: "S3 object prefix"
+    type: string
+    default: warpgate
+    required: true
+    group: "Recordings / S3"
+    show_if: recordings.s3.enabled=true
+  - variable: recordings.s3.pathStyle
+    label: "S3 path-style addressing"
+    type: boolean
+    default: "true"
+    group: "Recordings / S3"
+    show_if: recordings.s3.enabled=true
+    description: "Usually enabled for Silo / MinIO. Disable for AWS virtual-hosted bucket addresses."
+  - variable: persistence.enabled
+    label: "Keep local files in a PVC"
+    type: boolean
+    default: "true"
+    group: "Persistence"
+    description: "Disable with S3 to use emptyDir for configuration, certificates and active upload buffers. Deleting a Pod loses unfinished buffers; completed recordings remain in S3. Without S3, local recordings are lost too."
+  - variable: persistence.existingClaim
+    label: "Existing data PVC (optional)"
+    type: string
+    default: ""
+    group: "Persistence"
+    show_if: persistence.enabled=true
+    description: "Leave empty to create a PVC. Existing claims must be writable by UID/GID 1000. Stores generated configuration, backend certificates and local recordings. Users, credentials and host keys are stored in external PostgreSQL. Do not switch without migrating the files."
+  - variable: persistence.storageClass
+    label: "Data storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    show_if: persistence.enabled=true
+    description: "Used for a new PVC; empty uses the cluster default. local-path keeps data on the assigned K3s node."
+  - variable: persistence.size
+    label: "Local storage capacity"
+    type: string
+    default: 1Gi
+    required: true
+    group: "Persistence"
+    description: "PVC request, or emptyDir limit when persistence is disabled. The chart keeps PVCs on uninstall; resize existing claims separately. Active S3 recordings also need local buffer space."
+  - variable: warpgate.recordSessions
+    label: "Initialize session recording"
+    type: boolean
+    default: "true"
+    group: "Persistence"
+    description: "Applied when the database is first initialized. Change recording settings in Warpgate after installation."
+  - variable: oidc.enabled
+    label: "Enable OpenID Connect login"
+    type: boolean
+    default: "false"
+    required: true
+    group: "OIDC"
+    description: "Configure a generic OIDC provider, including Casdoor. Requires a public HTTPS hostname and WARPGATE_OIDC_CLIENT_SECRET in the environment Secret."
+  - variable: oidc.issuerURL
+    label: "OIDC Issuer URL"
+    type: string
+    default: ""
+    required: true
+    group: "OIDC"
+    show_if: oidc.enabled=true
+    description: "Issuer advertised by the provider's discovery document, e.g. https://auth.example.com for Casdoor. Use the exact issuer; Warpgate must be able to reach its discovery, token and JWKS endpoints."
+  - variable: oidc.clientID
+    label: "OIDC Client ID"
+    type: string
+    default: ""
+    required: true
+    group: "OIDC"
+    show_if: oidc.enabled=true
+    description: "Client ID of the application registered in the identity provider. Keep its Client Secret in WARPGATE_OIDC_CLIENT_SECRET."
+  - variable: oidc.name
+    label: "OIDC provider name"
+    type: string
+    default: oidc
+    required: true
+    group: "OIDC"
+    show_if: oidc.enabled=true
+    description: "Stable identifier using letters, digits, underscores or hyphens. Renaming it affects stored SSO credential bindings."
+  - variable: oidc.label
+    label: "Login button label"
+    type: string
+    default: "Single sign-on"
+    required: true
+    group: "OIDC"
+    show_if: oidc.enabled=true
+  - variable: oidc.autoCreateUsers
+    label: "Automatically create OIDC users"
+    type: boolean
+    default: "false"
+    required: true
+    group: "OIDC"
+    show_if: oidc.enabled=true
+    description: "Disabled: bind an existing Warpgate user's SSO credentials first. Enabled: create users after successful provider authentication. Target access still requires Warpgate role grants."
+  - variable: oidc.rolesClaim
+    label: "Role / group claim (optional)"
+    type: string
+    default: ""
+    group: "OIDC"
+    show_if: oidc.enabled=true
+    description: "Leave empty for Warpgate's warpgate_roles claim, or enter groups and configure oidc.roleMappings in YAML. Maps access roles, not administrator permissions."
+  - variable: ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "HTTPS access to the UI and HTTP gateway. SSH and database protocols require TCP Service exposure separately. Configure DNS yourself."
+  - variable: ingress.hostname
+    label: "Hostname"
+    type: hostname
+    default: warpgate.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Bare hostname. Register https://this-hostname/@warpgate/api/sso/return as the OIDC application's redirect URI."
+  - variable: ingress.className
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Usually traefik on K3s; leave empty for the default Ingress Class. Select the matching controller type below."
+  - variable: ingress.controller
+    label: "Ingress controller type"
+    type: enum
+    default: traefik
+    required: true
+    options: [traefik, nginx]
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Warpgate's backend always uses HTTPS. traefik creates a ServersTransport with certificate validation (requires Traefik CRDs); nginx adds HTTPS backend and CA verification annotations."
+  - variable: ingress.certificate.mode
+    label: "HTTPS certificate"
+    type: enum
+    default: existing
+    required: true
+    options: [existing, cert-manager]
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Select an existing TLS Secret or request a certificate through an installed cert-manager issuer."
+  - variable: ingress.certificate.secretName
+    label: "Public TLS Secret name"
+    type: string
+    default: warpgate-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Existing certificate in existing mode; certificate destination in cert-manager mode. Separate from the automatically generated backend certificate."
+  - variable: ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options: [ClusterIssuer, Issuer]
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+  - variable: warpgate.externalHost
+    label: "External hostname override (optional)"
+    type: string
+    default: ""
+    group: "Domain / HTTPS"
+    description: "Leave empty to use the Ingress hostname. Required for OIDC behind a separately managed HTTPS proxy or a directly exposed Service. No scheme or port."
+  - variable: warpgate.externalPort
+    label: "External HTTPS port override"
+    type: int
+    default: 0
+    group: "Domain / HTTPS"
+    description: "0 selects 443 with Ingress or 8888 for direct access. Override for a custom HTTPS listener, LoadBalancer or NodePort; include it in the OIDC redirect URI."
+  - variable: service.type
+    label: "Service exposure"
+    type: enum
+    default: ClusterIP
+    required: true
+    options: [ClusterIP, NodePort, LoadBalancer]
+    group: "TCP protocols"
+    description: "ClusterIP is internal; NodePort or LoadBalancer exposes enabled SSH/database listeners and HTTPS. HTTP Ingress does not forward these TCP protocols."
+  - variable: service.httpsNodePort
+    label: "HTTPS NodePort"
+    type: int
+    default: 0
+    group: "TCP protocols"
+    show_if: service.type=NodePort
+    description: "0 assigns a port automatically. Set the external HTTPS port override to the actual NodePort when accessing it directly."
+  - variable: protocols.ssh.enabled
+    label: "Enable SSH gateway"
+    type: boolean
+    default: "true"
+    group: "TCP protocols"
+  - variable: protocols.ssh.port
+    label: "SSH port"
+    type: int
+    default: 2222
+    group: "TCP protocols"
+    show_if: protocols.ssh.enabled=true
+  - variable: protocols.ssh.nodePort
+    label: "SSH NodePort"
+    type: int
+    default: 0
+    group: "TCP protocols"
+    show_if: service.type=NodePort&&protocols.ssh.enabled=true
+    description: "0 assigns a NodePort automatically."
+  - variable: protocols.mysql.enabled
+    label: "Enable MySQL gateway"
+    type: boolean
+    default: "true"
+    group: "TCP protocols"
+  - variable: protocols.mysql.port
+    label: "MySQL port"
+    type: int
+    default: 33306
+    group: "TCP protocols"
+    show_if: protocols.mysql.enabled=true
+  - variable: protocols.mysql.nodePort
+    label: "MySQL NodePort"
+    type: int
+    default: 0
+    group: "TCP protocols"
+    show_if: service.type=NodePort&&protocols.mysql.enabled=true
+    description: "0 assigns a NodePort automatically."
+  - variable: protocols.postgres.enabled
+    label: "Enable PostgreSQL gateway"
+    type: boolean
+    default: "true"
+    group: "TCP protocols"
+  - variable: protocols.postgres.port
+    label: "PostgreSQL port"
+    type: int
+    default: 55432
+    group: "TCP protocols"
+    show_if: protocols.postgres.enabled=true
+  - variable: protocols.postgres.nodePort
+    label: "PostgreSQL NodePort"
+    type: int
+    default: 0
+    group: "TCP protocols"
+    show_if: service.type=NodePort&&protocols.postgres.enabled=true
+    description: "0 assigns a NodePort automatically."
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"

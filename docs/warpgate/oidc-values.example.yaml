@@ -1,0 +1,33 @@
+# Create warpgate-env first, using env-secret.example.yaml as a private template.
+warpgate:
+  envSecret: warpgate-env
+
+oidc:
+  enabled: true
+  name: casdoor
+  label: "Sign in with Casdoor"
+  # Copy the exact issuer from your Casdoor discovery document.
+  issuerURL: https://auth.example.com
+  clientID: REPLACE_WITH_CASDOOR_CLIENT_ID
+  autoCreateUsers: true
+
+ingress:
+  enabled: true
+  controller: traefik
+  className: traefik
+  hostname: access.example.com
+  certificate:
+    mode: cert-manager
+    secretName: warpgate-tls
+    issuerKind: ClusterIssuer
+    issuerName: letsencrypt
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 1Gi
+
+# Register this EXACT redirect URI in Casdoor:
+# https://access.example.com/@warpgate/api/sso/return
+# This Ingress routes the Web UI and HTTP gateway. For native SSH/MySQL/PostgreSQL
+# access from outside the cluster, select a TCP Service type and configure its ports.

@@ -1,0 +1,17 @@
+# Use together with oidc-values.example.yaml if OIDC is needed.
+warpgate:
+  envSecret: warpgate-env
+  recordSessions: true
+
+recordings:
+  s3:
+    enabled: true
+    bucket: warpgate-recordings
+    endpoint: https://s3.example.com
+    region: us-east-1
+    prefix: warpgate
+    pathStyle: true
+
+persistence:
+  enabled: false
+  size: 1Gi

@@ -1,0 +1,384 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "image",
+    "warpgate",
+    "oidc",
+    "recordings",
+    "persistence",
+    "protocols",
+    "service",
+    "ingress"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array"
+    },
+    "warpgate": {
+      "type": "object",
+      "required": [
+        "envSecret",
+        "externalHost",
+        "externalPort",
+        "recordSessions",
+        "backendTLSSecret"
+      ],
+      "properties": {
+        "envSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        },
+        "externalHost": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9.-]*$"
+        },
+        "externalPort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "recordSessions": {
+          "type": "boolean"
+        },
+        "backendTLSSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
+    "oidc": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "name",
+        "label",
+        "issuerURL",
+        "clientID",
+        "scopes",
+        "autoCreateUsers"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuerURL": {
+          "type": "string",
+          "pattern": "^$|^https?://[^/\\s?#]+(/[^\\s?#]*)?$"
+        },
+        "clientID": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "autoCreateUsers": {
+          "type": "boolean"
+        },
+        "rolesClaim": {
+          "type": "string"
+        },
+        "roleMappings": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "issuerURL": {
+                "minLength": 1
+              },
+              "clientID": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "recordings": {
+      "type": "object",
+      "required": ["s3"],
+      "properties": {
+        "s3": {
+          "type": "object",
+          "required": ["enabled", "setupImage", "bucket", "region", "endpoint", "prefix", "pathStyle"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "setupImage": {"type": "string", "minLength": 1},
+            "bucket": {"type": "string"},
+            "region": {"type": "string", "minLength": 1},
+            "endpoint": {"type": "string", "pattern": "^$|^https?://[^/\\s?#]+(/[^\\s?#]*)?$"},
+            "prefix": {"type": "string", "minLength": 1, "pattern": "^[^/].*$"},
+            "pathStyle": {"type": "boolean"}
+          },
+          "allOf": [{
+            "if": {"properties": {"enabled": {"const": true}}},
+            "then": {"properties": {"bucket": {"minLength": 1}}}
+          }]
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "existingClaim",
+        "storageClass",
+        "size"
+      ],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "existingClaim": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"
+        }
+      }
+    },
+    "protocols": {
+      "type": "object",
+      "required": [
+        "ssh",
+        "mysql",
+        "postgres"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ssh": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "port",
+            "nodePort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "nodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        },
+        "mysql": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "port",
+            "nodePort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "nodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        },
+        "postgres": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "port",
+            "nodePort"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "nodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "type",
+        "annotations",
+        "httpsNodePort"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "httpsNodePort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "controller",
+        "className",
+        "hostname",
+        "annotations",
+        "certificate"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "controller": {
+          "enum": [
+            "traefik",
+            "nginx"
+          ]
+        },
+        "className": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "certificate": {
+          "type": "object",
+          "required": [
+            "mode",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "secretName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "issuerKind": {
+              "enum": [
+                "ClusterIssuer",
+                "Issuer"
+              ]
+            },
+            "issuerName": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    }
+  }
+}

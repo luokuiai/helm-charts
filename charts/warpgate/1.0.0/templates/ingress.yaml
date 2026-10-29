@@ -1,0 +1,45 @@
+{{- if .Values.ingress.enabled }}
+{{- $certificate := .Values.ingress.certificate }}
+{{- $annotations := deepCopy .Values.ingress.annotations }}
+{{- if eq .Values.ingress.controller "nginx" }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/backend-protocol" "HTTPS" }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-ssl-verify" "on" }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-ssl-secret" (printf "%s/%s" .Release.Namespace (include "warpgate.backendTLSSecret" .)) }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-ssl-name" (include "warpgate.backendServerName" .) }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-ssl-server-name" "on" }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-read-timeout" "3600" }}
+{{- $_ := set $annotations "nginx.ingress.kubernetes.io/proxy-send-timeout" "3600" }}
+{{- end }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $issuer := required "ingress.certificate.issuerName is required for cert-manager" $certificate.issuerName }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- $_ := set $annotations (ternary "cert-manager.io/cluster-issuer" "cert-manager.io/issuer" (eq $certificate.issuerKind "ClusterIssuer")) $issuer }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "warpgate.fullname" . }}
+  labels:
+    {{- include "warpgate.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  tls:
+    - secretName: {{ required "ingress.certificate.secretName is required" $certificate.secretName | quote }}
+      hosts: [{{ .Values.ingress.hostname | quote }}]
+  rules:
+    - host: {{ .Values.ingress.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "warpgate.fullname" . }}
+                port: {name: https}
+{{- end }}

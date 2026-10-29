@@ -1,0 +1,84 @@
+{{- if and .Values.oidc.enabled (not (include "warpgate.externalHost" .)) }}
+{{- fail "OIDC requires ingress.enabled or warpgate.externalHost for its HTTPS callback" }}
+{{- end }}
+{{- if and .Values.ingress.enabled .Values.warpgate.externalHost (ne .Values.ingress.hostname .Values.warpgate.externalHost) }}
+{{- fail "warpgate.externalHost must match ingress.hostname when Ingress is enabled" }}
+{{- end }}
+{{- $ports := list 8888 }}
+{{- range $name, $protocol := .Values.protocols }}
+{{- if $protocol.enabled }}
+{{- if has (int $protocol.port) $ports }}
+{{- fail "Enabled protocol ports must be distinct and cannot use HTTPS port 8888" }}
+{{- end }}
+{{- $ports = append $ports (int $protocol.port) }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "warpgate.fullname" . }}-config
+  labels:
+    {{- include "warpgate.labels" . | nindent 4 }}
+data:
+  {{- if .Values.recordings.s3.enabled }}
+  configure-recordings.sql: |
+    \getenv storage WARPGATE_RECORDINGS_STORAGE
+    UPDATE parameters
+    SET recordings_storage = :'storage'
+    WHERE recordings_storage::jsonb IS DISTINCT FROM :'storage'::jsonb;
+  {{- end }}
+  warpgate.yaml: |
+    database_url: |-
+      $WARPGATE_DATABASE_URL
+    {{- with include "warpgate.externalHost" . }}
+    external_host: {{ . | quote }}
+    {{- end }}
+    http:
+      listen: "0.0.0.0:8888"
+      external_port: {{ include "warpgate.externalPort" . }}
+      certificate: /data/tls.certificate.pem
+      key: /data/tls.key.pem
+      trust_x_forwarded_headers: {{ .Values.ingress.enabled }}
+    {{- range $name, $protocol := .Values.protocols }}
+    {{ $name }}:
+      enable: {{ $protocol.enabled }}
+      listen: {{ printf "0.0.0.0:%d" (int $protocol.port) | quote }}
+      {{- if ne $name "ssh" }}
+      certificate: /data/tls.certificate.pem
+      key: /data/tls.key.pem
+      {{- end }}
+    {{- end }}
+    kubernetes:
+      enable: false
+    rdp:
+      enable: false
+    vnc:
+      enable: false
+    {{- if .Values.oidc.enabled }}
+    sso_providers:
+      - name: {{ .Values.oidc.name | quote }}
+        label: {{ .Values.oidc.label | quote }}
+        auto_create_users: {{ .Values.oidc.autoCreateUsers }}
+        return_url_domain: external_host
+        return_url_prefix: "@"
+        return_domain_whitelist:
+          - {{ include "warpgate.externalHost" . | quote }}
+        provider:
+          type: custom
+          issuer_url: {{ required "oidc.issuerURL is required when OIDC is enabled" .Values.oidc.issuerURL | quote }}
+          client_id: {{ required "oidc.clientID is required when OIDC is enabled" .Values.oidc.clientID | quote }}
+          # A literal scalar preserves quotes, backslashes and colons in single-line secrets.
+          client_secret: |-
+            $WARPGATE_OIDC_CLIENT_SECRET
+          scopes: {{ .Values.oidc.scopes | toJson }}
+          # Administrator permissions are managed explicitly in Warpgate.
+          admin_role_mappings: {}
+          {{- with .Values.oidc.rolesClaim }}
+          roles_claim: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.oidc.roleMappings }}
+          role_mappings: {{- toYaml . | nindent 12 }}
+          {{- end }}
+    {{- else }}
+    sso_providers: []
+    {{- end }}

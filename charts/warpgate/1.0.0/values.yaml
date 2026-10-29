@@ -1,0 +1,99 @@
+image:
+  # Complete image reference, including its version or digest.
+  repository: ghcr.io/warp-tech/warpgate:0.30.2
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+warpgate:
+  # Existing Secret containing WARPGATE_DATABASE_URL (external PostgreSQL),
+  # WARPGATE_ADMIN_PASSWORD and, with OIDC, WARPGATE_OIDC_CLIENT_SECRET.
+  # All containers import it through envFrom. URLs/secrets must be single-line.
+  envSecret: warpgate-env
+  # Bare hostname, derived from Ingress when empty. Required for OIDC.
+  externalHost: ""
+  # 0 selects 443 with Ingress or 8888 for direct access.
+  externalPort: 0
+  # Applied when the database is first initialized; manage existing settings in the UI.
+  recordSessions: true
+  # Optional existing TLS Secret for Warpgate's HTTPS backend. Keys: tls.crt,
+  # tls.key, ca.crt; certificate SAN must contain <release>.<namespace>.svc.
+  # Empty generates a self-signed backend certificate and keeps it on upgrades.
+  backendTLSSecret: ""
+
+oidc:
+  enabled: false
+  name: oidc
+  label: "Single sign-on"
+  issuerURL: ""
+  clientID: ""
+  # OpenID scope is added by Warpgate itself.
+  scopes: [email, profile]
+  # New users receive no target access unless granted by a Warpgate role.
+  autoCreateUsers: false
+  # Optional group claim and mappings to existing Warpgate access roles (YAML).
+  rolesClaim: ""
+  roleMappings: {}
+
+recordings:
+  s3:
+    enabled: false
+    # Used only to configure Warpgate's database-backed S3 settings after setup.
+    setupImage: postgres:18.6-alpine
+    bucket: ""
+    region: us-east-1
+    # Empty uses AWS; otherwise this endpoint must be reachable by browsers too.
+    endpoint: ""
+    prefix: warpgate
+    pathStyle: true
+    # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY come from warpgate.envSecret.
+
+persistence:
+  # Retain local recordings, configuration and certificates across Pod replacement.
+  enabled: true
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi # PVC request, or emptyDir size limit when disabled.
+
+# Native protocol listeners. HTTP is always HTTPS on 8888.
+protocols:
+  ssh:
+    enabled: true
+    port: 2222
+    nodePort: 0
+  mysql:
+    enabled: true
+    port: 33306
+    nodePort: 0
+  postgres:
+    enabled: true
+    port: 55432
+    nodePort: 0
+
+service:
+  type: ClusterIP
+  annotations: {}
+  httpsNodePort: 0
+
+ingress:
+  enabled: false
+  # Select the backend TLS configuration matching the installed controller.
+  controller: traefik
+  className: ""
+  hostname: warpgate.example.com
+  annotations: {}
+  certificate:
+    mode: existing # existing | cert-manager; Warpgate login requires HTTPS.
+    secretName: warpgate-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []
