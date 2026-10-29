@@ -3,7 +3,9 @@
 Deploy Casdoor v4.24.0 with an external PostgreSQL or MySQL database.
 The image uses one complete field: `casbin/casdoor:v4.24.0`.
 Create a dedicated database first, then select the environment Secret
-(default `casdoor-env`) containing `dataSourceName` and other Casdoor variables.
+(default `casdoor-env`) under **Environment variables**. It must contain
+`dataSourceName`; set `driverName` and `dbName` there too (defaults: `postgres`
+and `casdoor`). The field's help lists the supported deployment variables.
 Use `initAdminPassword` for a new installation's initial administrator password;
 it does not reset an existing account. Restart the Deployment after updating
 its environment Secret.

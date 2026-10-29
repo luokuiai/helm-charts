@@ -35,6 +35,10 @@ Icon: https://cdn.casdoor.com/static/favicon.png
   supported for untagged references.
 - Default `casdoor.envSecret: casdoor-env` imports environment entries and requires
   `dataSourceName`. Clear it to retain legacy database credential settings.
+- The Environment variables form lists database, initial admin, origin, language,
+  default avatar provider and Caddy variables. Set `driverName`, `dbName` and
+  `defaultStorageProvider` in the environment Secret; their duplicate form fields
+  are removed. YAML defaults remain compatible with existing installations.
 
 Verified against the official v4.24.0 source: `conf/conf.go` (environment priority),
 `object/init.go` (initial admin password),

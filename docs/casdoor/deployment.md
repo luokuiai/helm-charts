@@ -17,15 +17,17 @@ The **Casdoor image** field is one full reference, defaulting to
 The former `image.repository` / `image.name` / `image.tag` layout remains supported
 in YAML when the repository is untagged; an explicit tag or digest takes precedence.
 
-In **External database**, choose the driver and database name, then select
-**Casdoor environment Secret** (default `casdoor-env`). It must exist in the
+In **Environment variables**, select **Casdoor environment Secret**
+(default `casdoor-env`). It must exist in the
 installation namespace and contain the case-sensitive key `dataSourceName`.
-All its entries become environment variables. Casdoor reads environment values
-before its configuration file, so variables such as `driverName`, `dbName`, or
-`origin` in the Secret override the corresponding form settings.
+All its entries become environment variables. Configure the database type with
+`driverName` (`postgres` or `mysql`) and its name with `dbName` in this Secret.
+Without these entries, the chart defaults to PostgreSQL and database `casdoor`.
+Casdoor reads environment values before its configuration file, so entries such
+as `driverName`, `dbName`, or `origin` override the app.conf defaults.
 
 For PostgreSQL, `dataSourceName` can be a PostgreSQL URL with percent-encoded
-credentials or a lib/pq connection string. Match its database to the form's
+credentials or a lib/pq connection string. Match its database to the Secret's
 database name. For MySQL, use `user:password@tcp(host:3306)/`, ending with `/`;
 Casdoor appends the database name. Configure TLS in the connection string.
 Use Service DNS or a database IP, not `localhost`. The chart disables Casdoor's
@@ -42,9 +44,7 @@ kubectl create namespace identity
 kubectl apply -f /path/to/private/casdoor-env.yaml
 helm install casdoor charts/casdoor/1.0.0 \
   --namespace identity \
-  --set casdoor.envSecret=casdoor-env \
-  --set database.driver=postgres \
-  --set database.databaseName=casdoor
+  --set casdoor.envSecret=casdoor-env
 ```
 
 A missing `dataSourceName` key prevents container startup. After changing this
@@ -60,6 +60,8 @@ To retain an existing installation's legacy database settings, set
 [database-secret.example.yaml](database-secret.example.yaml) shows the legacy
 Secret format. Before switching, create `casdoor-env` with the same connection
 string. A nonempty `casdoor.envSecret` takes precedence over the legacy Secret.
+The YAML settings `database.driver` / `database.databaseName` remain app.conf
+fallbacks for existing installations; they are no longer separate form fields.
 
 ## Domain and HTTPS
 
@@ -118,6 +120,8 @@ The environment Secret entries used by this chart are:
 | Key | When to set it | Purpose |
 |---|---|---|
 | `dataSourceName` | Required | Complete external database connection string |
+| `driverName` | When changing the default | `postgres` (default) or `mysql` |
+| `dbName` | When changing the default | Database name; defaults to `casdoor`. Match the PostgreSQL connection string |
 | `initAdminPassword` | Recommended on first installation | Password used only when creating the initial administrator |
 | `origin` | Optional | Override the public Casdoor URL |
 | `forceLanguage` | Optional | Set the interface language, such as `zh` |
@@ -125,8 +129,8 @@ The environment Secret entries used by this chart are:
 | `S3_ENDPOINT` | Required with Caddy | Internal Silo / S3 API origin, including scheme and port |
 | `S3_BUCKET` | Required with Caddy | Dedicated bucket served by the file proxy |
 
-Database type and database name come from the form. You can explicitly override
-them with Casdoor's `driverName` and `dbName` environment variables if needed.
+Database type, database name and the default avatar provider are configured
+through the environment Secret rather than separate form fields.
 Set S3 access keys in the Casdoor admin console's storage provider.
 
 Ingress is disabled by default. To configure Casdoor before exposing it:
@@ -154,7 +158,7 @@ In Casdoor's **Providers** page, create a provider in the **Storage** category:
 3. Associate the provider with the applications that upload files. Check that
    browser clients can access the resource URLs returned by the provider.
 4. If using Casdoor's `defaultStorageProvider` setting, enter the existing
-   provider's matching value in **Default storage provider**. This selects
+   provider's matching name in the environment Secret. This selects
    a provider; it does not provision one or copy any S3 credentials.
 5. Upload a test avatar and verify it is in the bucket. Verify that the URL
    continues to work after replacing the Casdoor Pod.

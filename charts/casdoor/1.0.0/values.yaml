@@ -10,7 +10,8 @@ image:
   pullPolicy: IfNotPresent
 
 casdoor:
-  # Existing Secret containing dataSourceName and other Casdoor environment variables.
+  # Existing Secret containing dataSourceName, driverName, dbName and other
+  # Casdoor environment variables. Environment values override app.conf defaults.
   envSecret: casdoor-env
 
 # Optional Caddy file proxy. Silo stays internal; only the selected bucket's
@@ -64,7 +65,8 @@ origin: ""
 defaultStorageProvider: ""
 
 database:
-  # An external database is required. No database server is installed.
+  # app.conf defaults and legacy YAML settings. Use driverName and dbName in
+  # casdoor.envSecret for database configuration. No database server is installed.
   driver: postgres
 
   # Legacy fallback used only when casdoor.envSecret is empty.

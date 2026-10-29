@@ -272,6 +272,8 @@ class CasdoorChartTests(unittest.TestCase):
         example_text = (ROOT / "docs/casdoor/env-secret.example.yaml").read_text()
         example = yaml.safe_load(example_text.replace("  # S3_", "  S3_"))
         data = example["stringData"]
+        self.assertEqual(data["driverName"], "postgres")
+        self.assertEqual(data["dbName"], "casdoor")
         self.assertIn("dataSourceName", data)
         self.assertIn("initAdminPassword", data)
         self.assertNotIn("init_data.yaml", data)
@@ -328,9 +330,15 @@ class CasdoorChartTests(unittest.TestCase):
         for variable in ("database.password", "database.user", "database.host", "database.useExistingSecret"):
             self.assertNotIn(variable, by_variable)
         self.assertEqual(by_variable["casdoor.envSecret"]["type"], "reference[secret]")
+        self.assertFalse(any(variable.startswith("database.") for variable in by_variable))
+        self.assertNotIn("defaultStorageProvider", by_variable)
+        description = by_variable["casdoor.envSecret"]["description"]
+        for key in ("dataSourceName", "driverName", "dbName", "initAdminPassword", "origin",
+                    "forceLanguage", "defaultStorageProvider", "S3_ENDPOINT", "S3_BUCKET"):
+            self.assertIn(key, description)
         self.assertFalse(any(variable.startswith("initData.") for variable in by_variable))
         groups = list(dict.fromkeys(question["group"] for question in questions))
-        self.assertEqual(groups, ["Images", "External database", "Object storage",
+        self.assertEqual(groups, ["Images", "Environment variables", "Object storage",
                                   "Domain / HTTPS", "CPU / memory"])
 
         def value_at(path):
