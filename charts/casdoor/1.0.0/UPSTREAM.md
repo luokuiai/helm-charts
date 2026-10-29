@@ -8,7 +8,8 @@ workflow. This adaptation sets local chart version `1.0.0` and application
 version `v4.24.0`. It is not an official Casdoor or Rancher release.
 
 The old https://github.com/casdoor/casdoor-helm repository is deprecated in
-favor of the above location. Original documentation is in `README.upstream.md`;
+favor of the above location. Upstream documentation is in `README.upstream.md`,
+with the unsupported declarative initialization section removed;
 the Apache-2.0 license is retained in `LICENSE`.
 
 Local changes:
@@ -25,8 +26,8 @@ Local changes:
 - Existing TLS Secret / cert-manager certificate choices, following the
   Komodo chart in this repository.
 - Correct the upstream optional full-config Secret to use `stringData`.
-- No file PVC. Configure an S3 / MinIO provider in Casdoor or use the
-  retained upstream `initData` integration for declarative configuration.
+- No file PVC. Configure S3 / MinIO providers in the Casdoor admin console.
+- Remove upstream declarative initialization values, Secrets, and file mounts.
 
 Icon: https://cdn.casdoor.com/static/favicon.png
 
@@ -34,10 +35,9 @@ Icon: https://cdn.casdoor.com/static/favicon.png
   supported for untagged references.
 - Default `casdoor.envSecret: casdoor-env` imports environment entries and requires
   `dataSourceName`. Clear it to retain legacy database credential settings.
-- Form selectors for existing provider initialization Secrets, with a Silo example.
 
 Verified against the official v4.24.0 source: `conf/conf.go` (environment priority),
-`object/init.go` (initial admin password), `object/init_data.go` (provider import),
+`object/init.go` (initial admin password),
 `object/avatar.go` (default provider name), `storage/minio_s3.go` and
 `object/storage.go` (MinIO credentials, endpoints and resource URL paths).
 GitHub's latest stable release was v4.24.0 when checked on 2026-10-28.

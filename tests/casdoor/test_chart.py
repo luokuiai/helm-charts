@@ -104,22 +104,16 @@ class CasdoorChartTests(unittest.TestCase):
         env = {item["name"]: item for item in app_container(docs)["env"]}
         self.assertEqual(env["dataSourceName"]["valueFrom"]["secretKeyRef"]["name"], "custom-env")
 
-    def test_storage_provider_initialization_from_existing_secret(self):
-        docs = manifests({"initData": {"enabled": True, "existingSecret": "casdoor-storage",
-                                       "existingSecretKey": "init_data.yaml"}},
-                         with_credentials=False)
-        self.assertFalse(any(doc["kind"] in ("Secret", "PersistentVolumeClaim") for doc in docs))
+    def test_removed_initialization_values_do_not_import_providers(self):
+        docs = manifests(with_credentials=False)
+        legacy = {"initData": {"enabled": True, "existingSecret": "old-provider-data",
+                                "data": {"providers": [{"name": "old-storage"}]}}}
+        self.assertEqual(manifests(legacy, with_credentials=False), docs)
         container = app_container(docs)
-        env = {item["name"]: item for item in container["env"]}
-        self.assertEqual(env["initDataFile"]["value"], "/init-data/init_data.yaml")
-        self.assertEqual(env["initDataMerge"]["value"], "true")
-        self.assertEqual(env["initDataWatchInterval"]["value"], "30")
-        volumes = resource(docs, "Deployment")["spec"]["template"]["spec"]["volumes"]
-        self.assertEqual(next(v for v in volumes if v["name"] == "init-data")["secret"],
-                         {"secretName": "casdoor-storage", "items": [
-                             {"key": "init_data.yaml", "path": "init_data.yaml"}]})
-        self.assertIn({"name": "init-data", "mountPath": "/init-data", "readOnly": True},
-                      container["volumeMounts"])
+        self.assertFalse(any(item["name"].startswith("initData") for item in container["env"]))
+        self.assertFalse(any(mount["mountPath"] == "/init-data" for mount in container["volumeMounts"]))
+        values = yaml.safe_load((CHART / "values.yaml").read_text())
+        self.assertNotIn("initData", values)
 
     def test_external_database_without_bundled_database_or_file_pvc(self):
         docs = manifests()
@@ -139,20 +133,6 @@ class CasdoorChartTests(unittest.TestCase):
         self.assertIn("runmode = prod", config)
         self.assertNotIn(DATABASE["password"], config)
         self.assertNotIn("postgres://", config)
-
-    def test_silo_example_can_initialize_from_inline_data_without_leaking_to_config(self):
-        example = yaml.safe_load((ROOT / "docs/casdoor/s3-init-secret.example.yaml").read_text())
-        data = yaml.safe_load(example["stringData"]["init_data.yaml"])
-        docs = manifests({"initData": {"enabled": True, "data": data, "watchInterval": 0}},
-                         with_credentials=False)
-        secret = resource(docs, "Secret", "casdoor-init-data")
-        self.assertEqual(yaml.safe_load(secret["stringData"]["init_data.json"]), data)
-        self.assertNotIn(data["providers"][0]["clientSecret"],
-                         resource(docs, "ConfigMap")["data"]["app.conf"])
-        pod = resource(docs, "Deployment")["spec"]["template"]
-        self.assertIn("checksum/init-data", pod["metadata"]["annotations"])
-        self.assertEqual(data["providers"][0]["type"], "MinIO")
-        self.assertEqual(data["providers"][0]["pathPrefix"], data["providers"][0]["bucket"])
 
     def test_postgres_credentials_are_encoded_and_kept_in_a_secret(self):
         password = "space ' quote\" slash\\ @:/?#&% localhost"
@@ -288,25 +268,22 @@ class CasdoorChartTests(unittest.TestCase):
             self.assertEqual(proxy["ports"][0]["containerPort"], 18080)
             self.assertIn(":18080 {", resource(docs, "ConfigMap", "casdoor-storage-proxy")["data"]["Caddyfile"])
 
-    def test_combined_secret_example_matches_the_proxy_and_imports_automatically(self):
-        example = yaml.safe_load((ROOT / "docs/casdoor/s3-init-secret.example.yaml").read_text())
+    def test_documented_environment_secret_supports_the_proxy(self):
+        example_text = (ROOT / "docs/casdoor/env-secret.example.yaml").read_text()
+        example = yaml.safe_load(example_text.replace("  # S3_", "  S3_"))
         data = example["stringData"]
-        provider = yaml.safe_load(data["init_data.yaml"])["providers"][0]
-        self.assertEqual(data["S3_ENDPOINT"], provider["endpoint"])
-        self.assertEqual(data["S3_BUCKET"], provider["bucket"])
-        self.assertEqual(data["S3_BUCKET"], provider["pathPrefix"])
-        self.assertEqual(data["defaultStorageProvider"], provider["name"])
         self.assertIn("dataSourceName", data)
+        self.assertIn("initAdminPassword", data)
+        self.assertNotIn("init_data.yaml", data)
+        self.assertEqual(urlsplit(data["S3_ENDPOINT"]).port, 9000)
+        self.assertEqual(data["S3_BUCKET"], "casdoor")
         values = ingress_values("existing")
         values["storageProxy"] = {"enabled": True}
         values["casdoor"] = {"envSecret": example["metadata"]["name"]}
-        values["initData"] = {"enabled": True, "existingSecret": example["metadata"]["name"]}
         docs = manifests(values, with_credentials=False)
-        self.assertEqual(provider["domain"], "https://" + resource(docs, "Ingress")["spec"]["rules"][1]["host"])
         pod = resource(docs, "Deployment")["spec"]["template"]["spec"]
-        init_volume = next(v for v in pod["volumes"] if v["name"] == "init-data")
-        self.assertEqual(init_volume["secret"]["secretName"], example["metadata"]["name"])
         self.assertEqual(pod["containers"][0]["envFrom"], pod["containers"][1]["envFrom"])
+        self.assertFalse(any(volume["name"] == "init-data" for volume in pod["volumes"]))
 
     def test_optional_full_config_secret_uses_string_data(self):
         docs = manifests({"configFromSecret": "custom-config", "config": "runmode = prod"})
@@ -322,9 +299,6 @@ class CasdoorChartTests(unittest.TestCase):
             {"storageProxy": {"hostname": "https://files.example.com"}},
             {"casdoor": {"envSecret": "casdoor-env"}, "storageProxy": {"enabled": True, "hostname": "casdoor.example.com"}, "ingress": {"enabled": True}},
             {"casdoor": {"envSecret": "bad/name"}},
-            {"initData": {"enabled": True}},
-            {"initData": {"watchInterval": -1}},
-            {"initData": {"enabled": True, "existingSecret": "storage", "existingSecretKey": "../bad"}},
             {"database": {"driver": "sqlite"}},
             {"database": {"host": ""}},
             {"database": {"password": ""}},
@@ -354,7 +328,10 @@ class CasdoorChartTests(unittest.TestCase):
         for variable in ("database.password", "database.user", "database.host", "database.useExistingSecret"):
             self.assertNotIn(variable, by_variable)
         self.assertEqual(by_variable["casdoor.envSecret"]["type"], "reference[secret]")
-        self.assertEqual(by_variable["initData.existingSecret"]["type"], "reference[secret]")
+        self.assertFalse(any(variable.startswith("initData.") for variable in by_variable))
+        groups = list(dict.fromkeys(question["group"] for question in questions))
+        self.assertEqual(groups, ["Images", "External database", "Object storage",
+                                  "Domain / HTTPS", "CPU / memory"])
 
         def value_at(path):
             value = values

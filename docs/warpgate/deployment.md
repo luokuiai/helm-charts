@@ -61,7 +61,16 @@ Native setup leaves an initialized database, administrator and SSH keys intact.
 Session recording is enabled on a newly initialized database. Normal gateway
 access and OIDC do not require it. For SSH, recording stores timed terminal
 input/output events as NDJSON rather than MP4; database traffic recordings use
-packet-capture data. The default local recording configuration is:
+packet-capture data. The form has two independent groups:
+
+- **Persistence** configures the local data volume for configuration,
+  certificates, local recordings and active S3 upload buffers. These settings
+  remain available when recording is disabled.
+- **Session recording** contains the recording switch and **Use S3 instead of
+  local recording storage**. Leave S3 disabled for local recordings; enabling
+  it shows the S3 settings.
+
+The default local recording configuration is:
 
 ```yaml
 warpgate:
@@ -71,8 +80,9 @@ persistence:
   size: 1Gi
 ```
 
-To install without recording or a PVC, set both `warpgate.recordSessions` and
-`persistence.enabled` to `false`. Recording settings subsequently live in
+To install without recording, set `warpgate.recordSessions: false` and keep
+`persistence.enabled: true` to retain configuration and certificates. To also
+omit the PVC, explicitly set `persistence.enabled: false`. Recording settings subsequently live in
 Warpgate's database; manage them in the admin UI. Setting
 `warpgate.recordSessions: false` does not disable recording in
 an already initialized database. If upgrading such an installation without a

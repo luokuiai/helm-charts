@@ -135,3 +135,21 @@ For new installations, the release name is editable; these charts do not force
 `catalog.cattle.io/release-name`. Installed Helm releases keep their original
 name during upgrades. A separate release can use another name; configure any
 shared resource names and environment Secret references for that installation.
+
+The name on Rancher's first installation page is controlled by Rancher, not by
+Helm values such as `nameOverride` or `fullnameOverride`. In the current upstream
+Dashboard, `catalog.cattle.io/release-name` both fills in the name and disables
+editing. Removing that annotation leaves the field editable but initially empty.
+There is no chart annotation for an editable default name in that implementation.
+
+To prefill an editable name for **any chart in this repository**, open its
+installation page and append `&name=<chart-name>` to the existing URL query.
+Use the `name` in its `Chart.yaml`, for example `&name=warpgate`, `&name=casdoor`,
+or `&name=openbao`. The ordinary catalog Install button does not add this parameter;
+automatically prefilling the name there requires a Rancher Dashboard change.
+
+Verified against the upstream Dashboard source on 2026-10-29:
+
+- [Installation page name initialization](https://github.com/rancher/dashboard/blob/master/shell/pages/c/_cluster/apps/charts/install.vue)
+- [Installation query parameter mapping](https://github.com/rancher/dashboard/blob/master/shell/mixins/chart.js)
+- [URL query parameter names](https://github.com/rancher/dashboard/blob/master/shell/config/query-params.js)

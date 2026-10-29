@@ -11,21 +11,19 @@ The form supports:
   other Casdoor variables, such as `initAdminPassword`.
 - External database type and database name.
 - Ingress hostname, Ingress Class, an existing TLS Secret, or cert-manager.
-- Optional provider initialization from a Secret for S3 / MinIO / Silo uploads.
 - Optional Caddy file proxy with its own hostname, sharing the environment Secret.
 - A public origin override, default storage provider, and CPU / memory.
 
 The chart installs one Casdoor replica by default. It installs no database,
-creates no file PVC, and does not create S3 buckets. Initialize storage providers
-from a Secret or configure them in Casdoor, then associate them with applications.
+creates no file PVC, and does not create S3 buckets. Create storage providers
+in the Casdoor admin console, then associate them with applications.
 Until object storage is configured, local uploads are not persistent across Pod replacement.
 
 Environment Secret entries become environment variables. `dataSourceName` is a
 required key reference; the database must already exist. Restart the Deployment
-after updating the environment Secret. S3 credentials belong in provider data,
-not arbitrary AWS environment variables. The provider initialization Secret is
-mounted as a file, and Casdoor stores the imported provider in its database.
-The initialization file can live in the same `casdoor-env` Secret. With the file
+after updating the environment Secret. Optional overrides include `origin`,
+`forceLanguage`, and `defaultStorageProvider`. Configure S3 credentials in the
+admin console's storage provider; its settings are retained in the database. With the file
 proxy enabled, add `S3_ENDPOINT` and `S3_BUCKET` there, enable Ingress and enter a
 separate file hostname. The proxy allows only anonymous GET/HEAD object reads
 from that bucket; keep Silo internal and grant anonymous `s3:GetObject` only on
@@ -36,8 +34,7 @@ external database Secrets remain supported. Explicit full image tags and digests
 win over legacy `image.name` / `image.tag` values.
 
 See the [deployment guide](../../../docs/casdoor/deployment.md),
-[environment Secret example](../../../docs/casdoor/env-secret.example.yaml), and
-[Silo initialization example](../../../docs/casdoor/s3-init-secret.example.yaml).
+[environment Secret example](../../../docs/casdoor/env-secret.example.yaml).
 See [UPSTREAM.md](UPSTREAM.md) for provenance and
 [README.upstream.md](README.upstream.md) for retained advanced settings.
 

@@ -12,7 +12,7 @@ questions:
     default: casdoor-env
     required: true
     group: "External database"
-    description: "Select an existing Secret in this namespace containing dataSourceName and other Casdoor environment variables, such as initAdminPassword. Shared with Caddy when enabled; add S3_ENDPOINT and S3_BUCKET there. Variable names are case-sensitive. Restart the Deployment after updating it. S3 providers can be automatically imported from init_data.yaml in the same Secret."
+    description: "Select an existing Secret in this namespace. Required: dataSourceName. Recommended for first installation: initAdminPassword. Optional overrides: origin, forceLanguage, defaultStorageProvider. Shared with Caddy when enabled; also requires S3_ENDPOINT and S3_BUCKET there. Variable names are case-sensitive. Restart the Deployment after updating it. Configure storage providers and S3 access keys in the Casdoor admin console."
   - variable: database.driver
     label: "External database type"
     type: enum
@@ -30,21 +30,50 @@ questions:
     required: true
     group: "External database"
     description: "Create a dedicated database and grant the user permission to create and migrate its tables."
+  - variable: defaultStorageProvider
+    label: "Default storage provider (optional)"
+    type: string
+    default: ""
+    group: "Object storage"
+    description: "Name of an admin-owned provider for default avatar storage, such as storage-silo. Create it in the Casdoor admin console. Can also be set through defaultStorageProvider in the environment Secret, which takes precedence. Applications still need their provider associations. No bucket or file PVC is created."
+  - variable: storageProxy.enabled
+    label: "Enable Caddy file proxy"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Object storage"
+    description: "Runs Caddy alongside Casdoor, reading S3_ENDPOINT and S3_BUCKET from the same environment Secret. Only GET/HEAD object reads from that bucket are allowed. Keep Silo internal and grant anonymous GetObject only on the dedicated upload bucket."
+  - variable: storageProxy.image
+    label: "Caddy image"
+    type: string
+    default: caddy:2.11.7-alpine
+    required: true
+    group: "Object storage"
+    show_if: storageProxy.enabled=true
+    description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
   - variable: ingress.enabled
     label: "Enable domain access (Ingress)"
     type: boolean
     default: "false"
     required: true
     group: "Domain / HTTPS"
-    description: "Requires an existing Ingress controller. Configure DNS separately."
+    description: "Creates routes for Casdoor and, when enabled, the file proxy. Both hostnames share the Ingress Class and HTTPS settings below. Requires an existing Ingress controller. Configure DNS separately."
   - variable: ingress.hosts.0.host
-    label: "Hostname"
+    label: "Casdoor hostname"
     type: hostname
     default: casdoor.example.com
     required: true
     group: "Domain / HTTPS"
     show_if: ingress.enabled=true
     description: "Enter only the hostname, without https:// or a path."
+  - variable: storageProxy.hostname
+    label: "File proxy hostname"
+    type: hostname
+    default: files.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&storageProxy.enabled=true
+    description: "Uses the same Ingress Class and HTTPS mode as Casdoor. The certificate must cover both hostnames. Enter only the hostname. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
   - variable: ingress.className
     label: "Ingress Class"
     type: "reference[networking.k8s.io.ingressclass]"
@@ -63,7 +92,7 @@ questions:
       - cert-manager
     group: "Domain / HTTPS"
     show_if: ingress.enabled=true
-    description: "disabled: HTTP; existing: an existing TLS Secret; cert-manager: issue and renew a certificate using an existing issuer."
+    description: "Applies to both the Casdoor and file proxy hostnames. disabled: HTTP; existing: a TLS Secret whose certificate covers both hostnames; cert-manager: issue and renew a certificate covering both using an existing issuer."
   - variable: ingress.certificate.issuerKind
     label: "Certificate issuer kind"
     type: enum
@@ -90,7 +119,7 @@ questions:
     required: true
     group: "Domain / HTTPS"
     show_if: ingress.enabled=true
-    description: "Existing Secret in existing mode; Secret to create in cert-manager mode. Ignored in disabled mode."
+    description: "Existing Secret in existing mode; Secret to create in cert-manager mode. When the file proxy is enabled, the certificate must cover both Casdoor and file hostnames. Ignored in disabled mode."
   - variable: ingress.certificate.issuerName
     label: "Certificate issuer name"
     type: "reference[cert-manager.io.issuer]"
@@ -105,58 +134,6 @@ questions:
     default: ""
     group: "Domain / HTTPS"
     description: "Leave empty to derive http(s)://hostname from Ingress. Set the complete public origin when TLS terminates elsewhere."
-  - variable: initData.enabled
-    label: "Initialize providers from a Secret"
-    type: boolean
-    default: "false"
-    required: true
-    group: "Object storage"
-    description: "Automatically import S3 / MinIO (including Silo) providers; no manual admin-console setup is required. The initialization file can be in the same Secret as the environment variables. This does not create buckets."
-  - variable: initData.existingSecret
-    label: "Provider initialization Secret"
-    type: "reference[secret]"
-    default: ""
-    required: true
-    group: "Object storage"
-    show_if: initData.enabled=true
-    description: "Secret containing init_data.yaml with Casdoor providers and optional applications. You can select casdoor-env to keep everything in one Secret. Store S3 access keys here instead of Helm values; imported providers are retained in the database. Updates are merged; supplied fields overwrite database values."
-  - variable: initData.existingSecretKey
-    label: "Initialization Secret key"
-    type: string
-    default: init_data.yaml
-    required: true
-    group: "Object storage"
-    show_if: initData.enabled=true
-    description: "The Secret key containing initialization data; .yaml/.yml uses YAML, other extensions use JSON."
-  - variable: defaultStorageProvider
-    label: "Default storage provider (optional)"
-    type: string
-    default: ""
-    group: "Object storage"
-    description: "Name of an admin-owned provider for default avatar storage, such as storage-silo. Create it in Casdoor or import it from the initialization Secret. Applications still need their provider associations. No bucket or file PVC is created."
-  - variable: storageProxy.enabled
-    label: "Enable Caddy file proxy"
-    type: boolean
-    default: "false"
-    required: true
-    group: "Object storage"
-    description: "Runs Caddy alongside Casdoor, reading S3_ENDPOINT and S3_BUCKET from the same environment Secret. Only GET/HEAD object reads from that bucket are allowed. Keep Silo internal and grant anonymous GetObject only on the dedicated upload bucket."
-  - variable: storageProxy.image
-    label: "Caddy image"
-    type: string
-    default: caddy:2.11.7-alpine
-    required: true
-    group: "Object storage"
-    show_if: storageProxy.enabled=true
-    description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
-  - variable: storageProxy.hostname
-    label: "File proxy hostname"
-    type: hostname
-    default: files.example.com
-    required: true
-    group: "Domain / HTTPS"
-    show_if: storageProxy.enabled=true
-    description: "Separate from the Casdoor hostname. Enable Ingress to create its route; it shares the Ingress Class and HTTPS settings. Existing certificates must cover both hostnames. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
   - variable: resources.requests.cpu
     label: "CPU request"
     type: string

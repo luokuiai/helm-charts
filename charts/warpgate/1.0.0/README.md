@@ -21,7 +21,8 @@ form. Client secrets stay out of Helm values and ConfigMaps. Automatic OIDC
 user creation is optional; users still need target access through Warpgate roles.
 
 Local recordings use `warpgate.recordSessions: true` and `persistence.enabled: true`
-by default. To install without recordings or a PVC, set both to `false`. For an
+by default. Disable `warpgate.recordSessions` to install without recordings;
+keep the PVC enabled to retain configuration and certificates. For an
 existing database, change recording settings in the Warpgate admin UI; the setup
 flag does not overwrite an existing database's recording setting.
 

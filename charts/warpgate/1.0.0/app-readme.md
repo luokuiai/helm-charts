@@ -27,14 +27,23 @@ its ServersTransport CRD is required. The chart configures certificate verificat
 for Warpgate's HTTPS backend. HTTP Ingress handles the Web UI and HTTP gateway;
 SSH and database gateways use the TCP Service ports.
 
-Recording is optional. **Initialize session recording** and **Keep local files
-in a PVC** are enabled by default (size `1Gi`). Disable both to install without
-recordings or a PVC. Existing databases keep their recording setting: change it
+Recording is optional. **Enable session recording on first setup** and **Retain
+local data (PVC)** are enabled by default (size `1Gi`). Turning recording off
+leaves persistence enabled for configuration and certificates. Existing
+databases keep their recording setting: change it
 in Warpgate's admin UI. Disabling recording does not disable gateway access or OIDC.
 
-For S3 / Silo recordings, also enable **Store recordings in S3**, enter the bucket,
+**Persistence** controls the local data PVC for configuration, certificates,
+local recordings and active S3 upload buffers. It is independent of recording
+and remains configurable even when recording is disabled.
+
+In **Session recording**, choose whether to record sessions. Leave
+**Use S3 instead of local recording storage** disabled for local recordings;
+enable it to show the S3 settings.
+
+For S3 / Silo recordings, enable **Use S3 instead of local recording storage**, enter the bucket,
 endpoint, region and prefix, and add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
-to the same Secret. Disable **Keep local files in a PVC** for a temporary `emptyDir`
+to the same Secret. Disable **Retain local data (PVC)** for a temporary `emptyDir`
 buffer. The S3 endpoint must be reachable by playback browsers, including over a
 private network or VPN; allow the Warpgate origin in bucket CORS. Completed
 recordings use signed GET links; unfinished buffers can be lost with the Pod.

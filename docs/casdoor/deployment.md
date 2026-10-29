@@ -94,20 +94,40 @@ hostname and TLS mode. Use the public-origin override when TLS terminates
 at another proxy or the controller redirects all HTTP traffic to HTTPS.
 Keep the public origin and application redirect URIs consistent.
 
-Both `origin` and `forceLanguage` can also be entries in the environment Secret.
+`origin`, `forceLanguage`, and `defaultStorageProvider` can also be entries in the environment Secret.
 For example, add these fields to `stringData` in the existing `casdoor-env` Secret,
 keeping its required `dataSourceName` and other entries:
 
 ```yaml
 origin: https://auth.example.com
 forceLanguage: "zh"
+defaultStorageProvider: storage-silo
 ```
 
 `origin` overrides the form's public origin, including an automatically derived
 Ingress origin. `forceLanguage` is supplied through the Secret rather than a
 separate form field; leave it unset for Casdoor's normal language selection.
+`defaultStorageProvider` selects an existing admin-owned storage provider by
+name for default avatars; create it in the admin console first. It does not
+associate providers with applications automatically.
 Environment variable names are case-sensitive. Restart the Deployment after
 changing the environment Secret.
+
+The environment Secret entries used by this chart are:
+
+| Key | When to set it | Purpose |
+|---|---|---|
+| `dataSourceName` | Required | Complete external database connection string |
+| `initAdminPassword` | Recommended on first installation | Password used only when creating the initial administrator |
+| `origin` | Optional | Override the public Casdoor URL |
+| `forceLanguage` | Optional | Set the interface language, such as `zh` |
+| `defaultStorageProvider` | Optional | Name of an existing admin-owned default avatar provider |
+| `S3_ENDPOINT` | Required with Caddy | Internal Silo / S3 API origin, including scheme and port |
+| `S3_BUCKET` | Required with Caddy | Dedicated bucket served by the file proxy |
+
+Database type and database name come from the form. You can explicitly override
+them with Casdoor's `driverName` and `dbName` environment variables if needed.
+Set S3 access keys in the Casdoor admin console's storage provider.
 
 Ingress is disabled by default. To configure Casdoor before exposing it:
 
@@ -144,43 +164,37 @@ database and object bucket must both be backed up appropriately. Configure
 object storage before uploading files that must survive Pod replacement;
 existing local files are not automatically migrated to S3.
 
-### Initialize Silo storage from a Secret
+### Silo storage and Caddy file proxy
 
-The form exposes Casdoor's existing `initData` mechanism. Enable
-**Initialize providers from a Secret**, select **Provider initialization Secret**,
-and leave its key as `init_data.yaml` for YAML. You can select the same
-`casdoor-env` Secret for both environment variables and provider initialization.
-The file can include other Casdoor initialization data. It is imported
-automatically; configuring the provider manually in the admin console is optional.
+In the Casdoor admin console, create a provider with these settings:
 
-Use [s3-init-secret.example.yaml](s3-init-secret.example.yaml) as a template:
+| Field | Example |
+|---|---|
+| Owner | `admin` |
+| Name | `storage-silo` |
+| Category | `Storage` |
+| Type | `MinIO` |
+| Client ID / Client secret | Scoped Silo access key / secret key |
+| Region | `us-east-1` |
+| Endpoint | `http://silo.storage.svc.cluster.local:9000` |
+| Bucket | `casdoor` |
+| Domain | `https://files.example.com` |
+| Path prefix | `casdoor` |
 
-- `type: MinIO` connects to Silo using path-style S3 requests.
-- `clientId` / `clientSecret` are a scoped Silo access key and secret key.
-- `endpoint` is the API URL Casdoor can reach, for example
-  `http://silo.storage.svc.cluster.local:9000` for release `silo` in namespace
-  `storage`. Use port `9000`, not the Console's `9001`.
-- `bucket: casdoor` selects an existing bucket. In this example `pathPrefix`
-  also equals `casdoor`, so browser URLs use `/casdoor/<object>` while the MinIO
-  provider removes that prefix from the stored object key.
-- `domain` is the file proxy origin, e.g. `https://files.example.com`.
-  It must match the scheme and **File proxy hostname** configured in the chart.
-- `S3_ENDPOINT` / `S3_BUCKET` are Caddy's environment variables. Keep them equal
-  to the provider's `endpoint` / `bucket` in `init_data.yaml`. Casdoor does not
-  directly read `S3_*` to configure its provider.
+The endpoint is Silo's internal API URL, using port `9000`, not the Console's
+`9001`. Bucket and Path prefix both match the dedicated bucket name, so browser
+URLs use `/casdoor/<object>` while the provider removes that prefix from the
+stored object key. Domain matches the scheme and **File proxy hostname**.
 
-The example is one complete Secret containing the database connection, initial
-administrator password, Caddy environment variables, and provider initialization
-file. Use it instead of the database-only environment example. Enable the proxy
-and Ingress, and point both DNS names at the Ingress controller:
+In the [environment Secret example](env-secret.example.yaml), uncomment
+`S3_ENDPOINT` and `S3_BUCKET` and match them to the provider's Endpoint and Bucket.
+These two environment variables configure Caddy; they do not create or configure
+Casdoor providers. Caddy needs no access keys. Enable the proxy and Ingress,
+and point both DNS names at the Ingress controller:
 
 ```yaml
 casdoor:
   envSecret: casdoor-env
-initData:
-  enabled: true
-  existingSecret: casdoor-env
-  existingSecretKey: init_data.yaml
 storageProxy:
   enabled: true
   hostname: files.example.com
@@ -216,7 +230,6 @@ Keep Silo API Ingress disabled. Caddy allows only GET/HEAD for
 `/<S3_BUCKET>/<object>`, rejects other buckets, bucket listings and write requests,
 and strips query parameters and S3 authorization headers. It needs no S3 keys.
 Casdoor uses the scoped provider credentials for uploads over the internal API.
-The example's `defaultStorageProvider` sets the provider for default avatars.
 
 Create a dedicated bucket for these public resources and give anonymous users
 only `s3:GetObject` on its objects. Other Silo buckets stay private. In the Silo
@@ -242,22 +255,18 @@ documents in another bucket. Verify an avatar URL such as
 path returns 404. Browser reads still require this anonymous object-read policy;
 the proxy does not sign requests to a private bucket.
 
-Importing the provider does not attach it to applications. Select `storage-silo`
-in the relevant applications' provider list after import, or include their full
-provider lists in the initialization data. Arrays are replaced during a merge,
-so preserve existing sign-in providers when managing application lists.
+Select `storage-silo` in the relevant applications' provider lists, preserving
+their existing sign-in providers.
 The optional `defaultStorageProvider` selects an `admin`-owned provider by its
 name, such as `storage-silo`, for Casdoor's default avatar storage; it does not
 replace application provider associations or create the provider.
 
-Initialization uses `merge: true` and checks for changes every 30 seconds by
-default. Fields present in a changed file overwrite the database values; omitted
-fields are retained. Provider credentials are therefore stored in both the Secret
-and Casdoor's external database. Use an existing Secret to keep them out of Helm
-values. Setting `initData.watchInterval: 0` applies only at startup; restart the
-Deployment after changing an external initialization Secret in that mode.
+Provider settings and credentials are stored in Casdoor's external database.
+The chart no longer imports provider initialization files. Previously imported
+providers remain in the database and can be maintained in the admin console.
+Remove the unused initialization file from the environment Secret when upgrading.
 Arbitrary `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` variables do not configure
-a Casdoor storage provider; use provider initialization or the admin console.
+a Casdoor storage provider; configure it in the admin console.
 
 Official storage documentation:
 https://casdoor.ai/docs/provider/storage/overview/
