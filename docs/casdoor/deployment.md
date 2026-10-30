@@ -142,11 +142,45 @@ kubectl -n identity port-forward svc/casdoor 8000:8000
 Open `http://localhost:8000`, secure the administrator account, then configure
 the applications and storage provider before enabling public access.
 
+## Local file uploads
+
+Under **File storage**, choose `local` to persist uploaded files at `/files`.
+Select an existing PVC in the installation namespace, or leave the selection
+empty to create one. New PVCs default to `1Gi` and Storage Class `local-path`;
+an empty Storage Class uses the cluster default. For example:
+
+```yaml
+storage:
+  mode: local
+persistence:
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi
+```
+
+Local mode requires `replicaCount: 1` and `autoscaling.enabled: false`. Updates
+use Recreate so the old Pod releases its volume before its replacement starts.
+The chart supplies `podSecurityContext.fsGroup: 1000` unless explicitly overridden;
+existing volumes must be writable by Casdoor. The K3s `local-path` provisioner
+keeps files on the assigned node, so back up the volume separately from PostgreSQL.
+
+Configure the matching Local File System provider in Casdoor and associate it
+with the applications that upload files. Follow the official
+[Local File System provider guide](https://casdoor.ai/docs/provider/storage/localFileSystem/).
+Local file URLs use Casdoor's domain; no Caddy proxy or separate file domain is needed.
+
+The chart retains its PVC on uninstall or a switch to S3. To reuse a retained
+claim, enter its name in `persistence.existingClaim`. Resize existing PVCs
+separately. Changing storage mode does not copy files, rewrite URLs or update
+provider settings in the database. Back up or migrate files before switching
+away from local storage. Local mode ignores any retained S3 proxy form values.
+
 ## S3 / S3-compatible uploads
 
 Casdoor can store uploaded resources such as avatars in object storage.
-The chart does not create a file PVC. External database persistence does
-not persist files uploaded through a local filesystem provider.
+Select `s3` under **File storage** (the default). This mode creates no file PVC.
+External database persistence does not persist local uploaded files; use local
+mode above when uploading to the local filesystem.
 
 In Casdoor's **Providers** page, create a provider in the **Storage** category:
 
@@ -199,6 +233,8 @@ and point both DNS names at the Ingress controller:
 ```yaml
 casdoor:
   envSecret: casdoor-env
+storage:
+  mode: s3
 storageProxy:
   enabled: true
   hostname: files.example.com

@@ -14,11 +14,21 @@ Use **Domain / HTTPS** to configure the hostname, Ingress Class, and an
 existing TLS Secret or cert-manager issuer. The public origin is derived from
 Ingress unless an override is supplied.
 
-For uploads, create a Storage provider in the Casdoor admin console and enter
+Choose **File storage**: `s3` (default) or `local`.
+
+For local uploads, select `local` to mount a PVC at `/files`. Choose an existing
+PVC or create one (default 1Gi, Storage Class `local-path`). Empty Storage Class
+uses the cluster default. Local mode uses one Pod, disables the Caddy file proxy,
+and requires autoscaling off. Configure a Local File System storage provider in
+Casdoor and associate it with the applications that upload files.
+The PVC is retained on uninstall or a switch to S3; switching does not migrate
+files or change Casdoor's providers. Reuse retained data by selecting its PVC.
+
+For S3 uploads, create a Storage provider in the Casdoor admin console and enter
 the bucket, endpoint, and S3 access keys there. Silo uses the MinIO provider type.
 Associate the provider with the
 applications that upload files. Provider settings are stored in the external
-database. No file PVC or bucket is created. Returned file URLs must be accessible
+database. S3 mode creates no file PVC or bucket. Returned file URLs must be accessible
 to browsers; an internal S3 endpoint alone does not provide public file access.
 
 Enable **Caddy file proxy** to serve the dedicated bucket through a separate

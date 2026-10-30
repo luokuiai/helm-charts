@@ -1,3 +1,12 @@
+{{- $localStorage := eq .Values.storage.mode "local" }}
+{{- $storageProxyEnabled := and (not $localStorage) .Values.storageProxy.enabled }}
+{{- if and $localStorage (or .Values.autoscaling.enabled (ne (int .Values.replicaCount) 1)) }}
+{{- fail "Local file storage requires replicaCount=1 and autoscaling.enabled=false" }}
+{{- end }}
+{{- $podSecurityContext := deepCopy .Values.podSecurityContext }}
+{{- if and $localStorage (not (hasKey $podSecurityContext "fsGroup")) }}
+{{- $_ := set $podSecurityContext "fsGroup" 1000 }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,6 +14,11 @@ metadata:
   labels:
     {{- include "casdoor.labels" . | nindent 4 }}
 spec:
+  {{- if $localStorage }}
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  {{- end }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
@@ -15,7 +29,7 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ tpl .Values.config . | toYaml | sha256sum }}
-        {{- if .Values.storageProxy.enabled }}
+        {{- if $storageProxyEnabled }}
         checksum/storage-proxy: {{ include (print $.Template.BasePath "/storage-proxy-configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- if and (not .Values.casdoor.envSecret) (not .Values.database.useExistingSecret) }}
@@ -33,7 +47,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "casdoor.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml $podSecurityContext | nindent 8 }}
         {{ if .Values.initContainersEnabled }}
       initContainers:
           {{- tpl .Values.initContainers . | nindent 8 }}
@@ -98,6 +112,10 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            {{- if $localStorage }}
+            - name: files
+              mountPath: /files
+            {{- end }}
             {{- if .Values.defaultConfigVolumeEnabled }}
             - name: config-volume
               mountPath: /conf
@@ -105,7 +123,7 @@ spec:
             {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
-        {{- if .Values.storageProxy.enabled }}
+        {{- if $storageProxyEnabled }}
         - name: storage-proxy
           image: {{ .Values.storageProxy.image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -156,7 +174,12 @@ spec:
           {{- .Values.extraContainers | nindent 8 }}
         {{- end }}
       volumes:
-        {{- if .Values.storageProxy.enabled }}
+        {{- if $localStorage }}
+        - name: files
+          persistentVolumeClaim:
+            claimName: {{ include "casdoor.claimName" . }}
+        {{- end }}
+        {{- if $storageProxyEnabled }}
         - name: storage-proxy-config
           configMap:
             name: {{ include "casdoor.fullname" . }}-storage-proxy

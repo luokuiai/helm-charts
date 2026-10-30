@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled }}
+{{- $storageProxyEnabled := and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled }}
 {{- $certificate := .Values.ingress.certificate }}
 {{- $annotations := deepCopy .Values.ingress.annotations }}
 {{- if not .Values.ingress.hosts }}
@@ -37,7 +38,7 @@ spec:
         {{- range .Values.ingress.hosts }}
         - {{ required "ingress.hosts[].host is required" .host | quote }}
         {{- end }}
-        {{- if .Values.storageProxy.enabled }}
+        {{- if $storageProxyEnabled }}
         - {{ .Values.storageProxy.hostname | quote }}
         {{- end }}
   {{- else }}
@@ -59,7 +60,7 @@ spec:
                 port: { name: http }
           {{- end }}
     {{- end }}
-    {{- if .Values.storageProxy.enabled }}
+    {{- if $storageProxyEnabled }}
     - host: {{ .Values.storageProxy.hostname | quote }}
       http:
         paths:

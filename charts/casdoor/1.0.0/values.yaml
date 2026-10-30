@@ -14,8 +14,20 @@ casdoor:
   # Casdoor environment variables. Environment values override app.conf defaults.
   envSecret: casdoor-env
 
+storage:
+  # File storage infrastructure. Configure the matching Provider in Casdoor.
+  # Keep s3 as the default so existing installations do not gain a file PVC.
+  mode: s3
+
+# Used only with storage.mode=local. The PVC is mounted at /files.
+persistence:
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi
+
 # Optional Caddy file proxy. Silo stays internal; only the selected bucket's
 # anonymous GET/HEAD object reads are forwarded. Shares casdoor.envSecret.
+# Only runs with storage.mode=s3.
 storageProxy:
   enabled: false
   image: caddy:2.11.7-alpine

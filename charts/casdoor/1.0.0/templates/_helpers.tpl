@@ -124,6 +124,10 @@ Create EnvfromConfigmap
 {{- end -}}
 {{- end -}}
 
+{{- define "casdoor.claimName" -}}
+{{- default (printf "%s-files" (include "casdoor.fullname" .)) .Values.persistence.existingClaim -}}
+{{- end -}}
+
 {{- define "casdoor.origin" -}}
 {{- if .Values.origin -}}
 {{- .Values.origin -}}

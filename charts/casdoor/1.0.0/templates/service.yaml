@@ -18,7 +18,7 @@ spec:
       nodePort: {{ .Values.service.nodePort }}
     {{- end }}
       name: http
-    {{- if .Values.storageProxy.enabled }}
+    {{- if and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled }}
     - port: {{ .Values.storageProxy.port }}
       targetPort: files
       protocol: TCP

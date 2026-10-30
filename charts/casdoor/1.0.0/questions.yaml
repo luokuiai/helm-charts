@@ -12,34 +12,74 @@ questions:
     default: casdoor-env
     required: true
     group: "Environment variables"
-    # Reference descriptions collapse ordinary newlines; use Unicode line separators.
-    description: "Required:\u2028\
-      dataSourceName: database connection string.\u2028\
-      Optional:\u2028\
-      driverName: postgres (default) or mysql.\u2028\
-      dbName: database name (default: casdoor).\u2028\
-      initAdminPassword: initial admin credential; new account only.\u2028\
-      origin: public URL; defaults to the Ingress URL.\u2028\
-      forceLanguage: interface language, e.g. zh.\u2028\
-      defaultStorageProvider: existing Provider name for avatars.\u2028\
-      Caddy only (both required when enabled):\u2028\
-      S3_ENDPOINT: internal S3 API URL, including scheme and port.\u2028\
-      S3_BUCKET: bucket served by the proxy.\u2028\
-      Case-sensitive. Restart the Deployment after changes."
+    description: "Required key: dataSourceName. See the help icon for all variables. Names are case-sensitive; restart the Deployment after changes."
+    # Rancher renders descriptions as plain text; tooltips support HTML formatting.
+    tooltip: |-
+      <b>Required</b>
+      <ul>
+        <li><code>dataSourceName</code>: database connection string.</li>
+      </ul>
+      <b>Optional</b>
+      <ul>
+        <li><code>driverName</code>: postgres (default) or mysql.</li>
+        <li><code>dbName</code>: database name; default casdoor.</li>
+        <li><code>initAdminPassword</code>: initial admin credential; new account only.</li>
+        <li><code>origin</code>: public URL; defaults to the Ingress URL.</li>
+        <li><code>forceLanguage</code>: interface language, e.g. zh.</li>
+        <li><code>defaultStorageProvider</code>: existing Provider name for avatars.</li>
+      </ul>
+      <b>Caddy proxy: both required when enabled</b>
+      <ul>
+        <li><code>S3_ENDPOINT</code>: internal S3 API URL with scheme and port.</li>
+        <li><code>S3_BUCKET</code>: bucket served by the proxy.</li>
+      </ul>
+  - variable: storage.mode
+    label: "File storage"
+    type: enum
+    default: s3
+    required: true
+    options:
+      - s3
+      - local
+    group: "File storage"
+    description: "s3: external object storage. local: files on a PVC at /files. Configure the matching Provider in Casdoor; switching does not migrate files or update existing Providers."
+  - variable: persistence.existingClaim
+    label: "Existing files PVC (optional)"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "Leave empty to create a PVC. Existing claims must be in this namespace and writable by Casdoor (UID/GID 1000 by default)."
+  - variable: persistence.storageClass
+    label: "Files storage class"
+    type: storageclass
+    default: local-path
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "For new PVCs only. Leave empty to use the cluster default. local-path stores files on the assigned K3s node."
+  - variable: persistence.size
+    label: "Initial files storage size"
+    type: string
+    default: 1Gi
+    required: true
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "For new PVCs only; resize existing claims separately. Local mode uses one Pod. The chart retains its PVC on uninstall or a switch to S3."
   - variable: storageProxy.enabled
     label: "Enable Caddy file proxy"
     type: boolean
     default: "false"
     required: true
-    group: "Object storage"
-    description: "Runs Caddy alongside Casdoor, reading S3_ENDPOINT and S3_BUCKET from the same environment Secret. Only GET/HEAD object reads from that bucket are allowed. Keep Silo internal and grant anonymous GetObject only on the dedicated upload bucket."
+    group: "File storage"
+    show_if: storage.mode=s3
+    description: "Optional proxy for S3 files. Reads S3_ENDPOINT and S3_BUCKET from the environment Secret. Keep Silo internal; grant anonymous GetObject only on the dedicated upload bucket."
   - variable: storageProxy.image
     label: "Caddy image"
     type: string
     default: caddy:2.11.7-alpine
     required: true
-    group: "Object storage"
-    show_if: storageProxy.enabled=true
+    group: "File storage"
+    show_if: storage.mode=s3&&storageProxy.enabled=true
     description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
   - variable: ingress.enabled
     label: "Enable domain access (Ingress)"
@@ -62,7 +102,7 @@ questions:
     default: files.example.com
     required: true
     group: "Domain / HTTPS"
-    show_if: ingress.enabled=true&&storageProxy.enabled=true
+    show_if: ingress.enabled=true&&storage.mode=s3&&storageProxy.enabled=true
     description: "Uses the same Ingress Class and HTTPS mode as Casdoor. The certificate must cover both hostnames. Enter only the hostname. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
   - variable: ingress.className
     label: "Ingress Class"

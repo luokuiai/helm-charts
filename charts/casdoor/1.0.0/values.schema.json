@@ -4,7 +4,9 @@
   "required": [
     "database",
     "ingress",
-    "casdoor"
+    "casdoor",
+    "storage",
+    "persistence"
   ],
   "properties": {
     "replicaCount": {
@@ -164,6 +166,31 @@
           "type": "string",
           "maxLength": 253,
           "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["s3", "local"]
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["existingClaim", "storageClass", "size"],
+      "properties": {
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|Pi|Ei)$"
         }
       }
     },

@@ -1,4 +1,4 @@
-{{- if .Values.storageProxy.enabled }}
+{{- if and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled }}
 {{- if not .Values.casdoor.envSecret }}
 {{- fail "storageProxy requires casdoor.envSecret containing S3_ENDPOINT and S3_BUCKET" }}
 {{- end }}

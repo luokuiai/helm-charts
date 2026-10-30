@@ -232,6 +232,58 @@ class CasdoorChartTests(unittest.TestCase):
                       resource(docs, "ConfigMap")["data"]["app.conf"])
         self.assertFalse(any(doc["kind"] == "PersistentVolumeClaim" for doc in docs))
 
+    def test_local_uploads_have_a_retained_pvc_and_safe_rollouts(self):
+        docs = manifests({"storage": {"mode": "local"}}, with_credentials=False,
+                         release="identity")
+        claim = resource(docs, "PersistentVolumeClaim")
+        self.assertEqual(claim["metadata"]["name"], "identity-casdoor-files")
+        self.assertEqual(claim["metadata"]["annotations"]["helm.sh/resource-policy"], "keep")
+        self.assertEqual(claim["spec"], {
+            "accessModes": ["ReadWriteOnce"], "storageClassName": "local-path",
+            "resources": {"requests": {"storage": "1Gi"}}})
+        deployment = resource(docs, "Deployment")
+        self.assertEqual(deployment["spec"]["strategy"],
+                         {"type": "Recreate", "rollingUpdate": None})
+        pod = deployment["spec"]["template"]["spec"]
+        self.assertEqual(pod["securityContext"]["fsGroup"], 1000)
+        self.assertIn({"name": "files", "persistentVolumeClaim": {
+            "claimName": "identity-casdoor-files"}}, pod["volumes"])
+        self.assertIn({"name": "files", "mountPath": "/files"},
+                      pod["containers"][0]["volumeMounts"])
+
+    def test_local_pvc_selection_and_cluster_default_storage_class(self):
+        values = {"storage": {"mode": "local"},
+                  "persistence": {"storageClass": "", "size": "2Gi"},
+                  "podSecurityContext": {"fsGroup": 2000}}
+        docs = manifests(values, with_credentials=False)
+        claim = resource(docs, "PersistentVolumeClaim")
+        self.assertNotIn("storageClassName", claim["spec"])
+        self.assertEqual(claim["spec"]["resources"]["requests"]["storage"], "2Gi")
+        pod = resource(docs, "Deployment")["spec"]["template"]["spec"]
+        self.assertEqual(pod["securityContext"]["fsGroup"], 2000)
+        values["persistence"]["existingClaim"] = "old-uploads"
+        docs = manifests(values, with_credentials=False)
+        self.assertFalse(any(doc["kind"] == "PersistentVolumeClaim" for doc in docs))
+        pod = resource(docs, "Deployment")["spec"]["template"]["spec"]
+        self.assertIn({"name": "files", "persistentVolumeClaim": {
+            "claimName": "old-uploads"}}, pod["volumes"])
+
+    def test_local_mode_ignores_retained_s3_form_settings(self):
+        values = ingress_values("existing")
+        values.update({"storage": {"mode": "local"}, "storageProxy": {"enabled": True}})
+        docs = manifests(values)
+        pod = resource(docs, "Deployment")["spec"]["template"]
+        self.assertEqual(len(pod["spec"]["containers"]), 1)
+        self.assertNotIn("checksum/storage-proxy", pod["metadata"]["annotations"])
+        self.assertFalse(any(volume["name"].startswith("storage-proxy")
+                             for volume in pod["spec"]["volumes"]))
+        self.assertFalse(any(doc["metadata"]["name"].endswith("-storage-proxy") for doc in docs))
+        self.assertEqual([port["name"] for port in resource(docs, "Service")["spec"]["ports"]],
+                         ["http"])
+        ingress = resource(docs, "Ingress")
+        self.assertEqual([rule["host"] for rule in ingress["spec"]["rules"]], ["sso.example.com"])
+        self.assertEqual(ingress["spec"]["tls"][0]["hosts"], ["sso.example.com"])
+
     def test_storage_proxy_is_optional_and_shares_the_environment_secret(self):
         default = manifests(with_credentials=False)
         self.assertEqual(len(resource(default, "Deployment")["spec"]["template"]["spec"]["containers"]), 1)
@@ -296,6 +348,10 @@ class CasdoorChartTests(unittest.TestCase):
         self.assertEqual(render(with_credentials=False).returncode, 0)
         self.assertNotEqual(render({"casdoor": {"envSecret": ""}}, with_credentials=False).returncode, 0)
         cases = [
+            {"storage": {"mode": "invalid"}},
+            {"storage": {"mode": "local"}, "replicaCount": 2},
+            {"storage": {"mode": "local"}, "autoscaling": {"enabled": True}},
+            {"storage": {"mode": "local"}, "persistence": {"size": "0Gi"}},
             {"storageProxy": {"enabled": True}},
             {"casdoor": {"envSecret": "casdoor-env"}, "storageProxy": {"enabled": True, "port": 8000}},
             {"storageProxy": {"hostname": "https://files.example.com"}},
@@ -332,14 +388,17 @@ class CasdoorChartTests(unittest.TestCase):
         self.assertEqual(by_variable["casdoor.envSecret"]["type"], "reference[secret]")
         self.assertFalse(any(variable.startswith("database.") for variable in by_variable))
         self.assertNotIn("defaultStorageProvider", by_variable)
-        description = by_variable["casdoor.envSecret"]["description"]
+        help_text = by_variable["casdoor.envSecret"]["tooltip"]
         for key in ("dataSourceName", "driverName", "dbName", "initAdminPassword", "origin",
                     "forceLanguage", "defaultStorageProvider", "S3_ENDPOINT", "S3_BUCKET"):
-            self.assertIn(key, description)
+            self.assertIn(key, help_text)
         self.assertFalse(any(variable.startswith("initData.") for variable in by_variable))
         groups = list(dict.fromkeys(question["group"] for question in questions))
-        self.assertEqual(groups, ["Images", "Environment variables", "Object storage",
+        self.assertEqual(groups, ["Images", "Environment variables", "File storage",
                                   "Domain / HTTPS", "CPU / memory"])
+        self.assertEqual(by_variable["storage.mode"]["options"], ["s3", "local"])
+        self.assertEqual(by_variable["persistence.existingClaim"]["show_if"], "storage.mode=local")
+        self.assertEqual(by_variable["storageProxy.enabled"]["show_if"], "storage.mode=s3")
 
         def value_at(path):
             value = values

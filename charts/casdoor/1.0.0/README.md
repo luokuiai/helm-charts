@@ -8,16 +8,28 @@ The form supports:
 
 - One complete image field, default `casbin/casdoor:v4.24.0`.
 - An **Environment variables** menu selecting a Secret (default `casdoor-env`),
-  with help for `dataSourceName`, `driverName`, `dbName`, `initAdminPassword`,
+  with a short required-key hint and grouped help in the field's help icon for
+  `dataSourceName`, `driverName`, `dbName`, `initAdminPassword`,
   `origin`, `forceLanguage`, `defaultStorageProvider`, `S3_ENDPOINT` and `S3_BUCKET`.
 - Ingress hostname, Ingress Class, an existing TLS Secret, or cert-manager.
-- Optional Caddy file proxy with its own hostname, sharing the environment Secret.
+- A **File storage** choice: external S3 (default), or local uploads on a PVC at
+  `/files`. Local mode supports a new 1Gi PVC or an existing claim.
+- Optional Caddy file proxy in S3 mode, with its own hostname and the same environment Secret.
 - A public origin override and CPU / memory.
 
-The chart installs one Casdoor replica by default. It installs no database,
-creates no file PVC, and does not create S3 buckets. Create storage providers
-in the Casdoor admin console, then associate them with applications.
-Until object storage is configured, local uploads are not persistent across Pod replacement.
+The chart installs one Casdoor replica by default. It installs no database or
+S3 buckets. S3 mode creates no file PVC. Create the matching storage provider
+in the Casdoor admin console, then associate it with applications; the chart's
+storage choice does not update providers or migrate existing files.
+
+Select `storage.mode: local` to persist uploads at `/files`. Local mode requires
+one replica with autoscaling disabled and uses Recreate updates. New PVCs use
+`persistence.storageClass` (default `local-path`) and `persistence.size` (default
+`1Gi`); an empty storage class uses the cluster default. Set
+`persistence.existingClaim` to reuse a claim in the installation namespace.
+The chart defaults `fsGroup` to 1000 in local mode unless explicitly overridden.
+PVCs are retained on uninstall or a switch to S3. Resize and migrate files
+separately; restore the retained claim using `persistence.existingClaim`.
 
 Environment Secret entries become environment variables. `dataSourceName` is a
 required key reference; the database must already exist. Restart the Deployment

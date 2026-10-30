@@ -33,7 +33,13 @@
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
 {{- end }}
 
-{{- if and .Values.storageProxy.enabled .Values.ingress.enabled }}
+{{- if eq .Values.storage.mode "local" }}
+Local uploads: /files is mounted from PVC {{ include "casdoor.claimName" . }}.
+Select the Local File System storage provider in Casdoor and associate it with applications.
+Existing files and provider settings are not migrated automatically.
+{{- end }}
+
+{{- if and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled .Values.ingress.enabled }}
 File proxy: http{{ if or .Values.ingress.tls (ne .Values.ingress.certificate.mode "disabled") }}s{{ end }}://{{ .Values.storageProxy.hostname }}/<S3_BUCKET>/<object>
 Set the storage provider Domain to this origin and Path prefix to S3_BUCKET.
 {{- end }}
