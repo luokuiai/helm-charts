@@ -1,7 +1,7 @@
 # Deploying Casdoor from Rancher
 
-Add this Git repository to Rancher Apps and select `casdoor` version `1.0.0`.
-The chart is based on the official Casdoor v4.24.0 release. It deploys one
+Add this Git repository to Rancher Apps and select `casdoor` version `1.0.1`.
+The chart is based on the official Casdoor v4.25.0 release. It deploys one
 Casdoor Pod by default and can use the existing Traefik Ingress on K3s.
 
 ## External database
@@ -13,7 +13,7 @@ the Casdoor Pod can reach the database. This chart does not create a database
 server or manage its backups, upgrades, or data lifecycle.
 
 The **Casdoor image** field is one full reference, defaulting to
-`casbin/casdoor:v4.24.0`. Enter a complete mirror reference or digest when needed.
+`casbin/casdoor:v4.25.0`. Enter a complete mirror reference or digest when needed.
 The former `image.repository` / `image.name` / `image.tag` layout remains supported
 in YAML when the repository is untagged; an explicit tag or digest takes precedence.
 
@@ -42,7 +42,7 @@ Do not commit real credentials. An example installation is:
 ```bash
 kubectl create namespace identity
 kubectl apply -f /path/to/private/casdoor-env.yaml
-helm install casdoor charts/casdoor/1.0.0 \
+helm install casdoor charts/casdoor/1.0.1 \
   --namespace identity \
   --set casdoor.envSecret=casdoor-env
 ```

@@ -1,0 +1,340 @@
+# Default values for casdoor.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  # Full image reference, including its version or digest.
+  repository: casbin/casdoor:v4.25.0
+  pullPolicy: IfNotPresent
+
+casdoor:
+  # Existing Secret containing dataSourceName, driverName, dbName and other
+  # Casdoor environment variables. Environment values override app.conf defaults.
+  envSecret: casdoor-env
+
+storage:
+  # File storage infrastructure. Configure the matching Provider in Casdoor.
+  # Keep s3 as the default so existing installations do not gain a file PVC.
+  mode: s3
+
+# Used only with storage.mode=local. The PVC is mounted at /files.
+persistence:
+  existingClaim: ""
+  storageClass: local-path
+  size: 1Gi
+
+# Optional Caddy file proxy. Silo stays internal; only the selected bucket's
+# anonymous GET/HEAD object reads are forwarded. Shares casdoor.envSecret.
+# Only runs with storage.mode=s3.
+storageProxy:
+  enabled: false
+  image: caddy:2.11.7-alpine
+  hostname: files.example.com
+  port: 8080
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ref: https://casdoor.org/docs/basic/server-installation#via-ini-file
+config: |
+  appname = casdoor
+  httpport = {{ .Values.service.port }}
+  runmode = prod
+  SessionOn = true
+  copyrequestbody = true
+  driverName = {{ .Values.database.driver }}
+  # The connection string is supplied through a Secret-backed environment variable.
+  dataSourceName =
+  dbName = {{ include "casdoor.dbName" . }}
+  redisEndpoint =
+  defaultStorageProvider = {{ .Values.defaultStorageProvider | quote }}
+  isCloudIntranet = false
+  authState = "casdoor"
+  socks5Proxy = ""
+  verificationCodeTimeout = 10
+  initScore = 0
+  logPostOnly = true
+  origin = {{ include "casdoor.origin" . | quote }}
+  enableGzip = true
+  ldapServerPort = 10389
+
+# Optional advanced override for the complete app.conf. Set config: "" when
+# referring to an existing Secret. Database credentials use casdoor.envSecret.
+configFromSecret: ""
+
+# Leave empty to derive the public origin from Ingress, or from the request
+# when Ingress is disabled. Set the full URL when TLS terminates elsewhere.
+origin: ""
+
+# Name of an admin-owned default avatar storage provider. Create it in the
+# Casdoor admin console. Application provider associations are separate.
+defaultStorageProvider: ""
+
+database:
+  # app.conf defaults and legacy YAML settings. Use driverName and dbName in
+  # casdoor.envSecret for database configuration. No database server is installed.
+  driver: postgres
+
+  # Legacy fallback used only when casdoor.envSecret is empty.
+  # Existing Secret must contain the complete connection string in dataSourceName.
+  # Driver and databaseName still apply; host/user/password/port/sslMode are ignored.
+  useExistingSecret: false
+  existingSecret: ""
+
+  user: ""
+  password: ""
+  host: ""
+  # 0 selects the driver default: postgres 5432, mysql 3306.
+  port: 0
+  databaseName: casdoor
+
+  sslMode: disable
+
+ldap:
+  enabled: false
+  service:
+    port: 389
+
+imagePullSecrets: []
+nameOverride: casdoor
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+probe:
+  # -- HTTP path the probes request, /api/health needs no sign-in and does not query the database
+  path: /api/health
+  # -- Holds off the liveness and readiness probes until Casdoor has started, which can take minutes on the
+  # first start (database migration) or on a busy node: up to failureThreshold * periodSeconds
+  startup:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  readiness:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+service:
+  type: ClusterIP
+  port: 8000
+  annotations: {}
+
+ingress:
+  enabled: false
+  certificate:
+    mode: disabled
+    secretName: casdoor-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: casdoor.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# -- Expose the service via Kubernetes Gateway API HTTPRoute.
+# Requires Gateway API CRDs (gateway.networking.k8s.io/v1) and a compatible
+# controller (e.g. Istio, Envoy Gateway, Kong, NGINX Gateway Fabric).
+# See: https://gateway-api.sigs.k8s.io/guides/
+gatewayApi:
+  # -- Enable HTTPRoute resource creation.
+  enabled: false
+  # -- Create a Gateway for this chart when no existing Gateway is available.
+  createGateway: false
+  # -- Annotations to add to the HTTPRoute resource.
+  annotations: {}
+  # -- Labels to add to the HTTPRoute resource (in addition to default chart labels).
+  labels: {}
+  # -- Configure the Gateway resource when gatewayApi.createGateway=true.
+  gateway:
+    # -- Gateway name. Defaults to chart fullname when empty.
+    name: ""
+    # -- GatewayClass used by the created Gateway.
+    gatewayClassName: ""
+    # -- Annotations to add to the created Gateway.
+    annotations: {}
+    # -- Labels to add to the created Gateway (in addition to default chart labels).
+    labels: {}
+    # -- Gateway listeners.
+    listeners:
+      - name: http
+        protocol: HTTP
+        port: 80
+        # hostname: casdoor.example.com
+        allowedRoutes:
+          namespaces:
+            from: Same
+      # - name: https
+      #   protocol: HTTPS
+      #   port: 443
+      #   hostname: casdoor.example.com
+      #   tls:
+      #     certificateRef:
+      #       group: ''
+      #       name: casdoor-tls
+      #       kind: Secret
+      #   allowedRoutes:
+      #     namespaces:
+      #       from: Same
+  # -- List of Gateway parentRefs this route attaches to.
+  # At least one entry is required when enabled.
+  parentRefs: []
+    # - name: my-gateway
+    #   namespace: gateway-system
+    #   sectionName: http
+  # -- Optional: list of hostnames to match (Host header).
+  # If omitted, matches all hostnames accepted by the parent Gateway listener.
+  hostnames: []
+    # - casdoor.example.com
+  # -- Routing rules. Each rule can have matches, filters, and backendRefs.
+  # If backendRefs is omitted in a rule, traffic is forwarded to the chart's own Service.
+  # -- Routing rules. Each entry supports matches, filters, and backendRefs.
+  # When backendRefs is omitted, traffic is forwarded to the chart's own Service automatically.
+  # At least one rule is required when gatewayApi.enabled=true.
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      # Uncomment to override the default backend (chart's own Service):
+      # backendRefs:
+      #   - name: casdoor
+      #     port: 8000
+      #     weight: 1
+      # Uncomment to add request/response filters (e.g. header rewrites):
+      # filters:
+      #   - type: RequestHeaderModifier
+      #     requestHeaderModifier:
+      #       add:
+      #         - name: X-Forwarded-Proto
+      #           value: https
+  # -- Optional HTTP -> HTTPS redirect route.
+  httpsRedirect:
+    # -- Enable HTTP to HTTPS redirect via a dedicated HTTPRoute.
+    enabled: false
+    # -- HTTP listener sectionName used by the redirect route when createGateway=true.
+    httpListenerName: http
+    # -- HTTPS listener sectionName used by app route when createGateway=true and parentRefs is empty.
+    httpsListenerName: https
+    # -- Optional hostnames for redirect route. Falls back to gatewayApi.hostnames when empty.
+    hostnames: []
+    # -- Redirect response status code.
+    statusCode: 301
+    # -- Override parentRefs for redirect route. If empty, createGateway=true will auto-wire it.
+    parentRefs: []
+      # - name: my-gateway
+      #   sectionName: http
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# -- Optionally add init containers.
+initContainersEnabled: false
+initContainers: ""
+# initContainers: |
+#  - name: ...
+#    image: ...
+
+# -- Optionally add extra sidecar containers.
+extraContainersEnabled: false
+extraContainers: ""
+# extraContainers: |
+#  - name: ...
+#    image: ...
+extraVolumeMounts: []
+extraVolumes: []
+
+envFromSecret: []
+  # - name: ENV_NAME
+  #   secretName: test-secret
+  #   key: key_name
+
+envFromConfigmap: []
+  # - name: ENV_NAME
+  #   configmapName: test-cm
+  #   key: key_name
+
+envFrom: []
+  # - type: configmap
+  #   name: test-cm
+  # - type: secret
+  #   name: test-secret
+
+priorityClassName: ""
+
+# -- Enable/disable the default config volume mount to /conf
+# Set to false if you want to provide your own config volume via extraVolumes/extraVolumeMounts
+defaultConfigVolumeEnabled: true

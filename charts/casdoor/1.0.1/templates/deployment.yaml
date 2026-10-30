@@ -1,0 +1,224 @@
+{{- $localStorage := eq .Values.storage.mode "local" }}
+{{- $storageProxyEnabled := and (not $localStorage) .Values.storageProxy.enabled }}
+{{- if and $localStorage (or .Values.autoscaling.enabled (ne (int .Values.replicaCount) 1)) }}
+{{- fail "Local file storage requires replicaCount=1 and autoscaling.enabled=false" }}
+{{- end }}
+{{- $podSecurityContext := deepCopy .Values.podSecurityContext }}
+{{- if and $localStorage (not (hasKey $podSecurityContext "fsGroup")) }}
+{{- $_ := set $podSecurityContext "fsGroup" 1000 }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "casdoor.fullname" . }}
+  labels:
+    {{- include "casdoor.labels" . | nindent 4 }}
+spec:
+  {{- if $localStorage }}
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "casdoor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ tpl .Values.config . | toYaml | sha256sum }}
+        {{- if $storageProxyEnabled }}
+        checksum/storage-proxy: {{ include (print $.Template.BasePath "/storage-proxy-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (not .Values.casdoor.envSecret) (not .Values.database.useExistingSecret) }}
+        checksum/database: {{ include (print $.Template.BasePath "/database-secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "casdoor.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "casdoor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml $podSecurityContext | nindent 8 }}
+        {{ if .Values.initContainersEnabled }}
+      initContainers:
+          {{- tpl .Values.initContainers . | nindent 8 }}
+        {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "casdoor.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # command: ["sleep", "100000000"]
+          env:
+            - name: RUNNING_IN_DOCKER
+              value: "false"
+            - name: dataSourceName
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "casdoor.databaseSecretName" . }}
+                  key: dataSourceName
+          {{- if .Values.envFromSecret }}
+            {{ include "casdoor.envFromSecret" .Values.envFromSecret | indent 12 | trim }}
+          {{- end -}}
+          {{ if .Values.envFromConfigmap }}
+            {{ include "casdoor.envFromConfigmap" .Values.envFromConfigmap | indent 12 | trim }}
+          {{- end }}
+          {{- if or .Values.envFrom .Values.casdoor.envSecret }}
+          envFrom:
+            {{- if .Values.envFrom }}
+            {{ include "casdoor.envFrom" .Values.envFrom | indent 12 | trim }}
+            {{- end }}
+            {{- with .Values.casdoor.envSecret }}
+            - secretRef:
+                name: {{ . | quote }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            {{- if .Values.ldap.enabled }}
+            - name: ldap
+              containerPort: 10389
+              protocol: TCP
+            {{- end }}
+          {{- range $name := list "startup" "liveness" "readiness" }}
+          {{- with index $.Values.probe $name }}
+          {{- if .enabled }}
+          {{ $name }}Probe:
+            httpGet:
+              path: {{ $.Values.probe.path }}
+              port: http
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if $localStorage }}
+            - name: files
+              mountPath: /files
+            {{- end }}
+            {{- if .Values.defaultConfigVolumeEnabled }}
+            - name: config-volume
+              mountPath: /conf
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+        {{- if $storageProxyEnabled }}
+        - name: storage-proxy
+          image: {{ .Values.storageProxy.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "/etc/caddy/start.sh"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+              # The stock Caddy binary has this file capability; exec requires it in the bounding set.
+              add: ["NET_BIND_SERVICE"]
+          envFrom:
+            - secretRef:
+                name: {{ .Values.casdoor.envSecret | quote }}
+          env:
+            - name: XDG_DATA_HOME
+              value: /tmp/caddy
+            - name: XDG_CONFIG_HOME
+              value: /tmp/caddy
+            {{- range $key := list "S3_ENDPOINT" "S3_BUCKET" }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.casdoor.envSecret | quote }}
+                  key: {{ $key }}
+            {{- end }}
+          ports:
+            - name: files
+              containerPort: {{ .Values.storageProxy.port }}
+          readinessProbe:
+            httpGet:
+              path: /_proxy/health
+              port: files
+          livenessProbe:
+            httpGet:
+              path: /_proxy/health
+              port: files
+          resources:
+            {{- toYaml .Values.storageProxy.resources | nindent 12 }}
+          volumeMounts:
+            - name: storage-proxy-config
+              mountPath: /etc/caddy
+              readOnly: true
+            - name: storage-proxy-tmp
+              mountPath: /tmp
+        {{- end }}
+        {{ if .Values.extraContainersEnabled }}
+          {{- .Values.extraContainers | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if $localStorage }}
+        - name: files
+          persistentVolumeClaim:
+            claimName: {{ include "casdoor.claimName" . }}
+        {{- end }}
+        {{- if $storageProxyEnabled }}
+        - name: storage-proxy-config
+          configMap:
+            name: {{ include "casdoor.fullname" . }}-storage-proxy
+        - name: storage-proxy-tmp
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.defaultConfigVolumeEnabled }}
+        - name: config-volume
+          projected:
+            defaultMode: 420
+            sources:
+            {{- if .Values.configFromSecret }}
+              - secret:
+                  name: {{ .Values.configFromSecret }}
+                  items:
+                    - key: app.conf
+                      path: app.conf
+            {{- else }}
+              - configMap:
+                  name: {{ printf "%s-config" (include "casdoor.fullname" .) }}
+                  items:
+                    - key: app.conf
+                      path: app.conf
+            {{- end }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -11,7 +11,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/casdoor/1.0.0"
+CHART = ROOT / "charts/casdoor/1.0.1"
 DATABASE = {"host": "postgres.database.svc.cluster.local", "user": "casdoor",
             "password": "test-only"}
 
@@ -68,11 +68,11 @@ def app_container(docs):
 class CasdoorChartTests(unittest.TestCase):
     def test_full_image_and_legacy_references(self):
         cases = [
-            ({}, "casbin/casdoor:v4.24.0"),
-            ({"repository": "mirror.example.com:5000/team/casdoor:v4.24.0", "name": "ignored", "tag": "old"},
-             "mirror.example.com:5000/team/casdoor:v4.24.0"),
+            ({}, "casbin/casdoor:v4.25.0"),
+            ({"repository": "mirror.example.com:5000/team/casdoor:v4.25.0", "name": "ignored", "tag": "old"},
+             "mirror.example.com:5000/team/casdoor:v4.25.0"),
             ({"repository": "mirror.example.com:5000/team/casdoor"},
-             "mirror.example.com:5000/team/casdoor:v4.24.0"),
+             "mirror.example.com:5000/team/casdoor:v4.25.0"),
             ({"repository": "casbin", "name": "casdoor", "tag": "v4.23.0"},
              "casbin/casdoor:v4.23.0"),
             ({"repository": "casbin/casdoor@sha256:" + "a" * 64},
@@ -123,7 +123,7 @@ class CasdoorChartTests(unittest.TestCase):
         deployment = resource(docs, "Deployment")
         self.assertEqual(deployment["spec"]["replicas"], 1)
         container = deployment["spec"]["template"]["spec"]["containers"][0]
-        self.assertEqual(container["image"], "casbin/casdoor:v4.24.0")
+        self.assertEqual(container["image"], "casbin/casdoor:v4.25.0")
         self.assertEqual(container["startupProbe"]["httpGet"]["path"], "/api/health")
         env = {item["name"]: item for item in container["env"]}
         self.assertEqual(env["dataSourceName"]["valueFrom"]["secretKeyRef"],
@@ -294,6 +294,10 @@ class CasdoorChartTests(unittest.TestCase):
         pod = resource(docs, "Deployment")["spec"]["template"]
         proxy = pod["spec"]["containers"][1]
         self.assertEqual(proxy["image"], "caddy:2.11.7-alpine")
+        self.assertEqual(proxy["securityContext"]["capabilities"],
+                         {"drop": ["ALL"], "add": ["NET_BIND_SERVICE"]})
+        self.assertTrue(proxy["securityContext"]["runAsNonRoot"])
+        self.assertFalse(proxy["securityContext"]["allowPrivilegeEscalation"])
         self.assertEqual(proxy["envFrom"], app_container(docs)["envFrom"])
         refs = {entry["name"]: entry["valueFrom"]["secretKeyRef"] for entry in proxy["env"]
                 if "valueFrom" in entry}

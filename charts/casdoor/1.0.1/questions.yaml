@@ -1,0 +1,190 @@
+questions:
+  - variable: image.repository
+    label: "Casdoor image"
+    type: string
+    default: casbin/casdoor:v4.25.0
+    required: true
+    group: "Images"
+    description: "Full image including its version or digest, such as casbin/casdoor:v4.25.0 or registry.example.com/team/casdoor:v4.25.0."
+  - variable: casdoor.envSecret
+    label: "Casdoor environment Secret"
+    type: "reference[secret]"
+    default: casdoor-env
+    required: true
+    group: "Environment variables"
+    description: "Required key: dataSourceName. See the help icon for all variables. Names are case-sensitive; restart the Deployment after changes."
+    # Rancher renders descriptions as plain text; tooltips support HTML formatting.
+    tooltip: |-
+      <b>Required</b>
+      <ul>
+        <li><code>dataSourceName</code>: database connection string.</li>
+      </ul>
+      <b>Optional</b>
+      <ul>
+        <li><code>driverName</code>: postgres (default) or mysql.</li>
+        <li><code>dbName</code>: database name; default casdoor.</li>
+        <li><code>initAdminPassword</code>: initial admin credential; new account only.</li>
+        <li><code>origin</code>: public URL; defaults to the Ingress URL.</li>
+        <li><code>forceLanguage</code>: interface language, e.g. zh.</li>
+        <li><code>defaultStorageProvider</code>: existing Provider name for avatars.</li>
+      </ul>
+      <b>Caddy proxy: both required when enabled</b>
+      <ul>
+        <li><code>S3_ENDPOINT</code>: internal S3 API URL with scheme and port.</li>
+        <li><code>S3_BUCKET</code>: bucket served by the proxy.</li>
+      </ul>
+  - variable: storage.mode
+    label: "File storage"
+    type: enum
+    default: s3
+    required: true
+    options:
+      - s3
+      - local
+    group: "File storage"
+    description: "s3: external object storage. local: files on a PVC at /files. Configure the matching Provider in Casdoor; switching does not migrate files or update existing Providers."
+  - variable: persistence.existingClaim
+    label: "Existing files PVC (optional)"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "Leave empty to create a PVC. Existing claims must be in this namespace and writable by Casdoor (UID/GID 1000 by default)."
+  - variable: persistence.storageClass
+    label: "Files storage class"
+    type: storageclass
+    default: local-path
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "For new PVCs only. Leave empty to use the cluster default. local-path stores files on the assigned K3s node."
+  - variable: persistence.size
+    label: "Initial files storage size"
+    type: string
+    default: 1Gi
+    required: true
+    group: "File storage"
+    show_if: storage.mode=local
+    description: "For new PVCs only; resize existing claims separately. Local mode uses one Pod. The chart retains its PVC on uninstall or a switch to S3."
+  - variable: storageProxy.enabled
+    label: "Enable Caddy file proxy"
+    type: boolean
+    default: "false"
+    required: true
+    group: "File storage"
+    show_if: storage.mode=s3
+    description: "Optional proxy for S3 files. Reads S3_ENDPOINT and S3_BUCKET from the environment Secret. Keep Silo internal; grant anonymous GetObject only on the dedicated upload bucket."
+  - variable: storageProxy.image
+    label: "Caddy image"
+    type: string
+    default: caddy:2.11.7-alpine
+    required: true
+    group: "File storage"
+    show_if: storage.mode=s3&&storageProxy.enabled=true
+    description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
+  - variable: ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "Creates routes for Casdoor and, when enabled, the file proxy. Both hostnames share the Ingress Class and HTTPS settings below. Requires an existing Ingress controller. Configure DNS separately."
+  - variable: ingress.hosts.0.host
+    label: "Casdoor hostname"
+    type: hostname
+    default: casdoor.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Enter only the hostname, without https:// or a path."
+  - variable: storageProxy.hostname
+    label: "File proxy hostname"
+    type: hostname
+    default: files.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&storage.mode=s3&&storageProxy.enabled=true
+    description: "Uses the same Ingress Class and HTTPS mode as Casdoor. The certificate must cover both hostnames. Enter only the hostname. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
+  - variable: ingress.className
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Usually traefik on K3s. Leave empty to use the default Ingress Class."
+  - variable: ingress.certificate.mode
+    label: "HTTPS mode"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Applies to both the Casdoor and file proxy hostnames. disabled: HTTP; existing: a TLS Secret whose certificate covers both hostnames; cert-manager: issue and renew a certificate covering both using an existing issuer."
+  - variable: ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "Select an existing, ready ClusterIssuer. cert-manager must already be installed."
+  # Separate issuer selectors so Rancher remounts the selector when the kind changes.
+  - variable: ingress.certificate.secretName
+    label: "TLS Secret name"
+    type: string
+    default: casdoor-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Existing Secret in existing mode; Secret to create in cert-manager mode. When the file proxy is enabled, the certificate must cover both Casdoor and file hostnames. Ignored in disabled mode."
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "Select an existing, ready Issuer in the installation namespace."
+  - variable: origin
+    label: "Public origin override (optional)"
+    type: string
+    default: ""
+    group: "Domain / HTTPS"
+    description: "Leave empty to derive http(s)://hostname from Ingress. Set the complete public origin when TLS terminates elsewhere."
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"

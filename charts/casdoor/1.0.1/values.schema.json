@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "database",
+    "ingress",
+    "casdoor",
+    "storage",
+    "persistence"
+  ],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "origin": {
+      "type": "string",
+      "pattern": "^$|^https?://[^/\\s?#]+/?$"
+    },
+    "defaultStorageProvider": {
+      "type": "string",
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "database": {
+      "type": "object",
+      "required": [
+        "driver",
+        "databaseName",
+        "useExistingSecret"
+      ],
+      "properties": {
+        "driver": {
+          "enum": [
+            "postgres",
+            "mysql"
+          ]
+        },
+        "databaseName": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "useExistingSecret": {
+          "type": "boolean"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^$|^(\\[[0-9A-Fa-f:]+\\]|[A-Za-z0-9][A-Za-z0-9.-]*)$"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "user": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "sslMode": {
+          "enum": [
+            "disable",
+            "require",
+            "verify-ca",
+            "verify-full"
+          ]
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "className": {
+          "type": "string"
+        },
+        "tls": {
+          "type": "array"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(\\*\\.)?[A-Za-z0-9][A-Za-z0-9.-]*$"
+              }
+            }
+          }
+        },
+        "certificate": {
+          "type": "object",
+          "required": [
+            "mode",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "disabled",
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "issuerName": {
+              "type": "string"
+            },
+            "issuerKind": {
+              "enum": [
+                "Issuer",
+                "ClusterIssuer"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "casdoor": {
+      "type": "object",
+      "required": [
+        "envSecret"
+      ],
+      "properties": {
+        "envSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["s3", "local"]
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["existingClaim", "storageClass", "size"],
+      "properties": {
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|Pi|Ei)$"
+        }
+      }
+    },
+    "storageProxy": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "image",
+        "hostname",
+        "port"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hostname": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$",
+          "maxLength": 253
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "casdoor": {
+        "properties": {
+          "envSecret": {
+            "const": ""
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "database": {
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "useExistingSecret": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "existingSecret"
+              ],
+              "properties": {
+                "existingSecret": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "else": {
+              "required": [
+                "host",
+                "user",
+                "password"
+              ],
+              "properties": {
+                "host": {
+                  "minLength": 1
+                },
+                "user": {
+                  "minLength": 1
+                },
+                "password": {
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "driver": {
+                  "const": "mysql"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "user": {
+                  "pattern": "^[^:\\r\\n]*$"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

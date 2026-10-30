@@ -1,0 +1,74 @@
+{{- if .Values.ingress.enabled }}
+{{- $storageProxyEnabled := and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled }}
+{{- $certificate := .Values.ingress.certificate }}
+{{- $annotations := deepCopy .Values.ingress.annotations }}
+{{- if not .Values.ingress.hosts }}
+{{- fail "ingress.hosts must contain at least one hostname" }}
+{{- end }}
+{{- if and (ne $certificate.mode "disabled") .Values.ingress.tls }}
+{{- fail "Use either ingress.certificate or ingress.tls, not both" }}
+{{- end }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $issuer := required "ingress.certificate.issuerName is required for cert-manager" $certificate.issuerName }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- if eq $certificate.issuerKind "ClusterIssuer" }}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" $issuer }}
+{{- else }}
+{{- $_ := set $annotations "cert-manager.io/issuer" $issuer }}
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "casdoor.fullname" . }}
+  labels:
+    {{- include "casdoor.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if ne $certificate.mode "disabled" }}
+  tls:
+    - secretName: {{ required "ingress.certificate.secretName is required for HTTPS" $certificate.secretName | quote }}
+      hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ required "ingress.hosts[].host is required" .host | quote }}
+        {{- end }}
+        {{- if $storageProxyEnabled }}
+        - {{ .Values.storageProxy.hostname | quote }}
+        {{- end }}
+  {{- else }}
+  {{- with .Values.ingress.tls }}
+  tls: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ required "ingress.hosts[].host is required" .host | quote }}
+      http:
+        paths:
+          {{- range (.paths | default (list (dict "path" "/" "pathType" "Prefix"))) }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "casdoor.fullname" $ }}
+                port: { name: http }
+          {{- end }}
+    {{- end }}
+    {{- if $storageProxyEnabled }}
+    - host: {{ .Values.storageProxy.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "casdoor.fullname" . }}
+                port: { name: files }
+    {{- end }}
+{{- end }}

@@ -1,0 +1,75 @@
+{{- if and (eq .Values.storage.mode "s3") .Values.storageProxy.enabled }}
+{{- if not .Values.casdoor.envSecret }}
+{{- fail "storageProxy requires casdoor.envSecret containing S3_ENDPOINT and S3_BUCKET" }}
+{{- end }}
+{{- if eq (int .Values.storageProxy.port) (int .Values.service.port) }}
+{{- fail "storageProxy.port must differ from service.port" }}
+{{- end }}
+{{- range .Values.ingress.hosts }}
+{{- if and $.Values.ingress.enabled (eq .host $.Values.storageProxy.hostname) }}
+{{- fail "storageProxy.hostname must differ from the Casdoor hostname" }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "casdoor.fullname" . }}-storage-proxy
+  labels:
+    {{- include "casdoor.labels" . | nindent 4 }}
+data:
+  start.sh: |
+    #!/bin/sh
+    set -eu
+    case "$S3_ENDPOINT" in
+      http://*|https://*) ;;
+      *) echo 'S3_ENDPOINT must be an http(s) origin' >&2; exit 1 ;;
+    esac
+    authority="${S3_ENDPOINT#*://}"
+    case "$authority" in
+      ''|[!a-zA-Z0-9]*|*[!a-zA-Z0-9.:-]*) echo 'S3_ENDPOINT must contain only a hostname and optional port, without a path' >&2; exit 1 ;;
+    esac
+    case "$S3_BUCKET" in
+      ''|*[!a-z0-9.-]*|[!a-z0-9]*|*[!a-z0-9]) echo 'Invalid S3_BUCKET' >&2; exit 1 ;;
+    esac
+    if [ "${#S3_BUCKET}" -lt 3 ] || [ "${#S3_BUCKET}" -gt 63 ]; then
+      echo 'S3_BUCKET must have 3 to 63 characters' >&2
+      exit 1
+    fi
+    exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+  Caddyfile: |
+    {
+      admin off
+      auto_https off
+      persist_config off
+    }
+    :{{ .Values.storageProxy.port }} {
+      route {
+        @health {
+          method GET HEAD
+          path /_proxy/health
+        }
+        respond @health "ok" 200
+        # Use the original path; path matchers normalize dot segments.
+        @unsafe expression `{http.request.uri.path}.matches('(^|/)[.]{1,2}(/|$)|%') || {http.request.uri.path}.contains('\\')`
+        respond @unsafe 404
+        @objects {
+          method GET HEAD
+          path /{$S3_BUCKET}/*
+          not path /{$S3_BUCKET}/
+        }
+        handle @objects {
+          rewrite * ?
+          reverse_proxy {$S3_ENDPOINT} {
+            header_up Host {upstream_hostport}
+            header_up -Authorization
+            header_up -Cookie
+            header_up -X-Amz-*
+            header_up -X-Minio-*
+          }
+        }
+        handle {
+          respond 404
+        }
+      }
+    }
+{{- end }}
