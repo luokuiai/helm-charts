@@ -12,3 +12,12 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- define "netbird-operator-network.natTable" -}}
 {{- printf "nb_nat_%s" (printf "%s/%s" .Release.Namespace .Release.Name | sha256sum | trunc 12) -}}
 {{- end -}}
+
+{{/* Full references take precedence over the legacy separate image.tag. */}}
+{{- define "netbird-operator-network.natImage" -}}
+{{- $image := required "natWorkaround.image.repository is required" .Values.natWorkaround.image.repository -}}
+{{- if not (or (contains "@" $image) (regexMatch ":[^/]+$" $image)) -}}
+{{- $image = printf "%s:%s" $image (.Values.natWorkaround.image.tag | default "v0.14") -}}
+{{- end -}}
+{{- $image -}}
+{{- end -}}

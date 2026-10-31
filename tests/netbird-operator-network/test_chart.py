@@ -78,12 +78,34 @@ class NetBirdOperatorNetworkTests(unittest.TestCase):
         self.assertEqual(by_variable["resource.groupNames"]["type"], "array[string]")
         all_questions = questions + [child for question in questions
                                      for child in question.get("subquestions", [])]
+        self.assertNotIn("natWorkaround.image.tag", [question["variable"] for question in all_questions])
         for question in all_questions:
             with self.subTest(variable=question["variable"]):
                 value = values
                 for part in question["variable"].split("."):
                     value = value[part]
                 self.assertEqual(value, question["default"])
+
+    def test_maintenance_and_cleanup_share_complete_image_references(self):
+        digest = "sha256:" + "a" * 64
+        cases = [
+            ({}, "ghcr.io/nicolaka/netshoot:v0.14"),
+            ({"repository": "mirror.example.com:5000/netshoot:v0.14"},
+             "mirror.example.com:5000/netshoot:v0.14"),
+            ({"repository": "mirror.example.com:5000/netshoot"},
+             "mirror.example.com:5000/netshoot:v0.14"),
+            ({"repository": "mirror.example.com/netshoot", "tag": "v0.13"},
+             "mirror.example.com/netshoot:v0.13"),
+            ({"repository": "mirror.example.com/netshoot:v0.14", "tag": "v0.13"},
+             "mirror.example.com/netshoot:v0.14"),
+            ({"repository": f"mirror.example.com/netshoot@{digest}", "tag": "v0.13"},
+             f"mirror.example.com/netshoot@{digest}"),
+        ]
+        for image, expected in cases:
+            with self.subTest(image=image):
+                docs = manifests({"natWorkaround": {"enabled": True, "image": image}})
+                for kind in ("DaemonSet", "Job"):
+                    self.assertEqual(docs[kind]["spec"]["template"]["spec"]["containers"][0]["image"], expected)
 
     def test_enabled_workaround_has_scoped_permissions_and_no_public_listener(self):
         docs = manifests({"natWorkaround": {"enabled": True}})

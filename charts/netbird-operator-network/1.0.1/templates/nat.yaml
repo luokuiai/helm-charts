@@ -102,7 +102,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: nat
-          image: {{ printf "%s:%s" .Values.natWorkaround.image.repository .Values.natWorkaround.image.tag | quote }}
+          image: {{ include "netbird-operator-network.natImage" . | quote }}
           imagePullPolicy: {{ .Values.natWorkaround.image.pullPolicy }}
           command: [python3, /app/agent.py]
           env:

@@ -45,16 +45,11 @@ questions:
     show_subquestion_if: true
     subquestions:
       - variable: natWorkaround.image.repository
-        label: "NAT maintenance image repository"
+        label: "NAT maintenance image"
         type: string
-        default: ghcr.io/nicolaka/netshoot
+        default: ghcr.io/nicolaka/netshoot:v0.14
         required: true
-        description: "Image containing Python 3 and nftables. Override the registry path when using an image mirror."
-      - variable: natWorkaround.image.tag
-        label: "NAT maintenance image tag"
-        type: string
-        default: v0.14
-        required: true
+        description: "Full image reference including a version or digest. Must contain Python 3 and nftables. Include the version when using an image mirror."
       - variable: natWorkaround.excludedCIDRs
         label: "Networks excluded from NAT"
         type: "array[string]"
