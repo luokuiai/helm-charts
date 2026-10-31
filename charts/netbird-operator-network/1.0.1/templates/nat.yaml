@@ -145,6 +145,7 @@ spec:
           readinessProbe:
             exec:
               command: [python3, /app/agent.py, --health]
+            timeoutSeconds: 5
             periodSeconds: 10
           volumeMounts:
             - name: script

@@ -1,10 +1,12 @@
 """Unit tests; optional kernel checks run only inside an isolated network namespace."""
 
 import copy
+import builtins
 import importlib.util
 import json
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import tempfile
 import unittest
@@ -73,6 +75,28 @@ class CleanupAPI:
 
 
 class AgentTests(unittest.TestCase):
+    def test_health_entrypoint_skips_network_and_nft_imports(self):
+        original_import = builtins.__import__
+
+        def health_import(name, *args, **kwargs):
+            if name in {"ssl", "subprocess", "urllib.request"}:
+                raise AssertionError("health check imported " + name)
+            return original_import(name, *args, **kwargs)
+
+        for age, expected in [(59, 0), (89, 0), (90, 1), (None, 1)]:
+            with self.subTest(age=age), \
+                 patch.object(agent.sys, "argv", [str(SOURCE), "--health"]), \
+                 patch.object(agent.time, "time", return_value=1000), \
+                 patch.object(Path, "stat") as stat, \
+                 patch.object(builtins, "__import__", side_effect=health_import):
+                if age is None:
+                    stat.side_effect = FileNotFoundError
+                else:
+                    stat.return_value.st_mtime = 1000 - age
+                with self.assertRaises(SystemExit) as result:
+                    runpy.run_path(str(SOURCE), run_name="__main__")
+                self.assertEqual(result.exception.code, expected)
+
     def test_health_allows_a_minute_between_refreshes_but_rejects_stalled_maintenance(self):
         with tempfile.TemporaryDirectory() as temp:
             state = Path(temp) / "ready"

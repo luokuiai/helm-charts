@@ -114,6 +114,7 @@ class NetBirdOperatorNetworkTests(unittest.TestCase):
         self.assertEqual(docs["NetworkRouter"]["spec"]["workloadOverride"], {"replicas": 1})
         pod = docs["DaemonSet"]["spec"]["template"]["spec"]
         self.assertTrue(pod["hostNetwork"])
+        self.assertEqual(pod["containers"][0]["readinessProbe"].get("timeoutSeconds", 1), 5)
         self.assertEqual(pod["containers"][0]["securityContext"]["capabilities"],
                          {"drop": ["ALL"], "add": ["NET_ADMIN"]})
         self.assertNotIn("ports", pod["containers"][0])

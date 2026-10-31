@@ -1,23 +1,36 @@
 """Maintain an IPv4 NAT exception for this release's locally scheduled routers."""
 
-import hashlib
-import ipaddress
-import json
 import os
 from pathlib import Path
-import signal
-import ssl
-import subprocess
 import sys
 import time
-from urllib.error import HTTPError
-from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
 
 
 INTERVAL = 60
 ELEMENT_TTL = 90
 STATE = Path("/run/netbird-nat/ready")
+
+
+def health():
+    try:
+        return 0 if time.time() - STATE.stat().st_mtime < ELEMENT_TTL else 1
+    except FileNotFoundError:
+        return 1
+
+
+# Probes share the container's small CPU budget; skip maintenance dependencies.
+if __name__ == "__main__" and "--health" in sys.argv:
+    sys.exit(health())
+
+import hashlib
+import ipaddress
+import json
+import signal
+import ssl
+import subprocess
+from urllib.error import HTTPError
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
 
 
 class API:
@@ -184,6 +197,7 @@ def maintain(api, namespace, name, router, release, node, table, exclusions):
                     addresses = router_ips(api, namespace, router, release, node)
                     subprocess.run(["nft", "-f", "-"], input=nft_rules(table, addresses, exclusions),
                                    text=True, check=True, timeout=10)
+                    print(f"NAT refreshed: node={node} table={table} routerIPs={addresses}", flush=True)
                 else:
                     raise RuntimeError("unrecognized NAT control mode")
                 STATE.touch()
@@ -201,7 +215,8 @@ def maintain(api, namespace, name, router, release, node, table, exclusions):
 
 def main():
     if "--health" in sys.argv:
-        return 0 if STATE.exists() and time.time() - STATE.stat().st_mtime < ELEMENT_TTL else 1
+        return health()
+    print("Starting NAT " + ("cleanup" if "--cleanup" in sys.argv else "maintenance"), flush=True)
     api = API()
     namespace, name = os.environ["NAMESPACE"], os.environ["NAT_NAME"]
     if "--cleanup" in sys.argv:
