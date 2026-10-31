@@ -1,0 +1,27 @@
+# Requires an existing NetBird Operator, DNS zone, destination groups, and access policy.
+router:
+  name: vpn-entry
+  dnsZone: k3s.netbird.internal
+  # Routing client replicas, not Operator replicas. Use 1 for the initial single-node cluster.
+  replicas: 1
+
+resource:
+  # Shared VPN ingress controller Service in this release namespace, not a business application Service.
+  serviceName: traefik-vpn
+  # Existing destination groups in NetBird; access policies are configured in NetBird separately.
+  groupNames:
+    - k3s-web
+
+# Optional node-level workaround for Flannel fully-random SNAT. IPv4 only.
+natWorkaround:
+  enabled: false
+  # Includes Python and nftables; no packages are downloaded at container startup.
+  image:
+    repository: ghcr.io/nicolaka/netshoot
+    tag: v0.14
+    pullPolicy: IfNotPresent
+  # Keep these aligned with your cluster's Pod and Service CIDRs.
+  excludedCIDRs:
+    - 10.42.0.0/16
+    - 10.43.0.0/16
+    - 224.0.0.0/4

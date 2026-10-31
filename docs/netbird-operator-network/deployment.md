@@ -23,7 +23,7 @@ Clients must use NetBird-managed DNS. Check existing broad policies as well: ass
 
 ## Install the Chart
 
-In Rancher, refresh this Git repository and install **NetBird Operator Network** version `1.0.0` in **`infra-system`**. Select the existing `traefik-vpn` Service from the **VPN ingress Service** dropdown. Keep the defaults if they match the NetBird preparation above.
+In Rancher, refresh this Git repository and install **NetBird Operator Network** version `1.0.1` in **`infra-system`**. Select the existing `traefik-vpn` Service from the **VPN ingress Service** dropdown. Keep the defaults if they match the NetBird preparation above.
 
 The release creates:
 
@@ -68,3 +68,13 @@ From an authorized computer, verify that the application resolves and works over
 - Do not install another release with the same resource names in the same namespace. Manually imported resources are not automatically adopted by this Chart.
 - Uninstalling deletes both custom resources. The Operator cleans up their managed NetBird resources, and routing access through this entrypoint is removed. Use another management path if Rancher itself relies on this VPN route.
 - Uninstall this configuration Chart before removing the Operator so the Operator can complete resource cleanup.
+
+## Optional scoped outbound NAT workaround (1.0.1)
+
+Leave **Enable NetBird outbound NAT workaround** off unless Flannel fully-random SNAT interferes with direct NetBird connections. Enabling it installs a host-network DaemonSet with `NET_ADMIN` on Linux nodes; the namespace must permit that security context. It does not open an inbound port, install host files, or change the routing Pod template.
+
+The maintenance agent verifies the NetworkRouter/Deployment/ReplicaSet owner chain and matches only the local routing Pod IPv4 addresses with UDP source port `51820`. It does not match other applications by Pod CIDR. Selection is refreshed every 60 seconds; entries expire after 90 seconds without refresh. Confirm the excluded Pod and Service CIDRs match your cluster. Change the maintenance image repository when using a registry mirror.
+
+Normal uninstall and upgrades of an enabled installation, including disabling the feature, first wait for all registered nodes to acknowledge deletion of their exclusive nftables table. Failed or offline nodes produce a failed cleanup Job and block verified completion. Do not skip Helm hooks or force-delete the namespace when verified cleanup is needed. The cleanup protocol cannot guarantee removal after forced deletion or loss of the node/agent; expiring entries reduce stale new matches, while existing conntrack entries are left intact.
+
+See the [1.0.1 README](../../charts/netbird-operator-network/1.0.1/README.md#optional-flannel-nat-workaround) for privileges, lifecycle details, and acceptance checks. Verify image startup and end-to-end P2P behavior on the target cluster before relying on this optional extension.

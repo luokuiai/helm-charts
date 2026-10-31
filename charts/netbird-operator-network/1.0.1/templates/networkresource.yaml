@@ -1,0 +1,17 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: {{ .Values.resource.serviceName | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+spec:
+  networkRouterRef:
+    name: {{ .Values.router.name | quote }}
+    namespace: {{ .Release.Namespace | quote }}
+  serviceRef:
+    name: {{ .Values.resource.serviceName | quote }}
+  groups:
+    {{- range .Values.resource.groupNames }}
+    - name: {{ . | quote }}
+    {{- end }}

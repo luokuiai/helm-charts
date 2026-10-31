@@ -1,0 +1,12 @@
+apiVersion: netbird.io/v1alpha1
+kind: NetworkRouter
+metadata:
+  name: {{ .Values.router.name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+spec:
+  dnsZoneRef:
+    name: {{ .Values.router.dnsZone | quote }}
+  workloadOverride:
+    replicas: {{ .Values.router.replicas }}

@@ -1,0 +1,66 @@
+questions:
+  - variable: resource.serviceName
+    label: "VPN ingress Service"
+    type: "reference[service]"
+    default: traefik-vpn
+    required: true
+    group: "VPN entry"
+    description: "Select the shared VPN ingress controller's existing ClusterIP Service in this installation namespace, normally traefik-vpn. Do not select an individual business application's Service; applications use the traefik-vpn Ingress Class."
+  - variable: resource.groupNames
+    label: "NetBird destination groups"
+    type: "array[string]"
+    default:
+      - k3s-web
+    required: true
+    group: "VPN entry"
+    description: "Names of existing NetBird groups for this Service resource. Configure an access policy separately, for example k3s-clients to k3s-web over TCP 443. These are destination groups, not client device groups."
+  - variable: router.dnsZone
+    label: "NetBird DNS zone"
+    type: hostname
+    default: k3s.netbird.internal
+    required: true
+    group: "Routing"
+    description: "An existing NetBird custom DNS zone. Distribute the zone to authorized client device groups before installation. The Operator manages the Service record inside this zone."
+  - variable: router.name
+    label: "NetworkRouter name"
+    type: string
+    default: vpn-entry
+    required: true
+    group: "Routing"
+    description: "Kubernetes resource name for the router created by this Chart. Keep it unchanged during upgrades: the NetworkResource router reference is immutable."
+  - variable: router.replicas
+    label: "Routing client replicas"
+    type: int
+    min: 1
+    default: 1
+    required: true
+    group: "Routing"
+    description: "Number of NetBird routing client Pods managed by the Operator, not Operator replicas. Start with 1 on a single-node cluster; increase after adding nodes."
+  - variable: natWorkaround.enabled
+    label: "Enable NetBird outbound NAT workaround"
+    type: boolean
+    default: false
+    group: "Outbound NAT"
+    description: "Optional IPv4 workaround for Flannel fully-random SNAT. Runs a host-network DaemonSet with NET_ADMIN, matching only this router's Pod IPs and UDP source port 51820. Opens no inbound port. Uninstall waits for node cleanup; offline nodes can block it."
+    show_subquestion_if: true
+    subquestions:
+      - variable: natWorkaround.image.repository
+        label: "NAT maintenance image repository"
+        type: string
+        default: ghcr.io/nicolaka/netshoot
+        required: true
+        description: "Image containing Python 3 and nftables. Override the registry path when using an image mirror."
+      - variable: natWorkaround.image.tag
+        label: "NAT maintenance image tag"
+        type: string
+        default: v0.14
+        required: true
+      - variable: natWorkaround.excludedCIDRs
+        label: "Networks excluded from NAT"
+        type: "array[string]"
+        default:
+          - 10.42.0.0/16
+          - 10.43.0.0/16
+          - 224.0.0.0/4
+        required: true
+        description: "IPv4 Pod CIDR, Service CIDR, and multicast range. Update these if your cluster uses different CIDRs."

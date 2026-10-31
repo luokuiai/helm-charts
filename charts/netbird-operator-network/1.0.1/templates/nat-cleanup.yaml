@@ -1,0 +1,81 @@
+{{- $name := include "netbird-operator-network.natName" . }}
+{{- $previous := dict }}
+{{- if .Release.IsUpgrade }}
+{{- $previous = lookup "v1" "ConfigMap" .Release.Namespace $name | default dict }}
+{{- end }}
+{{- if or .Values.natWorkaround.enabled $previous }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-cleanup" $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+  annotations:
+    {{- if and $previous .Values.natWorkaround.enabled }}
+    helm.sh/hook: pre-upgrade,pre-delete
+    {{- else if $previous }}
+    helm.sh/hook: pre-upgrade
+    {{- else }}
+    helm.sh/hook: pre-delete
+    {{- end }}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: 180
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: {{ $name }}
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cleanup
+          image: {{ printf "%s:%s" .Values.natWorkaround.image.repository .Values.natWorkaround.image.tag | quote }}
+          imagePullPolicy: {{ .Values.natWorkaround.image.pullPolicy }}
+          command: [python3, /app/agent.py, --cleanup]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NAT_NAME
+              value: {{ $name | quote }}
+            - name: CLEANUP_TIMEOUT
+              value: "120"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: script
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: {{ $name }}
+            items:
+              - key: agent.py
+                path: agent.py
+{{- end }}

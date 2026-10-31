@@ -1,0 +1,165 @@
+{{- if .Values.natWorkaround.enabled }}
+{{- $name := include "netbird-operator-network.natName" . }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [{{ $name | quote }}]
+    verbs: [get, patch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [list]
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [{{ printf "networkrouter-%s" .Values.router.name | quote }}]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [daemonsets]
+    resourceNames: [{{ $name | quote }}]
+    verbs: [get]
+  - apiGroups: [netbird.io]
+    resources: [networkrouters]
+    resourceNames: [{{ .Values.router.name | quote }}]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+data:
+  mode: active
+  epoch: ""
+  agent.py: |
+    {{- .Files.Get "files/nat-agent.py" | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "netbird-operator-network.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: {{ $name }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  template:
+    metadata:
+      labels:
+        {{- include "netbird-operator-network.labels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+      annotations:
+        checksum/nat-script: {{ .Files.Get "files/nat-agent.py" | sha256sum }}
+    spec:
+      serviceAccountName: {{ $name }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: nat
+          image: {{ printf "%s:%s" .Values.natWorkaround.image.repository .Values.natWorkaround.image.tag | quote }}
+          imagePullPolicy: {{ .Values.natWorkaround.image.pullPolicy }}
+          command: [python3, /app/agent.py]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: NAT_NAME
+              value: {{ $name | quote }}
+            - name: NFT_TABLE
+              value: {{ include "netbird-operator-network.natTable" . | quote }}
+            - name: ROUTER_NAME
+              value: {{ .Values.router.name | quote }}
+            - name: RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+            - name: EXCLUDED_CIDRS
+              value: {{ .Values.natWorkaround.excludedCIDRs | toJson | quote }}
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_ADMIN]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          readinessProbe:
+            exec:
+              command: [python3, /app/agent.py, --health]
+            periodSeconds: 10
+          volumeMounts:
+            - name: script
+              mountPath: /app
+              readOnly: true
+            - name: state
+              mountPath: /run/netbird-nat
+      volumes:
+        - name: script
+          configMap:
+            name: {{ $name }}
+            items:
+              - key: agent.py
+                path: agent.py
+        - name: state
+          emptyDir:
+            medium: Memory
+{{- end }}

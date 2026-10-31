@@ -25,7 +25,8 @@ helm-charts/                         # Git repository root
 │   │   ├── 1.0.1/                   # Environment Secret + ACME certificate PVC + Rancher form
 │   │   └── 1.0.2/                   # Deploy-time Geo database download
 │   ├── netbird-operator-network/
-│   │   └── 1.0.0/                   # Operator routing + shared VPN ingress Service + Rancher form
+│   │   ├── 1.0.0/                   # Operator routing + shared VPN ingress Service + Rancher form
+│   │   └── 1.0.1/                   # Optional scoped outbound NAT workaround + checked cleanup
 │   ├── cert-manager-alidns-issuer/
 │   │   └── 1.0.0/                   # AliDNS DNS-01 ClusterIssuer + Rancher form
 │   ├── registry-proxy/
@@ -65,7 +66,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | warpgate | 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
-| netbird-operator-network | 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown and a Rancher configuration form |
+| netbird-operator-network | 1.0.1, 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown, optional scoped NAT workaround, and a Rancher configuration form |
 | cert-manager-alidns-issuer | 1.0.0 | Let's Encrypt DNS-01 ClusterIssuer for an existing AliDNS webhook, existing credential Secret selection, and a Rancher configuration form |
 | registry-proxy | 1.0.0 | Caddy proxies for an upstream registry and public images, two Traefik HTTPS domains, and a Rancher configuration form |
 
@@ -97,7 +98,7 @@ See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the t
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.0/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.

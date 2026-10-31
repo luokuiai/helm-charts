@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "router",
+    "resource"
+  ],
+  "properties": {
+    "router": {
+      "type": "object",
+      "required": [
+        "name",
+        "dnsZone",
+        "replicas"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "dnsZone": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": [
+        "serviceName",
+        "groupNames"
+      ],
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "groupNames": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "natWorkaround": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "image",
+        "excludedCIDRs"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "required": [
+            "repository",
+            "tag",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
+            }
+          }
+        },
+        "excludedCIDRs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])/([0-9]|[12][0-9]|3[0-2])$"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "name": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  }
+}

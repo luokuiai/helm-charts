@@ -1,0 +1,19 @@
+This release configures an existing NetBird Operator. Wait for both resources to be Ready:
+
+  kubectl -n {{ .Release.Namespace }} get networkrouter {{ .Values.router.name }}
+  kubectl -n {{ .Release.Namespace }} get networkresource {{ .Values.resource.serviceName }}
+
+The shared VPN ingress Service must be ClusterIP in {{ .Release.Namespace }}:
+
+  kubectl -n {{ .Release.Namespace }} get service {{ .Values.resource.serviceName }}
+
+The Operator-managed Service DNS record is:
+
+  {{ .Values.resource.serviceName }}.{{ .Release.Namespace }}.{{ .Values.router.dnsZone }}
+
+Add application CNAME records pointing to this name in NetBird DNS.
+Applications select the VPN controller's Ingress Class; do not install a copy of
+this Chart for each application behind the same ingress controller.
+
+DNS zone distribution, destination groups, and access policies must already exist
+in NetBird. This Chart does not create them or configure application certificates.

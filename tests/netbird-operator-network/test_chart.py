@@ -8,7 +8,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/netbird-operator-network/1.0.0"
+CHART = ROOT / "charts/netbird-operator-network/1.0.1"
 
 
 def render(values=None, namespace="infra-system"):
@@ -76,12 +76,64 @@ class NetBirdOperatorNetworkTests(unittest.TestCase):
         by_variable = {question["variable"]: question for question in questions}
         self.assertEqual(by_variable["resource.serviceName"]["type"], "reference[service]")
         self.assertEqual(by_variable["resource.groupNames"]["type"], "array[string]")
-        for question in questions:
+        all_questions = questions + [child for question in questions
+                                     for child in question.get("subquestions", [])]
+        for question in all_questions:
             with self.subTest(variable=question["variable"]):
                 value = values
                 for part in question["variable"].split("."):
                     value = value[part]
                 self.assertEqual(value, question["default"])
+
+    def test_enabled_workaround_has_scoped_permissions_and_no_public_listener(self):
+        docs = manifests({"natWorkaround": {"enabled": True}})
+        self.assertEqual(set(docs), {"NetworkRouter", "NetworkResource", "DaemonSet", "ConfigMap",
+                                     "ServiceAccount", "Role", "RoleBinding", "Job"})
+        self.assertEqual(docs["NetworkRouter"]["spec"]["workloadOverride"], {"replicas": 1})
+        pod = docs["DaemonSet"]["spec"]["template"]["spec"]
+        self.assertTrue(pod["hostNetwork"])
+        self.assertEqual(pod["containers"][0]["securityContext"]["capabilities"],
+                         {"drop": ["ALL"], "add": ["NET_ADMIN"]})
+        self.assertNotIn("ports", pod["containers"][0])
+        self.assertTrue(all("hostPath" not in volume for volume in pod["volumes"]))
+        self.assertTrue(all(rule["verbs"] == ["get", "patch"] if "patch" in rule["verbs"]
+                            else set(rule["verbs"]) <= {"get", "list"}
+                            for rule in docs["Role"]["rules"]))
+        writes = [rule for rule in docs["Role"]["rules"] if "patch" in rule["verbs"]]
+        self.assertEqual(writes[0]["resources"], ["configmaps"])
+        self.assertEqual(writes[0]["resourceNames"], [docs["ConfigMap"]["metadata"]["name"]])
+        job = docs["Job"]
+        self.assertEqual(job["metadata"]["annotations"]["helm.sh/hook"], "pre-delete")
+        self.assertEqual(job["spec"]["backoffLimit"], 0)
+        self.assertNotIn("hostNetwork", job["spec"]["template"]["spec"])
+        self.assertNotIn("hook-failed", job["metadata"]["annotations"]["helm.sh/hook-delete-policy"])
+
+    def test_workaround_rejects_invalid_values(self):
+        for value in [{"enabled": "yes"}, {"image": {"repository": "bad repo"}},
+                      {"excludedCIDRs": []}, {"excludedCIDRs": ["0.0.0.0/33"]},
+                      {"excludedCIDRs": ["999.0.0.0/8"]}]:
+            with self.subTest(value=value):
+                self.assertNotEqual(render({"natWorkaround": value}).returncode, 0)
+
+    def test_existing_installation_hooks_handle_disabling_without_a_future_delete_hook(self):
+        import shutil
+        import tempfile
+
+        # Replace only the API lookup dependency; exercise the real Helm conditionals.
+        with tempfile.TemporaryDirectory() as temp:
+            chart = Path(temp) / "chart"
+            shutil.copytree(CHART, chart)
+            path = chart / "templates/nat-cleanup.yaml"
+            path.write_text(path.read_text().replace(
+                'lookup "v1" "ConfigMap" .Release.Namespace $name | default dict',
+                'dict "data" (dict "mode" "active")'))
+            for enabled, hooks in [(True, "pre-upgrade,pre-delete"), (False, "pre-upgrade")]:
+                result = subprocess.run(["helm", "template", "netbird-operator-network", str(chart),
+                                         "--is-upgrade", "--set", "natWorkaround.enabled=" + str(enabled).lower()],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                job = next(doc for doc in yaml.safe_load_all(result.stdout) if doc and doc["kind"] == "Job")
+                self.assertEqual(job["metadata"]["annotations"]["helm.sh/hook"], hooks)
 
 
 if __name__ == "__main__":
