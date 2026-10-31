@@ -142,10 +142,12 @@ def cleanup_complete(data, nodes, desired, epoch):
 def cleanup(api, namespace, name, timeout):
     ns = quote(namespace, safe="")
     control = f"/api/v1/namespaces/{ns}/configmaps/{quote(name, safe='')}"
-    if api.request(control) is None:
+    config = api.request(control)
+    if config is None:
         raise RuntimeError("NAT control ConfigMap is missing; cleanup cannot be verified")
+    revision = config["data"].get("revision", "")
     epoch = os.urandom(16).hex()
-    api.request(control, {"data": {"mode": "cleanup", "epoch": epoch}})
+    api.request(control, {"data": {"mode": "cleanup", "epoch": epoch, "cleanupRevision": revision}})
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         deployment = api.request(f"/apis/apps/v1/namespaces/{ns}/daemonsets/{quote(name, safe='')}")
@@ -155,7 +157,8 @@ def cleanup(api, namespace, name, timeout):
         pods = api.request(f"/api/v1/namespaces/{ns}/pods?{query}")["items"]
         nodes = {pod["spec"]["nodeName"] for pod in pods if pod.get("spec", {}).get("nodeName")}
         data = api.request(control)["data"]
-        if data.get("mode") != "cleanup" or data.get("epoch") != epoch:
+        if (data.get("mode") != "cleanup" or data.get("epoch") != epoch
+                or data.get("revision", "") != revision):
             raise RuntimeError("cleanup request was changed by another operation")
         status = deployment.get("status", {})
         if (status.get("observedGeneration", 0) >= deployment["metadata"]["generation"]
@@ -186,14 +189,19 @@ def maintain(api, namespace, name, router, release, node, table, exclusions):
                 data = config["data"]
                 if data.get("node." + key) != node:
                     api.request(control, {"data": {"node." + key: node}})
-                if data.get("mode") == "cleanup":
+                mode = data.get("mode", "active")
+                # A successfully applied release supersedes the previous cleanup request.
+                # Empty revisions keep the pre-revision cleanup protocol compatible.
+                if mode == "cleanup" and data.get("cleanupRevision", "") != data.get("revision", ""):
+                    mode = "active"
+                if mode == "cleanup":
                     remove_table(table)
                     epoch = data["epoch"]
                     if not epoch:
                         raise RuntimeError("cleanup epoch is empty")
                     if data.get("clean." + key) != epoch:
                         api.request(control, {"data": {"clean." + key: epoch}})
-                elif data.get("mode") == "active":
+                elif mode == "active":
                     addresses = router_ips(api, namespace, router, release, node)
                     subprocess.run(["nft", "-f", "-"], input=nft_rules(table, addresses, exclusions),
                                    text=True, check=True, timeout=10)

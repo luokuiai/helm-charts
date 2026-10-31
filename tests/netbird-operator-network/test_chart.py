@@ -138,6 +138,11 @@ class NetBirdOperatorNetworkTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertNotEqual(render({"natWorkaround": value}).returncode, 0)
 
+    def test_helm_does_not_own_agent_mutable_cleanup_fields(self):
+        docs = manifests({"natWorkaround": {"enabled": True}})
+        self.assertEqual(set(docs["ConfigMap"]["data"]), {"revision", "agent.py"})
+        self.assertEqual(docs["ConfigMap"]["data"]["revision"], "1")
+
     def test_existing_installation_hooks_handle_disabling_without_a_future_delete_hook(self):
         import shutil
         import tempfile

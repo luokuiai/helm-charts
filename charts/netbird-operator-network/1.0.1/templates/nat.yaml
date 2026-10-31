@@ -63,8 +63,8 @@ metadata:
   labels:
     {{- include "netbird-operator-network.labels" . | nindent 4 }}
 data:
-  mode: active
-  epoch: ""
+  # Runtime mode/epoch and node acknowledgements belong only to the agent.
+  revision: {{ .Release.Revision | quote }}
   agent.py: |
     {{- .Files.Get "files/nat-agent.py" | nindent 4 }}
 ---

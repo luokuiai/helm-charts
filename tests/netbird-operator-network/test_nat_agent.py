@@ -157,12 +157,70 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(api.writes[0]["data"]["mode"], "cleanup")
         self.assertEqual(api.data["mode"], "cleanup")
 
-    def test_unacknowledged_node_makes_cleanup_fail(self):
-        api = CleanupAPI(acknowledge=False)
-        with patch.object(agent.time, "monotonic", side_effect=[0, 1, 121]), patch.object(agent.time, "sleep"):
-            with self.assertRaisesRegex(RuntimeError, "timed out"):
+    def test_cleanup_targets_current_revision_without_writing_helm_owned_fields(self):
+        for revision in (None, "4"):
+            with self.subTest(revision=revision):
+                api = CleanupAPI(acknowledge=True)
+                if revision is not None:
+                    api.data["revision"] = revision
                 agent.cleanup(api, "infra-system", "release-nat", 120)
-        self.assertEqual(api.data["mode"], "cleanup")
+                self.assertEqual(api.writes[0]["data"]["cleanupRevision"], revision or "")
+                for write in api.writes:
+                    self.assertTrue({"revision", "agent.py"}.isdisjoint(write["data"]))
+
+    def test_maintenance_resumes_after_revision_changes_but_preserves_current_cleanup(self):
+        cases = [
+            ({"revision": "2"}, True),
+            ({"revision": "2", "mode": "cleanup", "epoch": "old"}, True),
+            ({"revision": "2", "mode": "cleanup", "epoch": "old", "cleanupRevision": "1"}, True),
+            ({"revision": "2", "mode": "cleanup", "epoch": "now", "cleanupRevision": "2"}, False),
+            ({"mode": "cleanup", "epoch": "legacy"}, False),
+        ]
+        for data, active in cases:
+            with self.subTest(data=data), tempfile.TemporaryDirectory() as temp:
+                api = CleanupAPI(acknowledge=False)
+                api.data = {**data, "node." + agent.node_key("node-a"): "node-a"}
+                original = copy.deepcopy(api.data)
+                handlers = {}
+                with patch.object(agent.signal, "signal", side_effect=lambda sig, fn: handlers.update({sig: fn})), \
+                     patch.object(agent.time, "sleep", side_effect=lambda _: handlers[agent.signal.SIGTERM]()), \
+                     patch.object(agent, "STATE", Path(temp) / "ready"), \
+                     patch.object(agent, "remove_table"), \
+                     patch.object(agent, "router_ips", return_value=["10.42.0.41"]) as select, \
+                     patch.object(agent.subprocess, "run") as apply:
+                    agent.maintain(api, "infra-system", "release-nat", "vpn-entry", "release",
+                                   "node-a", "nb_nat_test", ["224.0.0.0/4"])
+                self.assertEqual(apply.call_count, int(active))
+                self.assertEqual(select.call_count, int(active))
+                self.assertEqual({key: api.data[key] for key in original}, original)
+                self.assertEqual("clean." + agent.node_key("node-a") in api.data, not active)
+
+    def test_unacknowledged_node_makes_cleanup_fail(self):
+        for revision in (None, "4"):
+            with self.subTest(revision=revision):
+                api = CleanupAPI(acknowledge=False)
+                if revision is not None:
+                    api.data["revision"] = revision
+                with patch.object(agent.time, "monotonic", side_effect=[0, 1, 121]), patch.object(agent.time, "sleep"):
+                    with self.assertRaisesRegex(RuntimeError, "timed out"):
+                        agent.cleanup(api, "infra-system", "release-nat", 120)
+                self.assertEqual(api.data["mode"], "cleanup")
+                self.assertEqual(api.data["cleanupRevision"], revision or "")
+
+    def test_cleanup_rejects_a_concurrent_release_change(self):
+        api = CleanupAPI(acknowledge=True)
+        api.data["revision"] = "1"
+        original_request = api.request
+
+        def request(path, patch=None):
+            result = original_request(path, patch)
+            if patch:
+                api.data["revision"] = "2"
+            return result
+
+        api.request = request
+        with self.assertRaisesRegex(RuntimeError, "changed by another operation"):
+            agent.cleanup(api, "infra-system", "release-nat", 120)
 
     def test_maintenance_acknowledges_only_successful_removal_and_never_readds_in_cleanup(self):
         for removal_fails in (False, True):
