@@ -1,0 +1,294 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "minLength": 1
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "minLength": 1
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "certificate": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "disabled",
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "existingSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "anyOf": [
+                {
+                  "const": ""
+                },
+                {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                }
+              ]
+            },
+            "secretName": {
+              "type": "string",
+              "maxLength": 253,
+              "anyOf": [
+                {
+                  "const": ""
+                },
+                {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                }
+              ]
+            },
+            "issuerKind": {
+              "type": "string",
+              "enum": [
+                "ClusterIssuer",
+                "Issuer"
+              ]
+            },
+            "issuerName": {
+              "type": "string",
+              "maxLength": 253,
+              "anyOf": [
+                {
+                  "const": ""
+                },
+                {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "existingSecret",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "mode": {
+                    "const": "existing"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "existingSecret": {
+                    "type": "string",
+                    "maxLength": 253,
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "mode": {
+                    "const": "cert-manager"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "issuerName": {
+                    "type": "string",
+                    "maxLength": 253,
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "host",
+        "className",
+        "annotations",
+        "certificate"
+      ]
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "addressType": {
+          "type": "string",
+          "enum": [
+            "IPv4",
+            "IPv6",
+            "DNS"
+          ]
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "scheme": {
+          "type": "string",
+          "enum": [
+            "http",
+            "https"
+          ]
+        },
+        "hostHeader": {
+          "type": "string",
+          "enum": [
+            "original",
+            "backend"
+          ]
+        },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "serverName": {
+              "type": "string",
+              "maxLength": 253,
+              "anyOf": [
+                {
+                  "const": ""
+                },
+                {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                }
+              ]
+            },
+            "caSecret": {
+              "type": "string",
+              "maxLength": 253,
+              "anyOf": [
+                {
+                  "const": ""
+                },
+                {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                }
+              ]
+            }
+          },
+          "required": [
+            "serverName",
+            "caSecret"
+          ]
+        }
+      },
+      "required": [
+        "addressType",
+        "address",
+        "port",
+        "scheme",
+        "hostHeader",
+        "tls"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "addressType": {
+                "const": "IPv4"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "address": {
+                "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$",
+                "not": {
+                  "pattern": "^(0\\.|127\\.|169\\.254\\.|2[2-5][0-9]\\.)"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "addressType": {
+                "const": "IPv6"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "address": {
+                "format": "ipv6",
+                "pattern": "^[0-9a-fA-F:]+$",
+                "not": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "::",
+                        "::1",
+                        "0:0:0:0:0:0:0:0",
+                        "0:0:0:0:0:0:0:1"
+                      ]
+                    },
+                    {
+                      "pattern": "^([fF][fF]|[fF][eE][89aAbB])"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "addressType": {
+                "const": "DNS"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "address": {
+                "type": "string",
+                "maxLength": 253,
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "not": {
+                  "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "ingress",
+    "backend"
+  ]
+}

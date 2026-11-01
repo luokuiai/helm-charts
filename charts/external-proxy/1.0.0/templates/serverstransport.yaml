@@ -1,0 +1,14 @@
+{{- if eq .Values.backend.scheme "https" }}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ include "external-proxy.name" . }}
+  labels:
+    {{- include "external-proxy.labels" . | nindent 4 }}
+spec:
+  serverName: {{ .Values.backend.tls.serverName | default (ternary .Values.ingress.host .Values.backend.address (eq .Values.backend.hostHeader "original")) | quote }}
+  {{- with .Values.backend.tls.caSecret }}
+  rootCAsSecrets:
+    - {{ . | quote }}
+  {{- end }}
+{{- end }}

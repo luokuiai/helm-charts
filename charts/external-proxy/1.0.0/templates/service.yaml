@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "external-proxy.name" . }}
+  labels:
+    {{- include "external-proxy.labels" . | nindent 4 }}
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: {{ .Values.backend.scheme | quote }}
+    traefik.ingress.kubernetes.io/service.passhostheader: {{ eq .Values.backend.hostHeader "original" | quote }}
+    {{- if eq .Values.backend.scheme "https" }}
+    traefik.ingress.kubernetes.io/service.serverstransport: {{ printf "%s-%s@kubernetescrd" .Release.Namespace (include "external-proxy.name" .) | quote }}
+    {{- end }}
+spec:
+  {{- if eq .Values.backend.addressType "DNS" }}
+  type: ExternalName
+  externalName: {{ .Values.backend.address | quote }}
+  {{- else }}
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  ipFamilies:
+    - {{ .Values.backend.addressType }}
+  {{- end }}
+  ports:
+    - name: upstream
+      port: {{ .Values.backend.port }}
+      targetPort: {{ .Values.backend.port }}
+      protocol: TCP

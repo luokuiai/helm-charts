@@ -1,0 +1,36 @@
+{{- $certificate := .Values.ingress.certificate }}
+{{- $annotations := deepCopy .Values.ingress.annotations }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- $key := ternary "cert-manager.io/cluster-issuer" "cert-manager.io/issuer" (eq $certificate.issuerKind "ClusterIssuer") }}
+{{- $_ := set $annotations $key (required "ingress.certificate.issuerName is required" $certificate.issuerName) }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "external-proxy.name" . }}
+  labels:
+    {{- include "external-proxy.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if ne $certificate.mode "disabled" }}
+  tls:
+    - secretName: {{ include "external-proxy.tlsSecret" . | quote }}
+      hosts:
+        - {{ .Values.ingress.host | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "external-proxy.name" . }}
+                port:
+                  name: upstream

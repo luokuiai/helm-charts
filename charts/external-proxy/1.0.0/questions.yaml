@@ -1,0 +1,127 @@
+questions:
+  - variable: ingress.host
+    label: "访问域名"
+    type: hostname
+    default: proxy.example.com
+    required: true
+    group: "访问入口"
+    description: "填写通过 Traefik 访问的域名，不包含协议或路径。DNS 记录需另行配置；私有入口沿用现有 VPN DNS。每次安装配置一个域名和后端，多个应用可安装多个实例。"
+  - variable: ingress.className
+    label: "Ingress 类"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: traefik-vpn
+    required: true
+    group: "访问入口"
+    description: "从已有 Ingress 类中选择。私有入口选 traefik-vpn，公网入口通常选 traefik；本 Chart 使用 Traefik 注解。"
+  - variable: backend.addressType
+    label: "后端地址类型"
+    type: enum
+    default: IPv4
+    required: true
+    options:
+      - IPv4
+      - IPv6
+      - DNS
+    group: "后端连接"
+    description: "IPv4 / IPv6 使用 Service + EndpointSlice；IPv6 需要集群启用 IPv6 Service。DNS 使用 ExternalName，需在所选 Traefik 开启 providers.kubernetesIngress.allowExternalNameServices=true。"
+  - variable: backend.address
+    label: "后端地址"
+    type: string
+    default: 192.0.2.10
+    required: true
+    group: "后端连接"
+    description: "填写远端 IP 或域名，不包含协议、端口、路径或 IPv6 方括号。Traefik Pod 必须能访问该地址。后端可仅向集群实际出口 IP 放行。"
+  - variable: backend.port
+    label: "后端端口"
+    type: int
+    default: 80
+    min: 1
+    max: 65535
+    required: true
+    group: "后端连接"
+  - variable: backend.scheme
+    label: "后端协议"
+    type: enum
+    default: http
+    required: true
+    options:
+      - http
+      - https
+    group: "后端连接"
+    description: "这是 Traefik 到后端的协议，与访问域名的 HTTPS 配置分别设置。https 需要 Traefik CRDs 和 kubernetesCRD provider。"
+  - variable: backend.hostHeader
+    label: "Host 请求头"
+    type: enum
+    default: original
+    required: true
+    options:
+      - original
+      - backend
+    group: "后端连接"
+    description: "original：保留用户访问的域名，后端也是 Traefik 时通常选此项；backend：使用后端地址。Authorization、x-api-key 等业务请求头按 Traefik 默认行为透传；本 Chart 不添加删改请求头的中间件。"
+  - variable: backend.tls.serverName
+    label: "后端 TLS 证书域名 / SNI（可选）"
+    type: hostname
+    default: ""
+    group: "后端连接"
+    show_if: backend.scheme=https
+    description: "用于后端证书校验和 TLS SNI。留空时 original 模式使用访问域名，backend 模式使用后端地址；后端 Traefik 可据此匹配 TLS 路由。"
+  - variable: backend.tls.caSecret
+    label: "后端自定义 CA Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "后端连接"
+    show_if: backend.scheme=https
+    description: "后端使用私有 CA 时选择当前命名空间的 Secret，包含 ca.crt 或 tls.ca。留空使用系统信任链，始终校验后端证书。"
+  - variable: ingress.certificate.mode
+    label: "访问域名 HTTPS 模式"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "域名证书"
+    description: "安装时选择：disabled 使用 HTTP；existing 选择已有 TLS Secret；cert-manager 自动申请、续期证书并创建 TLS Secret。入口证书与后端证书分别配置。"
+  - variable: ingress.certificate.existingSecret
+    label: "已有 TLS Secret"
+    type: "reference[secret]"
+    default: ""
+    required: true
+    group: "域名证书"
+    show_if: ingress.certificate.mode=existing
+    description: "选择安装命名空间中包含 tls.crt 和 tls.key 的 TLS Secret。"
+  - variable: ingress.certificate.issuerKind
+    label: "证书签发器类型"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "域名证书"
+    show_if: ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "域名证书"
+    show_if: ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "选择已有且就绪的 ClusterIssuer，例如现有 DNS-01 签发器。"
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "域名证书"
+    show_if: ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "选择安装命名空间中已有且就绪的 Issuer。"
+  - variable: ingress.certificate.secretName
+    label: "生成的 TLS Secret 名称（可选）"
+    type: string
+    default: ""
+    group: "域名证书"
+    show_if: ingress.certificate.mode=cert-manager
+    description: "留空自动使用 <安装实例名>-tls，避免多个代理实例共用证书 Secret。"

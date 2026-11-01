@@ -14,6 +14,8 @@ helm-charts/                         # Git repository root
 │   │   └── 1.0.0/                   # OpenBao standalone / Raft HA + domain + Rancher form
 │   ├── casdoor/
 │   │   └── 1.0.0/                   # Casdoor + external database + domain + Rancher form
+│   ├── external-proxy/
+│   │   └── 1.0.0/                   # External HTTP / HTTPS backend + existing Traefik + Rancher form
 │   ├── magpie/
 │   │   ├── 1.0.0/                   # Magpie gateway + Web UI + PVC + Rancher form
 │   │   └── 1.0.1/                   # Optional target node dropdown
@@ -65,6 +67,7 @@ The current versions use Chinese consistently for Rancher form groups, labels, a
 | postgres | 1.0.0 | PostgreSQL 18.6, persistent storage, environment Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.1 | Casdoor v4.25.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
+| external-proxy | 1.0.0 | External IP / DNS backends through existing Traefik, original Host forwarding, upstream TLS / SNI, domain certificates, and a Rancher configuration form |
 | magpie | 1.0.1, 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, node selection, and a Rancher configuration form |
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | warpgate | 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
@@ -84,6 +87,8 @@ See the [OpenBao deployment guide](docs/openbao/deployment.md) for single-node /
 
 See the [Casdoor deployment guide](docs/casdoor/deployment.md) for external database Secrets, domain / HTTPS, and S3 / MinIO upload configuration. Casdoor creates no database server or file PVC.
 
+See the [External Proxy deployment guide](docs/external-proxy/deployment.md) for exposing external applications through an existing private or public Traefik ingress.
+
 See the [Magpie deployment guide](docs/magpie/deployment.md) for Web administration keys, persistent config, domain / HTTPS, and gateway client setup.
 
 See the [Silo deployment guide](docs/silo/deployment.md) for single-node / distributed object storage, numeric node counts, per-node PVCs, and separate S3 API / Console domains.
@@ -101,7 +106,7 @@ See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the t
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.1/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.1/`, `charts/external-proxy/1.0.0/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -133,7 +138,7 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `silo`, `warpgate`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `external-proxy`, `silo`, `warpgate`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.
 
 For new installations, the release name is editable; these charts do not force
 `catalog.cattle.io/release-name`. Installed Helm releases keep their original

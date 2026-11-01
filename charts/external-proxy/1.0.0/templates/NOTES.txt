@@ -1,0 +1,16 @@
+Domain: {{ ternary "http" "https" (eq .Values.ingress.certificate.mode "disabled") }}://{{ .Values.ingress.host }}
+Ingress class: {{ .Values.ingress.className }}
+Backend: {{ .Values.backend.scheme }}://{{ .Values.backend.address }}:{{ .Values.backend.port }}
+Host header mode: {{ .Values.backend.hostHeader }}
+
+Configure DNS separately. The Traefik pods must be able to reach the backend.
+{{- if eq .Values.backend.addressType "DNS" }}
+
+DNS backends require providers.kubernetesIngress.allowExternalNameServices=true
+on the selected Traefik release. This chart does not change Traefik settings.
+{{- end }}
+{{- if eq .Values.backend.scheme "https" }}
+
+HTTPS backends require Traefik CRDs and its kubernetesCRD provider.
+Upstream TLS verification is enabled; configure serverName / caSecret if needed.
+{{- end }}

@@ -1,0 +1,20 @@
+{{- if ne .Values.backend.addressType "DNS" }}
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: {{ include "external-proxy.name" . }}
+  labels:
+    {{- include "external-proxy.labels" . | nindent 4 }}
+    kubernetes.io/service-name: {{ include "external-proxy.name" . }}
+    endpointslice.kubernetes.io/managed-by: external-proxy.helm
+addressType: {{ .Values.backend.addressType }}
+ports:
+  - name: upstream
+    port: {{ .Values.backend.port }}
+    protocol: TCP
+endpoints:
+  - addresses:
+      - {{ .Values.backend.address | quote }}
+    conditions:
+      ready: true
+{{- end }}

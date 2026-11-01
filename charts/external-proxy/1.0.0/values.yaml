@@ -1,0 +1,24 @@
+ingress:
+  host: proxy.example.com
+  className: traefik-vpn
+  annotations: {}
+  certificate:
+    mode: disabled
+    existingSecret: ""
+    # Empty creates a release-specific name in cert-manager mode.
+    secretName: ""
+    issuerKind: ClusterIssuer
+    issuerName: ""
+
+backend:
+  addressType: IPv4
+  address: 192.0.2.10
+  port: 80
+  scheme: http
+  # original keeps the incoming Host so another Traefik can route the request.
+  hostHeader: original
+  tls:
+    # Empty uses ingress.host in original mode, or backend.address in backend mode.
+    serverName: ""
+    # Optional Secret containing ca.crt or tls.ca. Certificate checks stay enabled.
+    caSecret: ""

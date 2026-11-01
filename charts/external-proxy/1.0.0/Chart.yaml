@@ -1,0 +1,14 @@
+apiVersion: v2
+name: external-proxy
+description: Route a domain through an existing Traefik to an external HTTP or HTTPS backend
+type: application
+version: 1.0.0
+kubeVersion: ">=1.26.0-0"
+home: https://doc.traefik.io/traefik/
+icon: file://charts/external-proxy/1.0.0/icon.png
+keywords:
+  - proxy
+  - ingress
+  - traefik
+annotations:
+  catalog.cattle.io/display-name: "External Proxy"
