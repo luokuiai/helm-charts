@@ -1,0 +1,140 @@
+questions:
+  - variable: image.repository
+    label: "Magpie image"
+    type: string
+    default: ghcr.io/yetone/magpie:0.1.1836
+    required: true
+    group: "Images"
+    description: "Full image including its version, such as ghcr.io/yetone/magpie:0.1.1836 or registry.example.com/team/magpie:0.1.1836. Official headless image supports amd64 and arm64."
+  - variable: magpie.envSecret
+    label: "Magpie environment Secret"
+    type: "reference[secret]"
+    default: magpie-env
+    required: true
+    group: "Environment"
+    description: "Select an existing Secret in the installation namespace containing MAGPIE_WEB_KEY and other Magpie environment variables. The Web key needs at least 16 characters: letters, digits, - . _ ~. Restart the Deployment after updating the Secret. API clients use separate gateway keys created in Magpie."
+  - variable: persistence.existingClaim
+    label: "Existing config PVC (optional)"
+    type: string
+    default: ""
+    group: "Persistence"
+    description: "Leave empty to create a PVC for /config. An existing claim must be in this namespace and writable by UID/GID 65532. Do not switch claims after installation without migrating data."
+  - variable: persistence.storageClass
+    label: "Config storage class"
+    type: storageclass
+    default: local-path
+    group: "Persistence"
+    description: "Used when creating a PVC. Leave empty to use the cluster default. local-path keeps data on the assigned K3s node."
+  - variable: persistence.size
+    label: "Initial config storage size"
+    type: string
+    default: 1Gi
+    required: true
+    group: "Persistence"
+    description: "Stores settings, provider keys, sign-ins, plugins, caches, and usage. Resize existing PVCs separately. The chart retains the PVC on uninstall."
+  - variable: ingress.enabled
+    label: "Enable domain access (Ingress)"
+    type: boolean
+    default: "false"
+    required: true
+    group: "Domain / HTTPS"
+    description: "One domain serves the Web UI and gateway API through port 3430. Requires an existing Ingress controller and a DNS record."
+  - variable: ingress.hosts.0.host
+    label: "Hostname"
+    type: hostname
+    default: magpie.example.com
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Enter only the hostname. The UI uses / and OpenAI-compatible clients use /v1."
+  - variable: ingress.className
+    label: "Ingress Class"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Usually traefik on K3s. Leave empty to use the default Ingress Class."
+  - variable: ingress.certificate.mode
+    label: "HTTPS mode"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "existing: an existing TLS Secret; cert-manager: request a certificate from an existing issuer; disabled: HTTP. Use HTTPS or a private tunnel for remote access."
+  - variable: ingress.certificate.issuerKind
+    label: "Certificate issuer kind"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "Select an existing, ready ClusterIssuer. Install cert-manager first."
+  # Separate issuer selectors so Rancher remounts the selector when the kind changes.
+  - variable: ingress.certificate.secretName
+    label: "TLS Secret name"
+    type: string
+    default: magpie-tls
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true
+    description: "An existing Secret in existing mode; the Secret to create in cert-manager mode. Ignored in disabled mode."
+  - variable: ingress.certificate.issuerName
+    label: "Certificate issuer name"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "Domain / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "Select an existing, ready Issuer in the installation namespace."
+  - variable: magpie.publicURL
+    label: "Public base URL override (optional)"
+    type: string
+    default: ""
+    group: "Domain / HTTPS"
+    description: "Leave empty to derive the http(s)://hostname from Ingress. Override when using a separate reverse proxy. Do not append /v1; this URL serves both the Web UI and gateway API."
+  - variable: nodeName
+    label: "目标节点（可选）"
+    type: "reference[node]"
+    default: ""
+    group: "节点调度"
+    description: "从集群节点下拉列表中选择目标节点；留空表示不限制节点。local-path PVC 绑定节点后，修改此项不会迁移数据。"
+  - variable: resources.requests.cpu
+    label: "CPU request"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.cpu
+    label: "CPU limit"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / memory"
+  - variable: resources.requests.memory
+    label: "Memory request"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / memory"
+  - variable: resources.limits.memory
+    label: "Memory limit"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / memory"
+    description: "Increase if optional provider CLIs or plugins require more memory."

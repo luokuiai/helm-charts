@@ -15,7 +15,8 @@ helm-charts/                         # Git repository root
 │   ├── casdoor/
 │   │   └── 1.0.0/                   # Casdoor + external database + domain + Rancher form
 │   ├── magpie/
-│   │   └── 1.0.0/                   # Magpie gateway + Web UI + PVC + Rancher form
+│   │   ├── 1.0.0/                   # Magpie gateway + Web UI + PVC + Rancher form
+│   │   └── 1.0.1/                   # Optional target node dropdown
 │   ├── silo/
 │   │   └── 1.0.0/                   # Silo S3 storage + 1-16 nodes + Rancher form
 │   ├── warpgate/
@@ -62,7 +63,7 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 | postgres | 1.0.0 | PostgreSQL 18.6, persistent storage, environment Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.1 | Casdoor v4.25.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
-| magpie | 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, and a Rancher configuration form |
+| magpie | 1.0.1, 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, node selection, and a Rancher configuration form |
 | silo | 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | warpgate | 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
@@ -98,7 +99,7 @@ See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the t
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.0/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.1/`, `charts/silo/1.0.0/`, `charts/warpgate/1.0.0/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.

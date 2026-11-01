@@ -1,6 +1,6 @@
 # Deploying Magpie from Rancher
 
-Select `magpie` version `1.0.0` from this Git chart repository. This deploys
+Select `magpie` version `1.0.1` from this Git chart repository. This deploys
 the official Magpie 0.1.1836 headless container, with gateway and Web management.
 It does not run a desktop window or install agents on client machines.
 The published image supports Linux amd64 and arm64.
@@ -40,7 +40,7 @@ Keep the completed Secret out of Git. The form stores only the Secret name.
 For an existing `magpie-env` Secret in namespace `ai`:
 
 ```bash
-helm install magpie charts/magpie/1.0.0 \
+helm install magpie charts/magpie/1.0.1 \
   --namespace ai \
   --set magpie.envSecret=magpie-env
 ```
@@ -59,6 +59,15 @@ The Web key grants administrative access, including access to provider
 credentials. The application's startup log also includes a keyed login
 link; restrict log access accordingly. Chart installation notes do not
 print the actual key.
+
+## Node scheduling
+
+Under **节点调度**, use **目标节点（可选）** to select a cluster node from
+the dropdown. Server and Agent nodes are both listed; the user's Rancher
+permissions must allow listing nodes. Leave the field empty for automatic
+scheduling. For YAML installs, set `nodeName` to the Kubernetes node name.
+The scheduler still checks the node's resources, taints, and volume placement.
+Changing the selected node does not migrate an existing local-path PVC.
 
 ## Storage
 

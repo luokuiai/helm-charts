@@ -9,7 +9,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/magpie/1.0.0"
+CHART = ROOT / "charts/magpie/1.0.1"
 WEB_KEY = "test-web-key-1234567890"
 
 
@@ -144,6 +144,23 @@ class MagpieChartTests(unittest.TestCase):
         claim = resource(manifests({"persistence": {"storageClass": ""}}), "PersistentVolumeClaim")
         self.assertNotIn("storageClassName", claim["spec"])
 
+    def test_optional_node_selection(self):
+        for values in ({}, {"nodeName": ""}):
+            with self.subTest(values=values):
+                pod = resource(manifests(values), "Deployment")["spec"]["template"]["spec"]
+                self.assertNotIn("nodeSelector", pod)
+                self.assertNotIn("affinity", pod)
+                self.assertNotIn("nodeName", pod)
+        for name in ("worker-02", "worker-02.example.internal"):
+            with self.subTest(node=name):
+                pod = resource(manifests({"nodeName": name}), "Deployment")["spec"]["template"]["spec"]
+                self.assertEqual(pod["affinity"], {"nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [{"matchFields": [{"key": "metadata.name", "operator": "In",
+                                                                "values": [name]}]}]}}})
+                self.assertNotIn("nodeName", pod)
+                self.assertNotIn("nodeSelector", pod)
+
     def test_domain_routes_web_and_api_to_the_web_port(self):
         docs = manifests(ingress("existing", secretName="gateway-tls"), release="my-gateway")
         route = resource(docs, "Ingress")
@@ -188,6 +205,10 @@ class MagpieChartTests(unittest.TestCase):
                                                            "secretKey": "invalid/key"}},
             {"image": {"repository": ""}},
             {"persistence": {"size": "bad-size"}},
+            {"nodeName": "bad node"},
+            {"nodeName": "node/name"},
+            {"nodeName": "a" * 254},
+            {"nodeName": 123},
             {"magpie": {"publicURL": "ftp://invalid.example.com"}},
             {"magpie": {"publicURL": "https://example.com/v1"}},
             ingress("invalid"),
@@ -210,6 +231,11 @@ class MagpieChartTests(unittest.TestCase):
         secret_question = next(question for question in questions
                                if question["variable"] == "magpie.envSecret")
         self.assertEqual(secret_question["type"], "reference[secret]")
+        node_question = next(question for question in questions
+                             if question["variable"] == "nodeName")
+        self.assertEqual(node_question["type"], "reference[node]")
+        self.assertEqual(node_question["group"], "节点调度")
+        self.assertFalse(node_question.get("required", False))
 
         def value_at(path):
             value = values

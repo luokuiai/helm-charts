@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "magpie.fullname" . }}
+  labels:
+    {{- include "magpie.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3430
+      targetPort: web
+    - name: gateway
+      port: 3425
+      targetPort: gateway
+  selector:
+    {{- include "magpie.selectorLabels" . | nindent 4 }}
