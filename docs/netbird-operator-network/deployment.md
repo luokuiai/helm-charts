@@ -23,7 +23,7 @@ Clients must use NetBird-managed DNS. Check existing broad policies as well: ass
 
 ## Install the Chart
 
-In Rancher, refresh this Git repository and install **NetBird Operator Network** version `1.0.1` in **`infra-system`**. Select the existing `traefik-vpn` Service from the **VPN ingress Service** dropdown. Keep the defaults if they match the NetBird preparation above.
+In Rancher, refresh this Git repository and install **NetBird Operator Network** version `1.0.1` in **`infra-system`**. Select the existing `traefik-vpn` Service from the **VPN 入口 Service** dropdown. Keep the defaults if they match the NetBird preparation above.
 
 The release creates:
 
@@ -71,7 +71,7 @@ From an authorized computer, verify that the application resolves and works over
 
 ## Optional scoped outbound NAT workaround (1.0.1)
 
-Leave **Enable NetBird outbound NAT workaround** off unless Flannel fully-random SNAT interferes with direct NetBird connections. Enabling it installs a host-network DaemonSet with `NET_ADMIN` on Linux nodes; the namespace must permit that security context. It does not open an inbound port, install host files, or change the routing Pod template.
+Leave **启用 NetBird 出站 NAT 兼容修复** off unless Flannel fully-random SNAT interferes with direct NetBird connections. Enabling it installs a host-network DaemonSet with `NET_ADMIN` on Linux nodes; the namespace must permit that security context. It does not open an inbound port, install host files, or change the routing Pod template.
 
 The maintenance agent verifies the NetworkRouter/Deployment/ReplicaSet owner chain and matches only the local routing Pod IPv4 addresses with UDP source port `51820`. It does not match other applications by Pod CIDR. Selection is refreshed every 60 seconds; entries expire after 90 seconds without refresh. Confirm the excluded Pod and Service CIDRs match your cluster. Enter a complete maintenance image reference, including its version or digest, when using a registry mirror; the default is `ghcr.io/nicolaka/netshoot:v0.14`.
 

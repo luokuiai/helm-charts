@@ -1,118 +1,118 @@
 questions:
   - variable: image.repository
-    label: "Casdoor image"
+    label: "Casdoor 镜像"
     type: string
     default: casbin/casdoor:v4.25.0
     required: true
-    group: "Images"
-    description: "Full image including its version or digest, such as casbin/casdoor:v4.25.0 or registry.example.com/team/casdoor:v4.25.0."
+    group: "镜像"
+    description: "填写包含版本或摘要的完整镜像地址，例如 casbin/casdoor:v4.25.0 或 registry.example.com/team/casdoor:v4.25.0。"
   - variable: casdoor.envSecret
-    label: "Casdoor environment Secret"
+    label: "Casdoor 环境变量 Secret"
     type: "reference[secret]"
     default: casdoor-env
     required: true
-    group: "Environment variables"
-    description: "Required key: dataSourceName. See the help icon for all variables. Names are case-sensitive; restart the Deployment after changes."
+    group: "环境变量"
+    description: "必填环境变量：dataSourceName。完整变量列表见帮助图标。变量名区分大小写；更新 Secret 后需重启 Deployment。"
     # Rancher renders descriptions as plain text; tooltips support HTML formatting.
     tooltip: |-
-      <b>Required</b>
+      <b>必填环境变量</b>
       <ul>
-        <li><code>dataSourceName</code>: database connection string.</li>
+        <li><code>dataSourceName</code>：数据库连接字符串。</li>
       </ul>
-      <b>Optional</b>
+      <b>可选环境变量</b>
       <ul>
-        <li><code>driverName</code>: postgres (default) or mysql.</li>
-        <li><code>dbName</code>: database name; default casdoor.</li>
-        <li><code>initAdminPassword</code>: initial admin credential; new account only.</li>
-        <li><code>origin</code>: public URL; defaults to the Ingress URL.</li>
-        <li><code>forceLanguage</code>: interface language, e.g. zh.</li>
-        <li><code>defaultStorageProvider</code>: existing Provider name for avatars.</li>
+        <li><code>driverName</code>：postgres（默认）或 mysql。</li>
+        <li><code>dbName</code>：数据库名称，默认 casdoor。</li>
+        <li><code>initAdminPassword</code>：初始管理员密码，仅新建账号时生效。</li>
+        <li><code>origin</code>：外部访问 URL，默认根据 Ingress 生成。</li>
+        <li><code>forceLanguage</code>：界面语言，例如 zh。</li>
+        <li><code>defaultStorageProvider</code>：头像使用的已有存储提供商名称。</li>
       </ul>
-      <b>Caddy proxy: both required when enabled</b>
+      <b>启用 Caddy 代理时以下两项均必填</b>
       <ul>
-        <li><code>S3_ENDPOINT</code>: internal S3 API URL with scheme and port.</li>
-        <li><code>S3_BUCKET</code>: bucket served by the proxy.</li>
+        <li><code>S3_ENDPOINT</code>：内网 S3 API 地址，包含协议和端口。</li>
+        <li><code>S3_BUCKET</code>：代理提供访问的存储桶名称。</li>
       </ul>
   - variable: storage.mode
-    label: "File storage"
+    label: "文件存储方式"
     type: enum
     default: s3
     required: true
     options:
       - s3
       - local
-    group: "File storage"
-    description: "s3: external object storage. local: files on a PVC at /files. Configure the matching Provider in Casdoor; switching does not migrate files or update existing Providers."
+    group: "文件存储"
+    description: "s3：使用外部对象存储；local：使用 PVC，将文件保存在 /files。需在 Casdoor 后台配置对应的存储提供商；切换此项不会迁移文件或更新已有提供商。"
   - variable: persistence.existingClaim
-    label: "Existing files PVC (optional)"
+    label: "已有文件 PVC（可选）"
     type: "reference[persistentvolumeclaim]"
     default: ""
-    group: "File storage"
+    group: "文件存储"
     show_if: storage.mode=local
-    description: "Leave empty to create a PVC. Existing claims must be in this namespace and writable by Casdoor (UID/GID 1000 by default)."
+    description: "留空则创建 PVC。已有 PVC 必须位于安装命名空间，且 Casdoor 可写（默认 UID/GID 为 1000）。"
   - variable: persistence.storageClass
-    label: "Files storage class"
+    label: "文件存储类"
     type: storageclass
     default: local-path
-    group: "File storage"
+    group: "文件存储"
     show_if: storage.mode=local
-    description: "For new PVCs only. Leave empty to use the cluster default. local-path stores files on the assigned K3s node."
+    description: "仅创建新 PVC 时使用。留空使用集群默认存储类。local-path 将文件保存在分配到的 K3s 节点上。"
   - variable: persistence.size
-    label: "Initial files storage size"
+    label: "初始文件存储容量"
     type: string
     default: 1Gi
     required: true
-    group: "File storage"
+    group: "文件存储"
     show_if: storage.mode=local
-    description: "For new PVCs only; resize existing claims separately. Local mode uses one Pod. The chart retains its PVC on uninstall or a switch to S3."
+    description: "仅创建新 PVC 时使用；已有 PVC 需单独扩容。本地模式使用单个 Pod。卸载或切换到 S3 时会保留 PVC。"
   - variable: storageProxy.enabled
-    label: "Enable Caddy file proxy"
+    label: "启用 Caddy 文件代理"
     type: boolean
     default: "false"
     required: true
-    group: "File storage"
+    group: "文件存储"
     show_if: storage.mode=s3
-    description: "Optional proxy for S3 files. Reads S3_ENDPOINT and S3_BUCKET from the environment Secret. Keep Silo internal; grant anonymous GetObject only on the dedicated upload bucket."
+    description: "可选的 S3 文件代理。从环境变量 Secret 读取 S3_ENDPOINT 和 S3_BUCKET。Silo 可保持内网访问，仅对专用上传桶授予匿名 GetObject 权限。"
   - variable: storageProxy.image
-    label: "Caddy image"
+    label: "Caddy 镜像"
     type: string
     default: caddy:2.11.7-alpine
     required: true
-    group: "File storage"
+    group: "文件存储"
     show_if: storage.mode=s3&&storageProxy.enabled=true
-    description: "Full Caddy image including its version or digest. No S3 signing plugin or proxy credentials are required."
+    description: "填写包含版本或摘要的完整 Caddy 镜像地址。无需 S3 签名插件或代理访问凭据。"
   - variable: ingress.enabled
-    label: "Enable domain access (Ingress)"
+    label: "启用域名访问（Ingress）"
     type: boolean
     default: "false"
     required: true
-    group: "Domain / HTTPS"
-    description: "Creates routes for Casdoor and, when enabled, the file proxy. Both hostnames share the Ingress Class and HTTPS settings below. Requires an existing Ingress controller. Configure DNS separately."
+    group: "域名 / HTTPS"
+    description: "为 Casdoor 和已启用的文件代理创建路由。两个域名共用下方的 Ingress 类与 HTTPS 设置。需已有 Ingress 控制器，DNS 解析需另行配置。"
   - variable: ingress.hosts.0.host
-    label: "Casdoor hostname"
+    label: "Casdoor 域名"
     type: hostname
     default: casdoor.example.com
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Enter only the hostname, without https:// or a path."
+    description: "只填写域名，不带 https:// 或路径。"
   - variable: storageProxy.hostname
-    label: "File proxy hostname"
+    label: "文件代理域名"
     type: hostname
     default: files.example.com
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&storage.mode=s3&&storageProxy.enabled=true
-    description: "Uses the same Ingress Class and HTTPS mode as Casdoor. The certificate must cover both hostnames. Enter only the hostname. Set the Casdoor storage Provider Domain to http(s)://this-hostname and Path prefix to the bucket name."
+    description: "与 Casdoor 共用 Ingress 类和 HTTPS 模式，证书须覆盖两个域名。这里只填写域名；Casdoor 存储提供商的 Domain 填 http(s)://此域名，Path prefix 填存储桶名称。"
   - variable: ingress.className
-    label: "Ingress Class"
+    label: "Ingress 类"
     type: "reference[networking.k8s.io.ingressclass]"
     default: ""
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Usually traefik on K3s. Leave empty to use the default Ingress Class."
+    description: "K3s 通常选择 traefik；留空使用默认 Ingress 类。"
   - variable: ingress.certificate.mode
-    label: "HTTPS mode"
+    label: "HTTPS 模式"
     type: enum
     default: disabled
     required: true
@@ -120,71 +120,71 @@ questions:
       - disabled
       - existing
       - cert-manager
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Applies to both the Casdoor and file proxy hostnames. disabled: HTTP; existing: a TLS Secret whose certificate covers both hostnames; cert-manager: issue and renew a certificate covering both using an existing issuer."
+    description: "同时应用于 Casdoor 和文件代理域名。disabled：使用 HTTP；existing：使用覆盖两个域名的已有 TLS Secret；cert-manager：通过已有签发器申请并续期覆盖两个域名的证书。"
   - variable: ingress.certificate.issuerKind
-    label: "Certificate issuer kind"
+    label: "证书签发器类型"
     type: enum
     default: ClusterIssuer
     required: true
     options:
       - ClusterIssuer
       - Issuer
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
   - variable: ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.clusterissuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
-    description: "Select an existing, ready ClusterIssuer. cert-manager must already be installed."
+    description: "选择已有且就绪的 ClusterIssuer。需先安装 cert-manager。"
   # Separate issuer selectors so Rancher remounts the selector when the kind changes.
   - variable: ingress.certificate.secretName
-    label: "TLS Secret name"
+    label: "TLS Secret 名称"
     type: string
     default: casdoor-tls
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Existing Secret in existing mode; Secret to create in cert-manager mode. When the file proxy is enabled, the certificate must cover both Casdoor and file hostnames. Ignored in disabled mode."
+    description: "existing 模式填写已有 Secret；cert-manager 模式填写要创建的 Secret 名称。启用文件代理时，证书须覆盖 Casdoor 和文件代理两个域名。disabled 模式忽略此项。"
   - variable: ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.issuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
-    description: "Select an existing, ready Issuer in the installation namespace."
+    description: "选择安装命名空间中已有且就绪的 Issuer。"
   - variable: origin
-    label: "Public origin override (optional)"
+    label: "自定义外部访问地址（可选）"
     type: string
     default: ""
-    group: "Domain / HTTPS"
-    description: "Leave empty to derive http(s)://hostname from Ingress. Set the complete public origin when TLS terminates elsewhere."
+    group: "域名 / HTTPS"
+    description: "留空则根据 Ingress 自动生成 http(s)://域名。若在其他代理处终止 TLS，请填写完整的外部访问地址。"
   - variable: resources.requests.cpu
-    label: "CPU request"
+    label: "CPU 请求量"
     type: string
     default: 100m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.cpu
-    label: "CPU limit"
+    label: "CPU 上限"
     type: string
     default: 1000m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.requests.memory
-    label: "Memory request"
+    label: "内存请求量"
     type: string
     default: 256Mi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.memory
-    label: "Memory limit"
+    label: "内存上限"
     type: string
     default: 1Gi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"

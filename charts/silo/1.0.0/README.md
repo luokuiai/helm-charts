@@ -21,7 +21,7 @@ It does not implement multi-pool expansion, automatic bucket creation, or a
 MinIO operator. Use the Console or `mcli` to create buckets and scoped access keys.
 
 For Console-only domain access, enable Ingress, turn off **Expose S3 API through
-Ingress**, and keep **Expose Console through Ingress** enabled. S3 remains
+Ingress**, and keep **通过 Ingress 开放控制台** enabled. S3 remains
 available through the cluster-internal Service on port `9000`. The Console
 uses the API internally. TLS includes only the enabled hostnames; enabled routes
 share the Ingress Class and certificate settings.

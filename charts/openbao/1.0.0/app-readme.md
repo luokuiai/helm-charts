@@ -8,7 +8,7 @@ The image is one field, defaulting to `openbao/openbao:2.7.2` on Docker Hub.
 Include a version or registry directly, for example `openbao/openbao:2.7.2`.
 The default version is pinned explicitly, with pull policy `IfNotPresent`.
 
-Use **Domain / HTTPS** to configure a hostname, Ingress Class, and certificate.
+Use **域名 / HTTPS** to configure a hostname, Ingress Class, and certificate.
 Choose an existing TLS Secret or an existing cert-manager Issuer / ClusterIssuer.
 Configure DNS separately. HTTPS terminates at the Ingress; the backend uses HTTP.
 

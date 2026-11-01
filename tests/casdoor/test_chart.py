@@ -398,8 +398,8 @@ class CasdoorChartTests(unittest.TestCase):
             self.assertIn(key, help_text)
         self.assertFalse(any(variable.startswith("initData.") for variable in by_variable))
         groups = list(dict.fromkeys(question["group"] for question in questions))
-        self.assertEqual(groups, ["Images", "Environment variables", "File storage",
-                                  "Domain / HTTPS", "CPU / memory"])
+        self.assertEqual(groups, ["镜像", "环境变量", "文件存储",
+                                  "域名 / HTTPS", "CPU / 内存"])
         self.assertEqual(by_variable["storage.mode"]["options"], ["s3", "local"])
         self.assertEqual(by_variable["persistence.existingClaim"]["show_if"], "storage.mode=local")
         self.assertEqual(by_variable["storageProxy.enabled"]["show_if"], "storage.mode=s3")

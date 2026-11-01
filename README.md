@@ -57,6 +57,8 @@ This Git-based setup does not require an `index.yaml` or packaged `.tgz` files.
 
 ## Available applications
 
+The current versions use Chinese consistently for Rancher form groups, labels, and help text. Configuration keys, environment variable names, and option values keep their original identifiers.
+
 | Chart | Chart version | Contents |
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |

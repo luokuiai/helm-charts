@@ -3,18 +3,18 @@
 Deploy Casdoor v4.25.0 with an external PostgreSQL or MySQL database.
 The image uses one complete field: `casbin/casdoor:v4.25.0`.
 Create a dedicated database first, then select the environment Secret
-(default `casdoor-env`) under **Environment variables**. It must contain
+(default `casdoor-env`) under **环境变量**. It must contain
 `dataSourceName`; set `driverName` and `dbName` there too (defaults: `postgres`
 and `casdoor`). The field's help lists the supported deployment variables.
 Use `initAdminPassword` for a new installation's initial administrator password;
 it does not reset an existing account. Restart the Deployment after updating
 its environment Secret.
 
-Use **Domain / HTTPS** to configure the hostname, Ingress Class, and an
+Use **域名 / HTTPS** to configure the hostname, Ingress Class, and an
 existing TLS Secret or cert-manager issuer. The public origin is derived from
 Ingress unless an override is supplied.
 
-Choose **File storage**: `s3` (default) or `local`.
+Choose **文件存储**: `s3` (default) or `local`.
 
 For local uploads, select `local` to mount a PVC at `/files`. Choose an existing
 PVC or create one (default 1Gi, Storage Class `local-path`). Empty Storage Class
@@ -32,7 +32,7 @@ database. S3 mode creates no file PVC or bucket. Returned file URLs must be acce
 to browsers; an internal S3 endpoint alone does not provide public file access.
 
 Enable **Caddy file proxy** to serve the dedicated bucket through a separate
-**File proxy hostname**, sharing the existing Ingress Class and HTTPS settings.
+**文件代理域名**, sharing the existing Ingress Class and HTTPS settings.
 Both containers read `casdoor-env`; add `S3_ENDPOINT` and `S3_BUCKET` for Caddy.
 In the admin console, set the storage provider's Domain to the
 file proxy origin; its bucket and Path prefix match `S3_BUCKET`.

@@ -1,72 +1,72 @@
 questions:
   - variable: image.repository
-    label: "PostgreSQL image"
+    label: "PostgreSQL 镜像"
     type: string
     default: postgres:18.6
     required: true
-    group: "Images"
-    description: "Full PostgreSQL 18 image including its version, such as postgres:18.6 or registry.example.com/team/postgres:18.6. This chart supports PostgreSQL 18 only."
+    group: "镜像"
+    description: "填写包含版本的完整 PostgreSQL 18 镜像地址，例如 postgres:18.6 或 registry.example.com/team/postgres:18.6。此 Chart 仅支持 PostgreSQL 18。"
   - variable: postgres.envSecret
-    label: "PostgreSQL environment Secret"
+    label: "PostgreSQL 环境变量 Secret"
     type: "reference[secret]"
     default: postgres-env
     required: true
-    group: "Database and authentication"
-    description: "Select an existing Secret in the installation namespace containing POSTGRES_PASSWORD. Its entries are injected as environment variables. The password initializes empty storage only; changing the Secret does not change an existing database password."
+    group: "数据库与认证"
+    description: "选择安装命名空间中的已有 Secret，必须包含 POSTGRES_PASSWORD；其中的键值会作为环境变量注入。密码仅用于初始化空存储，更新 Secret 不会修改已有数据库的密码。"
   - variable: auth.username
-    label: "Initial administrator username"
+    label: "初始管理员用户名"
     type: string
     default: postgres
     required: true
-    group: "Database and authentication"
-    description: "Used only when initializing an empty data directory. This user has superuser privileges."
+    group: "数据库与认证"
+    description: "仅初始化空数据目录时使用，此用户具有超级用户权限。"
   - variable: auth.database
-    label: "Initial database name (optional)"
+    label: "初始数据库名称（可选）"
     type: string
     default: ""
-    group: "Database and authentication"
-    description: "Leave empty to use POSTGRES_DB from the environment Secret, or default to the initial username. Used only when initializing empty storage. Additional databases can be created later."
+    group: "数据库与认证"
+    description: "留空则使用环境变量 Secret 中的 POSTGRES_DB，未设置时使用初始用户名。仅初始化空存储时使用，后续可另行创建其他数据库。"
   - variable: persistence.existingClaim
-    label: "Existing PVC name (optional)"
+    label: "已有 PVC 名称（可选）"
     type: string
     default: ""
-    group: "Persistence"
-    description: "Leave empty to create a PVC. Otherwise, use an existing PVC in the installation namespace and ignore the storage class and size below. Do not switch after installation."
+    group: "持久化存储"
+    description: "留空则创建 PVC；否则使用安装命名空间中的已有 PVC，并忽略下方存储类和容量。安装后请勿直接更换。"
   - variable: persistence.storageClass
-    label: "Storage class"
+    label: "存储类"
     type: storageclass
     default: local-path
-    group: "Persistence"
-    description: "Used when creating a PVC. local-path stores data on the local disk of the node running the Pod."
+    group: "持久化存储"
+    description: "创建 PVC 时使用。local-path 将数据保存在运行 Pod 的节点本地磁盘上。"
   - variable: persistence.size
-    label: "Initial storage size"
+    label: "初始存储容量"
     type: string
     default: 10Gi
     required: true
-    group: "Persistence"
-    description: "Used only when creating a PVC. After installation, check storage class capabilities and resize the PVC separately instead of changing this field."
+    group: "持久化存储"
+    description: "仅创建 PVC 时使用。安装后需检查存储类的扩容能力并单独调整 PVC，不要通过修改此字段扩容。"
   - variable: resources.requests.cpu
-    label: "CPU request"
+    label: "CPU 请求量"
     type: string
     default: 100m
     required: true
-    group: "CPU / memory"
-    description: "1000m equals 1 CPU core."
+    group: "CPU / 内存"
+    description: "1000m 等于 1 个 CPU 核心。"
   - variable: resources.limits.cpu
-    label: "CPU limit"
+    label: "CPU 上限"
     type: string
     default: 1000m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.requests.memory
-    label: "Memory request"
+    label: "内存请求量"
     type: string
     default: 256Mi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.memory
-    label: "Memory limit"
+    label: "内存上限"
     type: string
     default: 1Gi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"

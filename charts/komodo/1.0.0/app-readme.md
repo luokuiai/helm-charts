@@ -23,12 +23,12 @@ This address assumes release name `komodo`; a release named `komodo-a` uses
 `komodo-a-mongo:27017`. Update `KOMODO_DATABASE_ADDRESS` in its environment
 Secret to match. `fullnameOverride` can retain an explicit resource name prefix.
 
-Optional domain access is available in the **Domain / HTTPS** form group.
+Optional domain access is available in the **域名 / HTTPS** form group.
 Enable Ingress, enter the hostname, and select the ingress class (usually `traefik` on K3s).
 Choose HTTPS mode `existing` for a TLS Secret in the installation namespace,
 or `cert-manager` to request and renew a certificate through an existing Issuer or ClusterIssuer.
 cert-manager and a ready issuer must already exist; an Issuer must be in the installation namespace.
-Choose the issuer kind, then select an existing resource from the **Certificate issuer name** dropdown.
+Choose the issuer kind, then select an existing resource from the **证书签发器名称** dropdown.
 Issuer options are limited to the installation namespace. If no suitable issuer is listed, create one first.
 The chart does not install cert-manager, create issuers, or configure DNS.
 Point DNS to the ingress endpoint and keep `KOMODO_HOST` in `komodo-env` consistent with the complete public URL.

@@ -63,11 +63,10 @@ access and OIDC do not require it. For SSH, recording stores timed terminal
 input/output events as NDJSON rather than MP4; database traffic recordings use
 packet-capture data. The form has two independent groups:
 
-- **Persistence** configures the local data volume for configuration,
+- **持久化存储** configures the local data volume for configuration,
   certificates, local recordings and active S3 upload buffers. These settings
   remain available when recording is disabled.
-- **Session recording** contains the recording switch and **Use S3 instead of
-  local recording storage**. Leave S3 disabled for local recordings; enabling
+- **会话录像** contains the recording switch and **使用 S3 保存录像**. Leave S3 disabled for local recordings; enabling
   it shows the S3 settings.
 
 The default local recording configuration is:
@@ -105,7 +104,7 @@ the chart reapplies its recording storage settings at startup as described below
 
 ## HA deployment
 
-Enable **HA deployment** and enter a positive **Warpgate replicas** count.
+Enable **启用高可用部署** and enter a positive **Warpgate 副本数** count.
 The default HA count is `2`; setting `1` retains the HA StatefulSet and its PVCs
 for maintenance but provides no redundancy. With HA disabled, the original
 single-replica Deployment and data PVC are unchanged.
@@ -337,11 +336,11 @@ provider creation in the Warpgate backend is required.
 
 1. Register an OAuth / OIDC application in Casdoor or another OIDC provider,
    supporting the Authorization Code flow and PKCE with `S256`.
-2. Read its discovery document and copy the exact `issuer` to **OIDC Issuer URL**.
+2. Read its discovery document and copy the exact `issuer` to **OIDC 签发者地址**.
    For a usual Casdoor installation this is `https://auth.example.com`.
    Warpgate must reach the discovery, token and JWKS endpoints; the browser must
    reach the provider's authorization endpoint.
-3. Enter the application's Client ID in **OIDC Client ID** and put its Client
+3. Enter the application's Client ID in **OIDC 客户端 ID** and put its Client
    Secret into `WARPGATE_OIDC_CLIENT_SECRET` in `warpgate-env`.
 4. Enable OIDC and register the exact redirect URI at the provider:
 
@@ -352,7 +351,7 @@ provider creation in the Warpgate backend is required.
    Include a nonstandard external port when configured. The callback is shared
    by providers and does not contain the `oidc.name` value. The sign-in button
    appears at `https://access.example.com/@warpgate`.
-5. Keep **Automatically create OIDC users** disabled to bind each existing
+5. Keep **自动创建 OIDC 用户** disabled to bind each existing
    user's SSO credential to the provider name and email first. Enable it to
    create users after successful authentication. Warpgate requires an email
    claim and rejects an explicitly unverified email, so configure the provider

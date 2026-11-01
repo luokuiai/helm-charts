@@ -8,9 +8,9 @@ MinIO fork, without an operator or external database. Requires Kubernetes
 
 Sync this Git repository, then select **Apps → Charts → Silo → 1.0.0**.
 
-1. Enter **Number of storage nodes** directly. `1` starts standalone storage;
+1. Enter **存储节点数** directly. `1` starts standalone storage;
    any integer `2–16`, including 3 and 5, starts a distributed pool.
-2. Select **Silo environment Secret** (default `silo-env`) in the same namespace.
+2. Select **Silo 环境变量 Secret** (default `silo-env`) in the same namespace.
    It must contain `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. All entries
    are injected as environment variables.
 3. Select the storage class and raw capacity **per node**. Defaults are
@@ -20,7 +20,7 @@ Sync this Git repository, then select **Apps → Charts → Silo → 1.0.0**.
 5. Tune resources per node, then install. Defaults suit small installations,
    not a production sizing recommendation.
 
-The **Silo image** field includes the version in the same value:
+The **Silo 镜像** field includes the version in the same value:
 `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`. For a mirror, enter a full reference
 such as `registry.example.com/team/silo:RELEASE.2026-10-26T00-00-00Z`.
 Digest references are supported. Untagged references use `Chart.appVersion`
@@ -154,7 +154,7 @@ ingress:
     issuerName: letsencrypt
 ```
 
-**Expose S3 API through Ingress** and **Expose Console through Ingress**
+**通过 Ingress 开放 S3 API** and **通过 Ingress 开放控制台**
 are independent switches. Both default to enabled for compatibility when the
 main Ingress switch is on. To expose only Web administration, set:
 

@@ -1,61 +1,61 @@
 questions:
   - variable: resource.serviceName
-    label: "VPN ingress Service"
+    label: "VPN 入口 Service"
     type: "reference[service]"
     default: traefik-vpn
     required: true
-    group: "VPN entry"
-    description: "Select the shared VPN ingress controller's existing ClusterIP Service in this installation namespace, normally traefik-vpn. Do not select an individual business application's Service; applications use the traefik-vpn Ingress Class."
+    group: "VPN 入口"
+    description: "选择安装命名空间中已有的共享 VPN 入口控制器 ClusterIP Service，通常为 traefik-vpn。不要选择单个业务应用的 Service；业务应用使用 traefik-vpn Ingress 类。"
   - variable: resource.groupNames
-    label: "NetBird destination groups"
+    label: "NetBird 目标组"
     type: "array[string]"
     default:
       - k3s-web
     required: true
-    group: "VPN entry"
-    description: "Names of existing NetBird groups for this Service resource. Configure an access policy separately, for example k3s-clients to k3s-web over TCP 443. These are destination groups, not client device groups."
+    group: "VPN 入口"
+    description: "填写此 Service 资源所属的已有 NetBird 目标组名称。需另行配置访问策略，例如允许 k3s-clients 通过 TCP 443 访问 k3s-web。这里填写目标组，不是客户端设备组。"
   - variable: router.dnsZone
-    label: "NetBird DNS zone"
+    label: "NetBird DNS 区域"
     type: hostname
     default: k3s.netbird.internal
     required: true
-    group: "Routing"
-    description: "An existing NetBird custom DNS zone. Distribute the zone to authorized client device groups before installation. The Operator manages the Service record inside this zone."
+    group: "路由"
+    description: "填写已有的 NetBird 自定义 DNS 区域，安装前需将该区域分发给获准访问的客户端设备组。Operator 会管理此区域中的 Service 记录。"
   - variable: router.name
-    label: "NetworkRouter name"
+    label: "NetworkRouter 名称"
     type: string
     default: vpn-entry
     required: true
-    group: "Routing"
-    description: "Kubernetes resource name for the router created by this Chart. Keep it unchanged during upgrades: the NetworkResource router reference is immutable."
+    group: "路由"
+    description: "此 Chart 创建的路由器 Kubernetes 资源名称。升级时请保持不变：NetworkResource 的路由器引用不可修改。"
   - variable: router.replicas
-    label: "Routing client replicas"
+    label: "路由客户端副本数"
     type: int
     min: 1
     default: 1
     required: true
-    group: "Routing"
-    description: "Number of NetBird routing client Pods managed by the Operator, not Operator replicas. Start with 1 on a single-node cluster; increase after adding nodes."
+    group: "路由"
+    description: "由 Operator 管理的 NetBird 路由客户端 Pod 数量，不是 Operator 副本数。单节点集群先使用 1，增加节点后再调整。"
   - variable: natWorkaround.enabled
-    label: "Enable NetBird outbound NAT workaround"
+    label: "启用 NetBird 出站 NAT 兼容修复"
     type: boolean
     default: false
-    group: "Outbound NAT"
-    description: "Optional IPv4 workaround for Flannel fully-random SNAT. Runs a host-network DaemonSet with NET_ADMIN, matching only this router's Pod IPs and UDP source port 51820. Opens no inbound port. Uninstall waits for node cleanup; offline nodes can block it."
+    group: "出站 NAT"
+    description: "可选的 IPv4 兼容修复，用于处理 Flannel 完全随机 SNAT。以主机网络和 NET_ADMIN 权限运行 DaemonSet，仅匹配此路由器的 Pod IP 和 UDP 源端口 51820，不开放入站端口。卸载时会等待节点清理；离线节点可能阻塞卸载。"
     show_subquestion_if: true
     subquestions:
       - variable: natWorkaround.image.repository
-        label: "NAT maintenance image"
+        label: "NAT 维护镜像"
         type: string
         default: ghcr.io/nicolaka/netshoot:v0.14
         required: true
-        description: "Full image reference including a version or digest. Must contain Python 3 and nftables. Include the version when using an image mirror."
+        description: "填写包含版本或摘要的完整镜像地址。镜像必须包含 Python 3 和 nftables；使用镜像站时也需保留版本。"
       - variable: natWorkaround.excludedCIDRs
-        label: "Networks excluded from NAT"
+        label: "不进行 NAT 的网段"
         type: "array[string]"
         default:
           - 10.42.0.0/16
           - 10.43.0.0/16
           - 224.0.0.0/4
         required: true
-        description: "IPv4 Pod CIDR, Service CIDR, and multicast range. Update these if your cluster uses different CIDRs."
+        description: "填写 IPv4 Pod 网段、Service 网段和组播范围。若集群使用了其他 CIDR，请同步调整。"

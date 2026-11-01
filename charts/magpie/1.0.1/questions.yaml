@@ -1,61 +1,61 @@
 questions:
   - variable: image.repository
-    label: "Magpie image"
+    label: "Magpie 镜像"
     type: string
     default: ghcr.io/yetone/magpie:0.1.1836
     required: true
-    group: "Images"
-    description: "Full image including its version, such as ghcr.io/yetone/magpie:0.1.1836 or registry.example.com/team/magpie:0.1.1836. Official headless image supports amd64 and arm64."
+    group: "镜像"
+    description: "填写包含版本的完整镜像地址，例如 ghcr.io/yetone/magpie:0.1.1836 或 registry.example.com/team/magpie:0.1.1836。官方无界面镜像支持 amd64 和 arm64。"
   - variable: magpie.envSecret
-    label: "Magpie environment Secret"
+    label: "Magpie 环境变量 Secret"
     type: "reference[secret]"
     default: magpie-env
     required: true
-    group: "Environment"
-    description: "Select an existing Secret in the installation namespace containing MAGPIE_WEB_KEY and other Magpie environment variables. The Web key needs at least 16 characters: letters, digits, - . _ ~. Restart the Deployment after updating the Secret. API clients use separate gateway keys created in Magpie."
+    group: "环境变量"
+    description: "选择安装命名空间中的已有 Secret，包含 MAGPIE_WEB_KEY 等 Magpie 环境变量。Web 密钥至少 16 个字符，可使用字母、数字及 - . _ ~。更新 Secret 后需重启 Deployment。API 客户端使用在 Magpie 中单独创建的网关密钥。"
   - variable: persistence.existingClaim
-    label: "Existing config PVC (optional)"
+    label: "已有配置 PVC（可选）"
     type: string
     default: ""
-    group: "Persistence"
-    description: "Leave empty to create a PVC for /config. An existing claim must be in this namespace and writable by UID/GID 65532. Do not switch claims after installation without migrating data."
+    group: "持久化存储"
+    description: "留空则为 /config 创建 PVC。已有 PVC 必须位于安装命名空间，且 UID/GID 65532 可写。安装后若要更换 PVC，需先迁移数据。"
   - variable: persistence.storageClass
-    label: "Config storage class"
+    label: "配置存储类"
     type: storageclass
     default: local-path
-    group: "Persistence"
-    description: "Used when creating a PVC. Leave empty to use the cluster default. local-path keeps data on the assigned K3s node."
+    group: "持久化存储"
+    description: "创建 PVC 时使用。留空使用集群默认存储类。local-path 将数据保存在分配到的 K3s 节点上。"
   - variable: persistence.size
-    label: "Initial config storage size"
+    label: "初始配置存储容量"
     type: string
     default: 1Gi
     required: true
-    group: "Persistence"
-    description: "Stores settings, provider keys, sign-ins, plugins, caches, and usage. Resize existing PVCs separately. The chart retains the PVC on uninstall."
+    group: "持久化存储"
+    description: "保存设置、提供商密钥、登录信息、插件、缓存和用量数据。已有 PVC 需单独扩容，卸载时会保留 PVC。"
   - variable: ingress.enabled
-    label: "Enable domain access (Ingress)"
+    label: "启用域名访问（Ingress）"
     type: boolean
     default: "false"
     required: true
-    group: "Domain / HTTPS"
-    description: "One domain serves the Web UI and gateway API through port 3430. Requires an existing Ingress controller and a DNS record."
+    group: "域名 / HTTPS"
+    description: "通过 3430 端口，用一个域名同时提供 Web 界面和网关 API。需已有 Ingress 控制器及 DNS 解析记录。"
   - variable: ingress.hosts.0.host
-    label: "Hostname"
+    label: "域名"
     type: hostname
     default: magpie.example.com
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Enter only the hostname. The UI uses / and OpenAI-compatible clients use /v1."
+    description: "只填写域名。Web 界面使用 /，兼容 OpenAI 的客户端使用 /v1。"
   - variable: ingress.className
-    label: "Ingress Class"
+    label: "Ingress 类"
     type: "reference[networking.k8s.io.ingressclass]"
     default: ""
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "Usually traefik on K3s. Leave empty to use the default Ingress Class."
+    description: "K3s 通常选择 traefik；留空使用默认 Ingress 类。"
   - variable: ingress.certificate.mode
-    label: "HTTPS mode"
+    label: "HTTPS 模式"
     type: enum
     default: disabled
     required: true
@@ -63,50 +63,50 @@ questions:
       - disabled
       - existing
       - cert-manager
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "existing: an existing TLS Secret; cert-manager: request a certificate from an existing issuer; disabled: HTTP. Use HTTPS or a private tunnel for remote access."
+    description: "existing：使用已有 TLS Secret；cert-manager：通过已有签发器申请证书；disabled：使用 HTTP。远程访问请使用 HTTPS 或私有隧道。"
   - variable: ingress.certificate.issuerKind
-    label: "Certificate issuer kind"
+    label: "证书签发器类型"
     type: enum
     default: ClusterIssuer
     required: true
     options:
       - ClusterIssuer
       - Issuer
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
   - variable: ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.clusterissuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
-    description: "Select an existing, ready ClusterIssuer. Install cert-manager first."
+    description: "选择已有且就绪的 ClusterIssuer。需先安装 cert-manager。"
   # Separate issuer selectors so Rancher remounts the selector when the kind changes.
   - variable: ingress.certificate.secretName
-    label: "TLS Secret name"
+    label: "TLS Secret 名称"
     type: string
     default: magpie-tls
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true
-    description: "An existing Secret in existing mode; the Secret to create in cert-manager mode. Ignored in disabled mode."
+    description: "existing 模式填写已有 Secret；cert-manager 模式填写要创建的 Secret 名称。disabled 模式忽略此项。"
   - variable: ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.issuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
-    description: "Select an existing, ready Issuer in the installation namespace."
+    description: "选择安装命名空间中已有且就绪的 Issuer。"
   - variable: magpie.publicURL
-    label: "Public base URL override (optional)"
+    label: "自定义外部访问地址（可选）"
     type: string
     default: ""
-    group: "Domain / HTTPS"
-    description: "Leave empty to derive the http(s)://hostname from Ingress. Override when using a separate reverse proxy. Do not append /v1; this URL serves both the Web UI and gateway API."
+    group: "域名 / HTTPS"
+    description: "留空则根据 Ingress 自动生成 http(s)://域名。使用独立反向代理时可手动填写。不要添加 /v1；此地址同时用于 Web 界面和网关 API。"
   - variable: nodeName
     label: "目标节点（可选）"
     type: "reference[node]"
@@ -114,27 +114,27 @@ questions:
     group: "节点调度"
     description: "从集群节点下拉列表中选择目标节点；留空表示不限制节点。local-path PVC 绑定节点后，修改此项不会迁移数据。"
   - variable: resources.requests.cpu
-    label: "CPU request"
+    label: "CPU 请求量"
     type: string
     default: 100m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.cpu
-    label: "CPU limit"
+    label: "CPU 上限"
     type: string
     default: 1000m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.requests.memory
-    label: "Memory request"
+    label: "内存请求量"
     type: string
     default: 256Mi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: resources.limits.memory
-    label: "Memory limit"
+    label: "内存上限"
     type: string
     default: 1Gi
     required: true
-    group: "CPU / memory"
-    description: "Increase if optional provider CLIs or plugins require more memory."
+    group: "CPU / 内存"
+    description: "若可选的提供商命令行工具或插件需要更多内存，请提高此值。"

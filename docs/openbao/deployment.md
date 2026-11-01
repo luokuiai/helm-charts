@@ -5,7 +5,7 @@ The default server image is `openbao/openbao:2.7.2`; Kubernetes 1.30 or newer is
 
 ## Choose the image
 
-The form has one **OpenBao image** field, defaulting to
+The form has one **OpenBao 镜像** field, defaulting to
 `openbao/openbao:2.7.2` on Docker Hub. Include the version in the same field,
 such as `quay.io/openbao/openbao:2.7.2` or
 `registry.example.com/team/openbao:2.7.2`. A reference without a tag uses the
@@ -18,7 +18,7 @@ override both legacy fields, or remove the old overrides from the release values
 
 ## Choose the deployment mode
 
-For one persistent node, leave **Enable multi-node Raft cluster** disabled.
+For one persistent node, leave **启用多节点 Raft 集群** disabled.
 The StatefulSet has one replica and uses the upstream PebbleDB backend.
 
 For HA, enable that option and enter **3** or **5** replicas. The chart uses
@@ -41,7 +41,7 @@ fail because StatefulSet volume claim templates are immutable.
 
 ## Configure the domain
 
-Enable **Domain / HTTPS**, enter a hostname such as `bao.example.com`, and
+Enable **域名 / HTTPS**, enter a hostname such as `bao.example.com`, and
 select an existing Ingress Class (`traefik` is common on K3s). Point the DNS
 record to the Ingress controller's external address.
 

@@ -7,7 +7,7 @@ The published image supports Linux amd64 and arm64.
 
 ## Image
 
-The form has one **Magpie image** field, defaulting to
+The form has one **Magpie 镜像** field, defaulting to
 `ghcr.io/yetone/magpie:0.1.1836`. Include the version in the same field when
 using a mirror, for example `registry.example.com/team/magpie:0.1.1836`.
 Digest references are also supported. Untagged references fall back to
@@ -24,7 +24,7 @@ openssl rand -hex 16
 
 The accepted characters are letters, digits, `- . _ ~`, with at least 16
 characters. Create an environment Secret in the installation namespace,
-using `MAGPIE_WEB_KEY` as the field name. In **Environment**, select that
+using `MAGPIE_WEB_KEY` as the field name. In **环境变量**, select that
 Secret; its default name is `magpie-env`. All its entries are injected as
 environment variables, and `MAGPIE_WEB_KEY` is required.
 
@@ -101,7 +101,7 @@ the data automatically to another node after node failure.
 
 ## Domain and HTTPS
 
-Enable **Domain / HTTPS**, enter a hostname such as `magpie.example.com`,
+Enable **域名 / HTTPS**, enter a hostname such as `magpie.example.com`,
 and select the Ingress Class (`traefik` on a standard K3s installation).
 Configure DNS to point to the Ingress controller's external address.
 

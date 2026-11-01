@@ -7,12 +7,12 @@ Ingress / certificate form conventions.
 The form supports:
 
 - One complete image field, default `casbin/casdoor:v4.25.0`.
-- An **Environment variables** menu selecting a Secret (default `casdoor-env`),
+- An **环境变量** menu selecting a Secret (default `casdoor-env`),
   with a short required-key hint and grouped help in the field's help icon for
   `dataSourceName`, `driverName`, `dbName`, `initAdminPassword`,
   `origin`, `forceLanguage`, `defaultStorageProvider`, `S3_ENDPOINT` and `S3_BUCKET`.
 - Ingress hostname, Ingress Class, an existing TLS Secret, or cert-manager.
-- A **File storage** choice: external S3 (default), or local uploads on a PVC at
+- A **文件存储** choice: external S3 (default), or local uploads on a PVC at
   `/files`. Local mode supports a new 1Gi PVC or an existing claim.
 - Optional Caddy file proxy in S3 mode, with its own hostname and the same environment Secret.
 - A public origin override and CPU / memory.

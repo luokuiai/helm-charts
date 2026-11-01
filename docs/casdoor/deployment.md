@@ -12,12 +12,12 @@ and migrate tables. Check network policies and database firewall rules so
 the Casdoor Pod can reach the database. This chart does not create a database
 server or manage its backups, upgrades, or data lifecycle.
 
-The **Casdoor image** field is one full reference, defaulting to
+The **Casdoor 镜像** field is one full reference, defaulting to
 `casbin/casdoor:v4.25.0`. Enter a complete mirror reference or digest when needed.
 The former `image.repository` / `image.name` / `image.tag` layout remains supported
 in YAML when the repository is untagged; an explicit tag or digest takes precedence.
 
-In **Environment variables**, select **Casdoor environment Secret**
+In **环境变量**, select **Casdoor 环境变量 Secret**
 (default `casdoor-env`). It must exist in the
 installation namespace and contain the case-sensitive key `dataSourceName`.
 All its entries become environment variables. Configure the database type with
@@ -144,7 +144,7 @@ the applications and storage provider before enabling public access.
 
 ## Local file uploads
 
-Under **File storage**, choose `local` to persist uploaded files at `/files`.
+Under **文件存储**, choose `local` to persist uploaded files at `/files`.
 Select an existing PVC in the installation namespace, or leave the selection
 empty to create one. New PVCs default to `1Gi` and Storage Class `local-path`;
 an empty Storage Class uses the cluster default. For example:
@@ -178,7 +178,7 @@ away from local storage. Local mode ignores any retained S3 proxy form values.
 ## S3 / S3-compatible uploads
 
 Casdoor can store uploaded resources such as avatars in object storage.
-Select `s3` under **File storage** (the default). This mode creates no file PVC.
+Select `s3` under **文件存储** (the default). This mode creates no file PVC.
 External database persistence does not persist local uploaded files; use local
 mode above when uploading to the local filesystem.
 
@@ -222,7 +222,7 @@ In the Casdoor admin console, create a provider with these settings:
 The endpoint is Silo's internal API URL, using port `9000`, not the Console's
 `9001`. Bucket and Path prefix both match the dedicated bucket name, so browser
 URLs use `/casdoor/<object>` while the provider removes that prefix from the
-stored object key. Domain matches the scheme and **File proxy hostname**.
+stored object key. Domain matches the scheme and **文件代理域名**.
 
 In the [environment Secret example](env-secret.example.yaml), uncomment
 `S3_ENDPOINT` and `S3_BUCKET` and match them to the provider's Endpoint and Bucket.

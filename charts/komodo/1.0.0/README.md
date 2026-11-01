@@ -23,7 +23,7 @@ This address assumes release name `komodo`; a release named `komodo-a` uses
 `komodo-a-mongo:27017`. Update `KOMODO_DATABASE_ADDRESS` in its environment
 Secret to match. `fullnameOverride` can retain an explicit resource name prefix.
 
-Optional domain access is available in the Rancher form under **Domain / HTTPS**.
+Optional domain access is available in the Rancher form under **域名 / HTTPS**.
 Ingress is disabled by default. Enable it, enter the hostname, and select the ingress class
 (usually `traefik` on K3s, or leave it empty to use the cluster default).
 Keep `KOMODO_HOST` in `komodo-env` consistent with the complete public URL; the chart does not rewrite this Secret.
@@ -37,7 +37,7 @@ HTTPS modes:
   a ClusterIssuer can be shared. The chart creates the Ingress with the issuer annotation and target TLS Secret name;
   cert-manager creates the certificate and Secret. The chart does not install cert-manager or create issuers.
 
-In cert-manager mode, select the issuer kind and choose an existing resource from the **Certificate issuer name** dropdown.
+In cert-manager mode, select the issuer kind and choose an existing resource from the **证书签发器名称** dropdown.
 ClusterIssuers are listed across the cluster; Issuers are limited to the installation namespace.
 The selector requires Rancher support for `reference[...]` question types and permission to list these resources.
 If the list is empty, create a suitable issuer first. If the resource type is unavailable, Rancher may show a text fallback.

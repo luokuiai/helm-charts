@@ -27,23 +27,23 @@ its ServersTransport CRD is required. The chart configures certificate verificat
 for Warpgate's HTTPS backend. HTTP Ingress handles the Web UI and HTTP gateway;
 SSH and database gateways use the TCP Service ports.
 
-Recording is optional. **Enable session recording on first setup** and **Retain
+Recording is optional. **首次初始化时启用会话录像** and **Retain
 local data (PVC)** are enabled by default (size `1Gi`). Turning recording off
 leaves persistence enabled for configuration and certificates. Existing
 databases keep their recording setting: change it
 in Warpgate's admin UI. Disabling recording does not disable gateway access or OIDC.
 
-**Persistence** controls the local data PVC for configuration, certificates,
+**持久化存储** controls the local data PVC for configuration, certificates,
 local recordings and active S3 upload buffers. It is independent of recording
 and remains configurable even when recording is disabled.
 
-In **Session recording**, choose whether to record sessions. Leave
-**Use S3 instead of local recording storage** disabled for local recordings;
+In **会话录像**, choose whether to record sessions. Leave
+**使用 S3 保存录像** disabled for local recordings;
 enable it to show the S3 settings.
 
-For S3 / Silo recordings, enable **Use S3 instead of local recording storage**, enter the bucket,
+For S3 / Silo recordings, enable **使用 S3 保存录像**, enter the bucket,
 endpoint, region and prefix, and add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
-to the same Secret. Disable **Retain local data (PVC)** for a temporary `emptyDir`
+to the same Secret. Disable **持久化保存本地数据（PVC）** for a temporary `emptyDir`
 buffer. The S3 endpoint must be reachable by playback browsers, including over a
 private network or VPN; allow the Warpgate origin in bucket CORS. Completed
 recordings use signed GET links; unfinished buffers can be lost with the Pod.
@@ -55,7 +55,7 @@ and local recordings (or active S3 buffers). Back up the selected recording stor
 PostgreSQL and the environment Secret along with any credential
 encryption key. The chart creates no database server.
 
-**Enable HA deployment** switches to a StatefulSet. Set **Warpgate replicas** to
+**启用高可用部署** switches to a StatefulSet. Set **Warpgate 副本数** to
 2 or more; each Pod requires a different schedulable Kubernetes node. All Pods
 use the same external PostgreSQL and environment Secret, including a stable
 `WARPGATE_ENCRYPTION_KEY`. Independent retained data PVCs store configuration,

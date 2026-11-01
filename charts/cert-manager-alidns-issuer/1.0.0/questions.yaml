@@ -1,43 +1,43 @@
 questions:
   - variable: issuer.name
-    label: "ClusterIssuer name"
+    label: "ClusterIssuer 名称"
     type: string
     default: letsencrypt-alidns
     required: true
-    group: "Certificate issuer"
-    description: "Cluster-wide name applications will select. Keep stable during upgrades. If this name was already imported manually, use a new name instead of creating a second owner."
+    group: "证书签发器"
+    description: "应用选择证书签发器时使用的集群级名称，升级时请保持不变。若已手动导入同名资源，请使用新名称，避免重复管理。"
   - variable: acme.email
-    label: "Let's Encrypt account email"
+    label: "Let's Encrypt 账号邮箱"
     type: string
     default: ""
     required: true
-    group: "Certificate issuer"
-    description: "A real contact email for your Let's Encrypt account."
+    group: "证书签发器"
+    description: "填写 Let's Encrypt 账号的真实联系邮箱。"
   - variable: alidns.dnsZone
-    label: "Alibaba Cloud DNS zone"
+    label: "阿里云 DNS 区域"
     type: hostname
     default: ""
     required: true
-    group: "Certificate issuer"
-    description: "Public DNS zone hosted by Alibaba Cloud, for example luokuiai.com. Enter the zone, not an application hostname, wildcard, URL, or NetBird internal zone."
+    group: "证书签发器"
+    description: "填写由阿里云托管的公共 DNS 区域，例如 luokuiai.com。不要填写应用子域名、通配符、URL 或 NetBird 内部域。"
   - variable: alidns.existingSecret
-    label: "AliDNS credential Secret"
+    label: "AliDNS 凭据 Secret"
     type: "reference[secret]"
     default: alidns-secrets
     required: true
-    group: "Certificate issuer"
-    description: "Select an existing Secret with ACCESS_TOKEN containing AccessKey ID and SECRET_KEY containing AccessKey Secret. Install this Chart in cert-manager's cluster resource namespace, normally cert-manager, so the dropdown lists the correct Secrets."
+    group: "证书签发器"
+    description: "选择已有 Secret：ACCESS_TOKEN 填 AccessKey ID，SECRET_KEY 填 AccessKey Secret。此 Chart 应安装在 cert-manager 的集群资源命名空间中（通常为 cert-manager），以便下拉列表显示正确的 Secret。"
   - variable: webhook.groupName
-    label: "AliDNS webhook group name"
+    label: "AliDNS Webhook 组名"
     type: hostname
     default: ""
     required: true
-    group: "Webhook"
-    description: "Must exactly match groupName in your existing AliDNS webhook's Helm values. It is an API identifier, not a DNS record to create."
+    group: "Webhook 配置"
+    description: "必须与已有 AliDNS Webhook 的 Helm 配置中 groupName 完全一致。这是 API 标识符，无需创建对应的 DNS 记录。"
   - variable: alidns.regionId
-    label: "Alibaba Cloud API region"
+    label: "阿里云 API 区域"
     type: string
     default: cn-beijing
     required: true
-    group: "Webhook"
-    description: "AliDNS API client region, matching the webhook's upstream example."
+    group: "Webhook 配置"
+    description: "AliDNS API 客户端区域，与 Webhook 上游示例保持一致。"

@@ -166,14 +166,14 @@ Review any extra initialization records: the official restore does not remove do
 If restoration reports errors, preserve the files and inspect the errors before retrying or deleting data.
 Retain the old server and original MongoDB archive until verification succeeds.
 
-To expose the application by domain, use the **Domain / HTTPS** form group:
+To expose the application by domain, use the **域名 / HTTPS** form group:
 
 - Enable domain access (Ingress).
 - Hostname: `komodo.luokuiai.com`, without a URL scheme or path.
 - Ingress class: typically `traefik` on K3s. Leave empty only when a suitable default ingress class exists.
 - HTTPS mode: `existing` for a TLS Secret already present in the installation namespace, or `cert-manager` for automatic issuance and renewal.
 - TLS Secret name: the existing Secret, or the target name for cert-manager to create (default `komodo-tls`).
-- In cert-manager mode, choose `ClusterIssuer` or `Issuer`, then select an existing resource from the **Certificate issuer name** dropdown.
+- In cert-manager mode, choose `ClusterIssuer` or `Issuer`, then select an existing resource from the **证书签发器名称** dropdown.
   cert-manager must be installed and the issuer ready. An Issuer must be in the installation namespace; a ClusterIssuer can be shared.
   An Issuer in `cattle-system` cannot be directly referenced from another namespace.
   Issuer options are limited to the installation namespace. If no suitable issuer is listed, create one first.

@@ -1,65 +1,65 @@
 questions:
   - variable: server.ha.enabled
-    label: "Enable multi-node Raft cluster"
+    label: "启用多节点 Raft 集群"
     type: boolean
     default: "false"
     required: true
-    group: "Deployment"
-    description: "Disabled: one persistent OpenBao node. Enabled: a Raft HA cluster. Choose before first installation; changing storage modes requires a separate data migration."
+    group: "部署"
+    description: "关闭时部署一个持久化 OpenBao 节点；开启时部署 Raft 高可用集群。请在首次安装前选择，切换存储模式需另行迁移数据。"
   - variable: server.ha.replicas
-    label: "Raft replicas"
+    label: "Raft 副本数"
     type: int
     default: 3
     min: 3
     max: 5
     required: true
-    group: "Deployment"
+    group: "部署"
     show_if: server.ha.enabled=true
-    description: "Enter 3 or 5. Each replica needs a separate schedulable Kubernetes node and its own PVC. Initialize only node 0, then unseal every node with the same keys."
+    description: "填写 3 或 5。每个副本需要独立的可调度 Kubernetes 节点和 PVC。仅初始化节点 0，再使用同一组密钥解封所有节点。"
   - variable: server.image.repository
-    label: "OpenBao image"
+    label: "OpenBao 镜像"
     type: string
     default: openbao/openbao:2.7.2
     required: true
-    group: "Images"
-    description: "Full image including its version, such as openbao/openbao:2.7.2 or registry.example.com/team/openbao:2.7.2. Defaults to Docker Hub and the pinned 2.7.2 release."
+    group: "镜像"
+    description: "填写包含版本的完整镜像地址，例如 openbao/openbao:2.7.2 或 registry.example.com/team/openbao:2.7.2。默认使用 Docker Hub 和固定的 2.7.2 版本。"
   - variable: server.dataStorage.storageClass
-    label: "Data storage class"
+    label: "数据存储类"
     type: storageclass
     default: local-path
-    group: "Persistence"
-    description: "One PVC per replica. local-path stores data on that Kubernetes node. Leave empty to use the cluster's default storage class."
+    group: "持久化存储"
+    description: "每个副本使用独立 PVC。local-path 将数据保存在对应的 Kubernetes 节点上；留空使用集群默认存储类。"
   - variable: server.dataStorage.size
-    label: "Initial data volume size per replica"
+    label: "每个副本的初始数据卷容量"
     type: string
     default: 10Gi
     required: true
-    group: "Persistence"
-    description: "Set before installation. Resize existing PVCs separately if supported by the storage class. PVCs are retained on uninstall and scale-down."
+    group: "持久化存储"
+    description: "请在安装前设置。已有 PVC 需在存储类支持时单独扩容。卸载或缩容时会保留 PVC。"
   - variable: server.ingress.enabled
-    label: "Enable domain access (Ingress)"
+    label: "启用域名访问（Ingress）"
     type: boolean
     default: "false"
     required: true
-    group: "Domain / HTTPS"
-    description: "Requires an existing Ingress controller. Point DNS at its external address separately. HTTPS terminates at the Ingress; requests from Ingress to OpenBao use HTTP."
+    group: "域名 / HTTPS"
+    description: "需已有 Ingress 控制器，并另行将 DNS 解析指向其外部地址。HTTPS 在 Ingress 处终止，Ingress 到 OpenBao 使用 HTTP。"
   - variable: server.ingress.hosts.0.host
-    label: "Hostname"
+    label: "域名"
     type: hostname
     default: openbao.example.com
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true
-    description: "Enter only the hostname, without https:// or a path. The UI is available at /ui/ after initialization and unsealing."
+    description: "只填写域名，不带 https:// 或路径。初始化并解封后，可通过 /ui/ 访问管理界面。"
   - variable: server.ingress.ingressClassName
-    label: "Ingress Class"
+    label: "Ingress 类"
     type: "reference[networking.k8s.io.ingressclass]"
     default: ""
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true
-    description: "Select an existing class, usually traefik on K3s. Leave empty to use the cluster's default Ingress Class."
+    description: "选择已有 Ingress 类，K3s 通常选择 traefik；留空使用集群默认 Ingress 类。"
   - variable: server.ingress.certificate.mode
-    label: "HTTPS mode"
+    label: "HTTPS 模式"
     type: enum
     default: disabled
     required: true
@@ -67,66 +67,66 @@ questions:
       - disabled
       - existing
       - cert-manager
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true
-    description: "disabled: HTTP; existing: an existing TLS Secret; cert-manager: request and renew a certificate through an existing issuer. Use HTTPS for external access."
+    description: "disabled：使用 HTTP；existing：使用已有 TLS Secret；cert-manager：通过已有签发器申请并续期证书。对外访问请使用 HTTPS。"
   - variable: server.ingress.certificate.issuerKind
-    label: "Certificate issuer kind"
+    label: "证书签发器类型"
     type: enum
     default: ClusterIssuer
     required: true
     options:
       - ClusterIssuer
       - Issuer
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager
   - variable: server.ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.clusterissuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager&&server.ingress.certificate.issuerKind=ClusterIssuer
-    description: "Select an existing, ready ClusterIssuer. Install cert-manager and create the issuer first."
+    description: "选择已有且就绪的 ClusterIssuer。需先安装 cert-manager 并创建签发器。"
   # Separate issuer selectors so Rancher remounts the resource selector on kind changes.
   - variable: server.ingress.certificate.secretName
-    label: "TLS Secret name"
+    label: "TLS Secret 名称"
     type: string
     default: openbao-tls
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true
-    description: "In existing mode, enter a TLS Secret in this namespace. In cert-manager mode, enter the Secret name to create. Ignored in disabled mode."
+    description: "existing 模式填写此命名空间中的已有 TLS Secret；cert-manager 模式填写要创建的 Secret 名称。disabled 模式忽略此项。"
   - variable: server.ingress.certificate.issuerName
-    label: "Certificate issuer name"
+    label: "证书签发器名称"
     type: "reference[cert-manager.io.issuer]"
     default: ""
     required: true
-    group: "Domain / HTTPS"
+    group: "域名 / HTTPS"
     show_if: server.ingress.enabled=true&&server.ingress.certificate.mode=cert-manager&&server.ingress.certificate.issuerKind=Issuer
-    description: "Select an existing, ready Issuer in the installation namespace."
+    description: "选择安装命名空间中已有且就绪的 Issuer。"
   - variable: server.resources.requests.cpu
-    label: "CPU request per replica"
+    label: "每个副本的 CPU 请求量"
     type: string
     default: 100m
     required: true
-    group: "CPU / memory"
-    description: "1000m equals 1 CPU core."
+    group: "CPU / 内存"
+    description: "1000m 等于 1 个 CPU 核心。"
   - variable: server.resources.limits.cpu
-    label: "CPU limit per replica"
+    label: "每个副本的 CPU 上限"
     type: string
     default: 1000m
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: server.resources.requests.memory
-    label: "Memory request per replica"
+    label: "每个副本的内存请求量"
     type: string
     default: 256Mi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
   - variable: server.resources.limits.memory
-    label: "Memory limit per replica"
+    label: "每个副本的内存上限"
     type: string
     default: 1Gi
     required: true
-    group: "CPU / memory"
+    group: "CPU / 内存"
