@@ -46,7 +46,7 @@ Verified against the official v4.24.0 source: `conf/conf.go` (environment priori
 `object/storage.go` (MinIO credentials, endpoints and resource URL paths).
 GitHub's latest stable release was v4.24.0 when checked on 2026-10-28.
 
-- Optional stock Caddy `2.11.7-alpine` container in the Casdoor Pod, using the
+- Optional stock Caddy `2.11` container in the Casdoor Pod, using the
   same environment Secret and a separate Ingress hostname. It forwards only
   anonymous object GET/HEAD for `S3_BUCKET`, strips credentials and query
   parameters, and does not expose other buckets or the Silo administration API.

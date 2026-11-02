@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: caddy
-  tag: 2-alpine
+  tag: "2.11"
   pullPolicy: IfNotPresent
 
 # HTTPS upstream on port 443. Enter only its hostname, without a URL path.

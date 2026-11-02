@@ -5,7 +5,7 @@ type: application
 # Docker official brand assets: https://www.docker.com/company/newsroom/media-resources/
 icon: file://charts/registry-proxy/1.0.0/icon.png
 version: 1.0.0
-appVersion: "2"
+appVersion: "2.11"
 keywords:
   - caddy
   - registry

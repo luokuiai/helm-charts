@@ -251,8 +251,8 @@ ingress:
     issuerName: letsencrypt
 ```
 
-Caddy runs in the same Pod as Casdoor, using the pinned image
-`caddy:2.11.7-alpine`. The two containers share `casdoor.envSecret`. Casdoor's
+Caddy runs in the same Pod as Casdoor, using the image
+`caddy:2.11`. The two containers share `casdoor.envSecret`. Casdoor's
 domain routes to the application port; the separate file domain routes to Caddy
 on port `8080`. No separate release or file PVC is needed. With Ingress disabled,
 the chart exposes only the Service's `files` port; configure an external route

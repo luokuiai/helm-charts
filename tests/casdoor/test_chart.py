@@ -293,7 +293,7 @@ class CasdoorChartTests(unittest.TestCase):
                           "casdoor": {"envSecret": "shared-env"}}, with_credentials=False)
         pod = resource(docs, "Deployment")["spec"]["template"]
         proxy = pod["spec"]["containers"][1]
-        self.assertEqual(proxy["image"], "caddy:2.11.7-alpine")
+        self.assertEqual(proxy["image"], "caddy:2.11")
         self.assertEqual(proxy["securityContext"]["capabilities"],
                          {"drop": ["ALL"], "add": ["NET_BIND_SERVICE"]})
         self.assertTrue(proxy["securityContext"]["runAsNonRoot"])

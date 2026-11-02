@@ -71,7 +71,7 @@ kubectl -n infra logs deployment/registry-proxy -c caddy --since=10m \
   | jq -Rc 'fromjson? | select(.status == 307) | {redirect_host, signature_version, host_signed_marker, network_restriction_marker}'
 ```
 
-日志中的跳转信息只保留域名、签名类型标记及是否发现 Host 签名/IP 或 VPC 限制标记；请求对象和原始响应头不会写入该访问日志。`host_signed_marker=false` 和 `network_restriction_marker=false` 都只表示未发现对应参数，不能证明替换域名一定有效。此功能需要 Caddy 2.8 或更新版本，Chart 默认使用 `caddy:2.11-alpine`。排查后关闭此选项。不要另外开启 Caddy debug 日志，因为它不经过这里的脱敏过滤。
+日志中的跳转信息只保留域名、签名类型标记及是否发现 Host 签名/IP 或 VPC 限制标记；请求对象和原始响应头不会写入该访问日志。`host_signed_marker=false` 和 `network_restriction_marker=false` 都只表示未发现对应参数，不能证明替换域名一定有效。此功能需要 Caddy 2.8 或更新版本，Chart 默认使用 `caddy:2.11`。排查后关闭此选项。不要另外开启 Caddy debug 日志，因为它不经过这里的脱敏过滤。
 
 部署后使用实际域名检查：
 

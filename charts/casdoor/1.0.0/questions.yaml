@@ -76,7 +76,7 @@ questions:
   - variable: storageProxy.image
     label: "Caddy image"
     type: string
-    default: caddy:2.11.7-alpine
+    default: caddy:2.11
     required: true
     group: "File storage"
     show_if: storage.mode=s3&&storageProxy.enabled=true

@@ -30,7 +30,7 @@ persistence:
 # Only runs with storage.mode=s3.
 storageProxy:
   enabled: false
-  image: caddy:2.11.7-alpine
+  image: caddy:2.11
   hostname: files.example.com
   port: 8080
   resources:

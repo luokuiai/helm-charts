@@ -47,7 +47,7 @@ helm upgrade --install registry-proxy ./charts/registry-proxy/1.0.3 \
 
 本 Chart 位于 Git 仓库的 `charts/registry-proxy/1.0.3/`，无需生成 `index.yaml` 或上传 `.tgz` 包。
 
-在 Rancher 的“应用 → 仓库 → 创建”中选择 Git 仓库，填写本仓库的 Git 地址和实际分支。同步完成后，在“应用 → Charts”搜索 `registry-proxy`，选择 `1.0.3`，安装命名空间选 `infra`。已有 `1.0.0`、`1.0.1` 或 `1.0.2` 安装时，在“已安装的应用”中升级到 `1.0.3`；若填写了上游命名空间，同时补齐“上游令牌认证地址”，并确认升级页面 YAML 中的 `image.tag` 为 `2.11.7-alpine`（Rancher 可能沿用旧版保存的 `2.11-alpine`）。公共代理启用时，把拉取机器可以直连的 HTTPS 上游放在“公共镜像上游地址”第一项。
+在 Rancher 的“应用 → 仓库 → 创建”中选择 Git 仓库，填写本仓库的 Git 地址和实际分支。同步完成后，在“应用 → Charts”搜索 `registry-proxy`，选择 `1.0.3`，安装命名空间选 `infra`。已有 `1.0.0`、`1.0.1` 或 `1.0.2` 安装时，在“已安装的应用”中升级到 `1.0.3`；若填写了上游命名空间，同时补齐“上游令牌认证地址”，并确认升级页面 YAML 中的 `image.tag` 为字符串 `"2.11"`（Rancher 可能沿用旧版保存的镜像标签）。公共代理启用时，把拉取机器可以直连的 HTTPS 上游放在“公共镜像上游地址”第一项。
 
 Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、公共镜像代理域名、上游仓库域名、上游命名空间、上游令牌认证地址、Ingress Class、ClusterIssuer、TLS Secret、副本数，以及是否启用公共镜像代理。“公共镜像上游地址”列表对应 `publicProxy.upstreams`，可直接在表单中添加、删除或修改；至少保留一个 HTTPS 地址，不带路径，且须兼容现有 gh-proxy 路径规则。第一项用于镜像层直连下载，其他请求按列表顺序选择上游。CPU/内存在 `resources` 配置。
 
@@ -63,7 +63,7 @@ Chart 包含 `questions.yaml`，安装页面可填写私有仓库代理域名、
 - 配置变化会改变 Pod 模板的校验和，由 Deployment 滚动更新加载新配置。
 - readiness 使用 TCP 探测。未登录访问 Registry `/v2/` 通常返回 401。
 - 未设置上游命名空间时，仓库入口保留上游 `WWW-Authenticate` 认证挑战；设置后，Caddy 将挑战中的认证地址指向自身，再把 GET 令牌请求转发到上游，并改写短仓库 `scope`。原有 `service` 值保持不变。
-- 默认 Caddy 镜像固定为 `2.11.7-alpine`，以包含 `uri query` 定向改写参数的修复。
+- 默认 Caddy 镜像为 `caddy:2.11`。
 - 仓库入口向上游发送不带 `:443` 的 `Host: upstreamHost`，并去掉 `X-Forwarded-For`、`X-Forwarded-Host`、`X-Forwarded-Proto`，使阿里云 ACR 等上游看到与直接拉取更一致的请求。上游日志将记录代理节点地址，而不是通过这些头获取原客户端地址。
 - 仓库入口只改写指向上游仓库自身的绝对 `Location`，保留路径和查询参数；对象存储等其他域名的跳转保持原样。
 - Docker 客户端仍需能访问上游返回的对象存储地址。阿里云 ACR 个人版应填写 `crpi-...personal.cr.aliyuncs.com` 公网入口；若镜像层仍跳转到 `oss-cn-chengdu-internal.aliyuncs.com`，不能直接无条件改写为公网域名，因为 OSS 签名可能绑定 `Host`。设置 `upstreamNamespace` 不会改变该下载地址。
