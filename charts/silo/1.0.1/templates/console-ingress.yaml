@@ -1,0 +1,52 @@
+{{- if and .Values.ingress.enabled .Values.ingress.splitConsole .Values.ingress.consoleEnabled }}
+{{- $ingress := .Values.ingress }}
+{{- $console := $ingress.console }}
+{{- $host := required "ingress.consoleHost is required when Console ingress is enabled" $ingress.consoleHost }}
+{{- if and $ingress.apiEnabled (eq $ingress.apiHost $host) }}
+{{- fail "ingress.apiHost and ingress.consoleHost must be different hostnames" }}
+{{- end }}
+{{- $certificate := $console.certificate }}
+{{- if and $ingress.apiEnabled (eq $certificate.mode "cert-manager") (eq $ingress.certificate.mode "cert-manager") (eq $certificate.secretName $ingress.certificate.secretName) }}
+{{- fail "API and Console cert-manager certificates must use different Secret names" }}
+{{- end }}
+{{- $annotations := deepCopy $console.annotations }}
+{{- if eq $certificate.mode "cert-manager" }}
+{{- $issuer := required "ingress.console.certificate.issuerName is required for cert-manager" $certificate.issuerName }}
+{{- $_ := unset $annotations "cert-manager.io/issuer" }}
+{{- $_ := unset $annotations "cert-manager.io/cluster-issuer" }}
+{{- if eq $certificate.issuerKind "ClusterIssuer" }}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" $issuer }}
+{{- else }}
+{{- $_ := set $annotations "cert-manager.io/issuer" $issuer }}
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "silo.fullname" . }}-console
+  labels:
+    {{- include "silo.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $console.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if ne $certificate.mode "disabled" }}
+  tls:
+    - secretName: {{ required "ingress.console.certificate.secretName is required for HTTPS" $certificate.secretName | quote }}
+      hosts:
+        - {{ $host | quote }}
+  {{- end }}
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "silo.fullname" . }}
+                port: {name: console}
+{{- end }}

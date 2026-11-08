@@ -6,7 +6,7 @@ MinIO fork, without an operator or external database. Requires Kubernetes
 
 ## Rancher installation
 
-Sync this Git repository, then select **Apps → Charts → Silo → 1.0.0**.
+Sync this Git repository, then select **Apps → Charts → Silo → 1.0.1**.
 
 1. Enter **存储节点数** directly. `1` starts standalone storage;
    any integer `2–16`, including 3 and 5, starts a distributed pool.
@@ -110,7 +110,7 @@ Silo retains the MinIO-compatible environment names `MINIO_ROOT_USER` (at least
 ```bash
 kubectl create namespace storage
 kubectl apply -f /path/to/private/silo-env.yaml
-helm upgrade --install silo charts/silo/1.0.0 --namespace storage \
+helm upgrade --install silo charts/silo/1.0.1 --namespace storage \
   --set silo.envSecret=silo-env \
   --set replicaCount=3
 ```
@@ -208,3 +208,35 @@ Back up objects, IAM configuration, and any external encryption keys separately.
 Read the Silo release notes before changing images and verify recovery before
 production use. The chart validates rendered manifests; actual disk semantics,
 cluster scheduling, upload traffic, recovery, and failover require cluster tests.
+
+## Public API and VPN-only Console
+
+Version 1.0.1 retains the shared Ingress by default when upgrading. To split
+the routes, set the following values and configure the corresponding public and
+VPN-only Ingress controllers and DNS records:
+
+```yaml
+ingress:
+  enabled: true
+  apiEnabled: true
+  consoleEnabled: true
+  className: traefik-public
+  apiHost: s3.example.com
+  consoleHost: silo.example.com
+  certificate:
+    mode: existing
+    secretName: s3-tls
+  splitConsole: true
+  console:
+    className: traefik-vpn
+    certificate:
+      mode: existing
+      secretName: silo-console-tls
+```
+
+The Console class must point to a controller reachable only through the VPN;
+private DNS by itself does not prevent public access. Configure Console TLS
+separately, using an existing certificate or a suitable cert-manager issuer. If
+both routes use cert-manager, they must use different Secret names. Independent
+controller annotations can be set with `ingress.console.annotations`. Verify
+connectivity from outside and inside the VPN after upgrading.

@@ -1,0 +1,63 @@
+# Silo
+
+Locally maintained Helm Chart for [PGSTY Silo](https://github.com/pgsty/silo),
+the S3-compatible MinIO fork. Pins `RELEASE.2026-10-26T00-00-00Z` and bundles
+a Rancher configuration form. Requires Kubernetes 1.27+; supports K3s and
+Linux amd64 / arm64.
+
+- Enter `replicaCount` directly: `1` for standalone, any integer `2–16` for
+  one distributed erasure set. Odd counts such as 3 and 5 are supported.
+- Each distributed Pod requires a different schedulable Kubernetes node and
+  one independent PVC. Defaults: `local-path`, `10Gi` per PVC.
+- Environment variables from an existing Secret, including root credentials; no default password.
+- One full image field, defaulting to `pgsty/silo:RELEASE.2026-10-26T00-00-00Z`.
+- Independently enabled S3 API and Console domains, existing TLS or cert-manager.
+- PVC retention, stable peer DNS, nonroot Pods, health probes, and a PDB
+  for distributed installations.
+
+Node count is an installation choice. This chart rejects count changes during
+an upgrade against the live cluster; migrate to a new release to change topology.
+It does not implement multi-pool expansion, automatic bucket creation, or a
+MinIO operator. Use the Console or `mcli` to create buckets and scoped access keys.
+
+For Console-only domain access, enable Ingress, turn off **Expose S3 API through
+Ingress**, and keep **通过 Ingress 开放控制台** enabled. S3 remains
+available through the cluster-internal Service on port `9000`. The Console
+uses the API internally. TLS includes only the enabled hostnames; enabled routes
+share the Ingress Class and certificate settings.
+
+`clusterDomain` is the internal Kubernetes DNS suffix used for distributed
+peer addresses. Keep `cluster.local` on standard K3s; it is unrelated to
+the external S3 API and Console domains.
+
+Include a version or digest in `image.repository`. Untagged references fall
+back to `Chart.appVersion` or a legacy `image.tag`; explicit tags and digests
+take precedence over the separate legacy tag.
+
+Two nodes with one PVC each use `EC:1`: loss of one node stops writes; intact
+existing objects may remain readable. With three nodes and default `EC:1`,
+two healthy nodes can satisfy the ordinary read/write quorum. Failover still
+depends on the affected objects, disks, metadata, and successful initialization.
+
+Select an existing `silo.envSecret` (default `silo-env`) containing
+`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. Its entries become environment
+variables; Silo retains these MinIO-compatible variable names.
+
+See [the deployment guide](../../../docs/silo/deployment.md) for installation,
+domain configuration, storage sizing, and maintenance.
+
+```bash
+helm lint charts/silo/1.0.1 --strict
+helm template silo charts/silo/1.0.1 --namespace storage \
+  --set silo.envSecret=silo-env \
+  --set replicaCount=3
+```
+
+### Public S3 API with a VPN-only Console
+
+Set `ingress.splitConsole: true` to create a separate Console Ingress. Set
+`ingress.className` to the public controller and `ingress.console.className` to
+the VPN-only controller. Configure `ingress.console.certificate` independently;
+`ingress.console.annotations` is also available. The shared Ingress behavior is
+unchanged by default for upgrades. Separate DNS alone does not restrict access:
+ensure the Console controller is reachable only through the VPN.

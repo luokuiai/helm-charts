@@ -9,7 +9,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/silo/1.0.0"
+CHART = ROOT / "charts/silo/1.0.1"
 PASSWORD = "test-password-123456"
 
 
@@ -218,6 +218,29 @@ class SiloChartTests(unittest.TestCase):
                              {"name": "silo", "port": {"name": port}})
         self.assertEqual(environment(docs)["MINIO_BROWSER_REDIRECT_URL"]["value"],
                          "https://console.example.org")
+
+    def test_split_console_uses_independent_controller_certificate_and_annotations(self):
+        values = ingress("existing", secretName="api-tls")
+        values["ingress"].update({"splitConsole": True, "annotations": {"scope": "public"},
+            "console": {"className": "traefik-vpn", "annotations": {"scope": "vpn"},
+                        "certificate": {"mode": "cert-manager", "issuerName": "internal-ca"}}})
+        docs = manifests(values)
+        api = resource(docs, "Ingress", "silo")
+        console = resource(docs, "Ingress", "silo-console")
+        self.assertEqual(api["spec"]["ingressClassName"], "traefik")
+        self.assertEqual(api["spec"]["tls"], [{"secretName": "api-tls", "hosts": ["s3.example.org"]}])
+        self.assertEqual(api["metadata"]["annotations"], {"scope": "public"})
+        self.assertEqual(console["spec"]["ingressClassName"], "traefik-vpn")
+        self.assertEqual(console["spec"]["tls"], [{"secretName": "silo-console-tls", "hosts": ["console.example.org"]}])
+        self.assertEqual(console["metadata"]["annotations"], {"scope": "vpn", "cert-manager.io/cluster-issuer": "internal-ca"})
+        self.assertEqual(console["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["port"]["name"], "console")
+        self.assertEqual(environment(docs)["MINIO_BROWSER_REDIRECT_URL"]["value"], "https://console.example.org")
+        values["ingress"]["apiEnabled"] = False
+        docs = manifests(values)
+        self.assertEqual([d["metadata"]["name"] for d in docs if d["kind"] == "Ingress"], ["silo-console"])
+        values["ingress"]["apiEnabled"] = True
+        values["ingress"]["certificate"] = {"mode": "cert-manager", "issuerName": "public", "secretName": "silo-console-tls"}
+        self.assertNotEqual(render(values).returncode, 0)
 
     def test_http_and_internal_console_access(self):
         self.assertNotIn("MINIO_BROWSER_REDIRECT_URL", environment(manifests()))
