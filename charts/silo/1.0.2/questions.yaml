@@ -1,0 +1,219 @@
+questions:
+  - variable: replicaCount
+    label: "存储节点数"
+    type: int
+    default: 1
+    min: 1
+    max: 16
+    required: true
+    group: "部署"
+    description: "填写 1 部署单节点，填写 2 至 16 的整数部署分布式存储。分布式模式中，每个 Pod 需要独立的可调度 Kubernetes 节点和 PVC。请在安装时确定；调整已有存储池需迁移数据。两个节点时，任意一个节点故障都会导致无法写入。"
+  - variable: clusterDomain
+    label: "Kubernetes 集群域"
+    type: string
+    default: cluster.local
+    required: true
+    group: "部署"
+    description: "用于构建分布式节点地址的 Kubernetes 内部 DNS 后缀，标准 K3s 保持 cluster.local 即可。单节点模式不使用此项，与外部 S3 API 和控制台域名无关。"
+  - variable: image.repository
+    label: "Silo 镜像"
+    type: string
+    default: pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    required: true
+    group: "镜像"
+    description: "填写包含版本的完整镜像地址，例如 pgsty/silo:RELEASE.2026-10-26T00-00-00Z 或 registry.example.com/team/silo:RELEASE.2026-10-26T00-00-00Z。支持 amd64 和 arm64。"
+  - variable: silo.envSecret
+    label: "Silo 环境变量 Secret"
+    type: "reference[secret]"
+    default: silo-env
+    required: true
+    group: "身份认证"
+    description: "选择安装命名空间中的已有 Secret，包含 MINIO_ROOT_USER（至少 3 个字符）、MINIO_ROOT_PASSWORD（至少 8 个字符）等 Silo 环境变量。所有 Pod 共用此 Secret，更新后需重启 StatefulSet。安装后请为应用创建限定权限的访问密钥。"
+  - variable: persistence.existingClaim
+    label: "已有数据 PVC（仅限单节点）"
+    type: string
+    default: ""
+    group: "持久化存储"
+    show_if: replicaCount=1
+    description: "留空则创建 PVC。已有 PVC 必须包含兼容的单节点数据，且 UID/GID 1000 可写。复用数据前请先备份。"
+  - variable: persistence.storageClass
+    label: "数据存储类"
+    type: storageclass
+    default: local-path
+    group: "持久化存储"
+    description: "创建新 PVC 时使用。留空使用集群默认存储类。local-path 将数据保存在分配到的 K3s 节点上；使用独立本地磁盘可隔离存储故障。"
+  - variable: persistence.size
+    label: "每个节点的数据容量"
+    type: string
+    default: 10Gi
+    required: true
+    group: "持久化存储"
+    description: "每个 PVC 在扣除纠删码开销前的原始容量，所有 PVC 使用相同容量。卸载时会保留 PVC，已有卷需单独扩容。"
+  - variable: ingress.enabled
+    label: "启用域名访问（Ingress）"
+    type: boolean
+    default: "false"
+    required: true
+    group: "域名 / HTTPS"
+    description: "可在下方分别选择开放 S3 API、控制台或两者。需已有 Ingress 控制器，并为启用的路由配置 DNS。TLS 在控制器处终止，Silo 内部流量仍使用 HTTP。"
+  - variable: ingress.apiEnabled
+    label: "通过 Ingress 开放 S3 API"
+    type: boolean
+    default: "true"
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "关闭后，S3 仅通过集群内部的 9000 端口访问；控制台仍可单独开放。"
+  - variable: ingress.apiHost
+    label: "S3 API 域名"
+    type: hostname
+    default: s3.example.com
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true
+    description: "S3 应用使用此域名。将 / 转发到 9000 端口，不改写签名路径或 Host。"
+  - variable: ingress.className
+    label: "S3 API Ingress 类"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true
+    description: "选择 S3 API 使用的 Ingress 类；留空使用默认类。"
+  - variable: ingress.certificate.mode
+    label: "S3 API HTTPS 模式"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true
+    description: "existing 使用已有证书，cert-manager 自动申请，disabled 使用 HTTP。"
+  - variable: ingress.certificate.issuerKind
+    label: "S3 API 证书签发器类型"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "S3 API 证书签发器名称"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+    description: "选择已有且就绪的 ClusterIssuer。需先安装 cert-manager。"
+  - variable: ingress.certificate.issuerName
+    label: "S3 API 证书签发器名称"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+    description: "选择此命名空间中已有且就绪的 Issuer。"
+  - variable: ingress.certificate.secretName
+    label: "S3 API TLS Secret 名称"
+    type: string
+    default: silo-tls
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.apiEnabled=true
+    description: "证书须覆盖此入口中的域名。existing 模式填写已有 Secret；cert-manager 模式填写要创建的 Secret 名称。disabled 模式忽略此项。"
+  - variable: ingress.consoleEnabled
+    label: "通过 Ingress 开放控制台"
+    type: boolean
+    default: "true"
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "开放 9001 端口的 Web 管理界面，无需同时对外开放 S3 API。"
+  - variable: ingress.consoleHost
+    label: "控制台域名"
+    type: hostname
+    default: silo.example.com
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true
+    description: "两个路由同时启用时，必须与 API 域名不同。将 / 转发到 9001 端口，浏览器重定向地址自动生成。"
+  - variable: ingress.console.className
+    label: "控制台 Ingress 类"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true
+    description: "选择只在 VPN 可访问的 Ingress 控制器。"
+  - variable: ingress.console.certificate.mode
+    label: "控制台 HTTPS 模式"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true
+  - variable: ingress.console.certificate.issuerKind
+    label: "控制台证书签发器类型"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true&&ingress.console.certificate.mode=cert-manager
+  - variable: ingress.console.certificate.issuerName
+    label: "控制台证书签发器"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true&&ingress.console.certificate.mode=cert-manager&&ingress.console.certificate.issuerKind=ClusterIssuer
+  - variable: ingress.console.certificate.issuerName
+    label: "控制台证书签发器"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true&&ingress.console.certificate.mode=cert-manager&&ingress.console.certificate.issuerKind=Issuer
+  - variable: ingress.console.certificate.secretName
+    label: "控制台 TLS Secret 名称"
+    type: string
+    default: silo-console-tls
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.consoleEnabled=true
+    description: "existing 模式使用已有证书；cert-manager 模式使用独立 Secret 名称。"
+  - variable: resources.requests.cpu
+    label: "每个节点的 CPU 请求量"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.cpu
+    label: "每个节点的 CPU 上限"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.requests.memory
+    label: "每个节点的内存请求量"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.memory
+    label: "每个节点的内存上限"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / 内存"
+    description: "默认值适用于小规模部署。请根据负载、对象数量和纠删码活动提高内存上限。"

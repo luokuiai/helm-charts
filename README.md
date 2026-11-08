@@ -20,7 +20,8 @@ helm-charts/                         # Git repository root
 │   │   ├── 1.0.0/                   # Magpie gateway + Web UI + PVC + Rancher form
 │   │   └── 1.0.1/                   # Optional target node dropdown
 │   ├── silo/
-│   │   ├── 1.0.1/                   # Silo independent API / Console ingress
+│   │   ├── 1.0.2/                   # Silo independent API / Console ingress
+│   │   ├── 1.0.1/                   # Silo optional separate Console ingress
 │   │   └── 1.0.0/                   # Silo S3 storage + 1-16 nodes + Rancher form
 │   ├── warpgate/
 │   │   └── 1.0.0/                   # Warpgate + optional HA + external PostgreSQL + OIDC + S3 / PVC
@@ -70,7 +71,7 @@ The current versions use Chinese consistently for Rancher form groups, labels, a
 | casdoor | 1.0.1 | Casdoor v4.25.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
 | external-proxy | 1.0.0 | External IP / DNS backends through existing Traefik, original Host forwarding, upstream TLS / SNI, domain certificates, and a Rancher configuration form |
 | magpie | 1.0.1, 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, node selection, and a Rancher configuration form |
-| silo | 1.0.1, 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
+| silo | 1.0.2, 1.0.1, 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
 | warpgate | 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
 | netbird-operator-network | 1.0.1, 1.0.0 | NetworkRouter and NetworkResource for an existing NetBird Operator, with a namespace-scoped VPN ingress Service dropdown, optional scoped NAT workaround, and a Rancher configuration form |

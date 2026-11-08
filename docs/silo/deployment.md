@@ -6,7 +6,7 @@ MinIO fork, without an operator or external database. Requires Kubernetes
 
 ## Rancher installation
 
-Sync this Git repository, then select **Apps → Charts → Silo → 1.0.1**.
+Sync this Git repository, then select **Apps → Charts → Silo → 1.0.2**.
 
 1. Enter **存储节点数** directly. `1` starts standalone storage;
    any integer `2–16`, including 3 and 5, starts a distributed pool.
@@ -110,7 +110,7 @@ Silo retains the MinIO-compatible environment names `MINIO_ROOT_USER` (at least
 ```bash
 kubectl create namespace storage
 kubectl apply -f /path/to/private/silo-env.yaml
-helm upgrade --install silo charts/silo/1.0.1 --namespace storage \
+helm upgrade --install silo charts/silo/1.0.2 --namespace storage \
   --set silo.envSecret=silo-env \
   --set replicaCount=3
 ```
@@ -152,6 +152,11 @@ ingress:
     secretName: silo-tls
     issuerKind: ClusterIssuer
     issuerName: letsencrypt
+  console:
+    className: traefik-vpn
+    certificate:
+      mode: existing
+      secretName: silo-console-tls
 ```
 
 **通过 Ingress 开放 S3 API** and **通过 Ingress 开放控制台**
@@ -164,6 +169,8 @@ ingress:
   apiEnabled: false
   consoleEnabled: true
   consoleHost: silo.example.com
+  console:
+    className: traefik-vpn
 ```
 
 No API domain route or API certificate name is created in that mode, and
@@ -175,14 +182,14 @@ cluster-internal Service always retains both ports.
 
 Point DNS records for the enabled routes at the Ingress controller. `apiHost`
 serves S3 on port 9000; `consoleHost` serves the Web Console on port 9001.
-Both paths are `/`. Enabled routes share the Ingress Class and certificate
+Both paths are `/`. Each route has its own Ingress Class and certificate
 settings. The chart sets `MINIO_BROWSER_REDIRECT_URL` only for an enabled
 Console route, from its hostname and certificate mode. S3 clients use the
 API endpoint, without a `/v1` suffix.
 
-With `mode: existing`, provide a TLS Secret covering **the enabled hostnames**.
+With `mode: existing`, provide a TLS Secret covering the relevant hostname.
 With `mode: cert-manager`, install cert-manager and a ready `Issuer` or
-`ClusterIssuer` first. One certificate covers only the enabled names. `disabled` uses HTTP.
+`ClusterIssuer` first. Each route uses its own certificate configuration. `disabled` uses HTTP.
 TLS terminates at Ingress; peer and Service traffic remains HTTP inside the
 cluster. The chart does not provision internal TLS.
 
@@ -211,8 +218,9 @@ cluster scheduling, upload traffic, recovery, and failover require cluster tests
 
 ## Public API and VPN-only Console
 
-Version 1.0.1 retains the shared Ingress by default when upgrading. To split
-the routes, set the following values and configure the corresponding public and
+Version 1.0.2 always creates separate Ingress resources for API and Console.
+Before upgrading, configure the Console class and certificate explicitly; old
+shared Console settings are not automatically copied. Configure the public and
 VPN-only Ingress controllers and DNS records:
 
 ```yaml
@@ -226,7 +234,6 @@ ingress:
   certificate:
     mode: existing
     secretName: s3-tls
-  splitConsole: true
   console:
     className: traefik-vpn
     certificate:
