@@ -59,6 +59,12 @@ class ChartTests(unittest.TestCase):
         self.assertFalse(any(d["kind"] == "NetworkResource" for d in manifests()))
         values = {"netbird": {"enabled": True, "routerName": "vpn-entry",
                               "routerNamespace": "infra-system", "groupNames": ["内部应用网络组"]}}
+        # Rancher sends an array when a user fills the initial group row.
+        question = next(q for q in yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
+                        if q["variable"] == "netbird.enabled")
+        group_field = next(q for q in question["subquestions"] if q["variable"] == "netbird.groupNames")
+        self.assertEqual(group_field["type"], "array[string]")
+        self.assertEqual(group_field["default"], [""])
         docs = manifests(values, release="gateway")
         netbird = resource(docs, "NetworkResource")
         self.assertEqual(netbird["metadata"]["name"], "gateway")
@@ -364,8 +370,8 @@ class ChartTests(unittest.TestCase):
                          {"netbird.routerName", "netbird.routerNamespace", "netbird.groupNames"})
         fields = {q["variable"]: q for q in netbird_question["subquestions"]}
         self.assertEqual(fields["netbird.routerNamespace"]["type"], "reference[namespace]")
-        self.assertEqual(fields["netbird.groupNames"]["type"], "listofstrings")
-        self.assertEqual(fields["netbird.groupNames"]["default"], [])
+        self.assertEqual(fields["netbird.groupNames"]["type"], "array[string]")
+        self.assertEqual(fields["netbird.groupNames"]["default"], [""])
         self.assertNotIn("catalog.cattle.io/release-name", metadata["annotations"])
         self.assertTrue((CHART / "icon.png").read_bytes().startswith(b"\x89PNG"))
 

@@ -371,7 +371,8 @@ questions:
         description: "填写已有 NetworkRouter 所在命名空间。"
       - variable: netbird.groupNames
         label: "NetBird 目标组"
-        type: listofstrings
-        default: []
+        type: "array[string]"
+        default:
+          - ""
         required: true
         description: "填写已有目标组，例如内部应用网络组。组不是客户端设备组；访问策略须单独在 NetBird 配置。"

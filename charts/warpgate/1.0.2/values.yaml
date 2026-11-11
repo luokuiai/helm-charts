@@ -101,7 +101,7 @@ netbird:
   enabled: false
   routerName: vpn-entry
   routerNamespace: infra-system
-  groupNames: []
+  groupNames: [""]
 
 resources:
   requests:

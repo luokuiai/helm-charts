@@ -473,12 +473,33 @@
         "groupNames": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": ".*\\S.*"
+            "type": "string"
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "groupNames": {
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": ".*\\S.*"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
