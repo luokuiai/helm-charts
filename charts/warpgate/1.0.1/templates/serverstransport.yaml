@@ -1,0 +1,12 @@
+{{- if and .Values.ingress.enabled (eq .Values.ingress.controller "traefik") }}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ include "warpgate.fullname" . }}-backend
+  labels:
+    {{- include "warpgate.labels" . | nindent 4 }}
+spec:
+  serverName: {{ include "warpgate.backendServerName" . }}
+  rootCAsSecrets:
+    - {{ include "warpgate.backendTLSSecret" . }}
+{{- end }}

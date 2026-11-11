@@ -18,7 +18,7 @@ chart or an existing instance. Then create the installation namespace and a Secr
 ```bash
 kubectl create namespace access
 kubectl apply -f /path/to/private/warpgate-env.yaml
-helm install warpgate charts/warpgate/1.0.0 --namespace access
+helm install warpgate charts/warpgate/1.0.1 --namespace access
 ```
 
 All containers import `warpgate.envSecret`, default `warpgate-env`, through
@@ -362,7 +362,7 @@ provider creation in the Warpgate backend is required.
 Install after preparing the Secret and your values file:
 
 ```bash
-helm install warpgate charts/warpgate/1.0.0 \
+helm install warpgate charts/warpgate/1.0.1 \
   --namespace access \
   --values /path/to/private/warpgate-values.yaml
 ```
@@ -439,3 +439,29 @@ configuration, certificate/key and an existing recording file byte-for-byte.
 This does not exercise actual
 S3 uploads / browser playback, a Casdoor account, token exchange, Kubernetes
 storage or a live Ingress controller.
+
+## NetBird SSH access
+
+Install the existing NetBird Operator and a NetworkRouter first. In the Rancher
+form enable **通过 NetBird 访问 SSH**, select the router name and namespace, and
+enter existing destination groups. For the existing setup use `vpn-entry`,
+`infra-system`, and `内部应用网络组`. Equivalent values:
+
+```yaml
+netbird:
+  enabled: true
+  routerName: vpn-entry
+  routerNamespace: infra-system
+  groupNames:
+    - 内部应用网络组
+```
+
+The NetworkResource is created in the release namespace with the Service name.
+Verify it is Ready and use its Operator-managed DNS record in the SSH client.
+Create a NetBird policy that grants only authorized devices TCP access to the
+configured SSH Service port (default 2222). The resource represents the entire
+Service, so existing policies can also grant access to HTTPS and other enabled
+ports. No NetBird policy or router is created or modified by this chart. A
+pre-existing resource with the same name must be dealt with before enabling;
+Helm will not automatically adopt it. The router reference is immutable. Turning
+off the feature or uninstalling the release removes this resource and VPN access.

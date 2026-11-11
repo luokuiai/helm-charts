@@ -1,0 +1,28 @@
+{{- if .Values.netbird.enabled }}
+{{- if not .Values.protocols.ssh.enabled }}
+{{- fail "protocols.ssh.enabled must be true when NetBird access is enabled" }}
+{{- end }}
+{{- $router := required "netbird.routerName is required when NetBird access is enabled" .Values.netbird.routerName }}
+{{- $namespace := required "netbird.routerNamespace is required when NetBird access is enabled" .Values.netbird.routerNamespace }}
+{{- $groups := .Values.netbird.groupNames }}
+{{- if not $groups }}
+{{- fail "netbird.groupNames must contain at least one existing NetBird group" }}
+{{- end }}
+apiVersion: netbird.io/v1alpha1
+kind: NetworkResource
+metadata:
+  name: {{ include "warpgate.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "warpgate.labels" . | nindent 4 }}
+spec:
+  networkRouterRef:
+    name: {{ $router | quote }}
+    namespace: {{ $namespace | quote }}
+  serviceRef:
+    name: {{ include "warpgate.fullname" . }}
+  groups:
+    {{- range $groups }}
+    - name: {{ . | quote }}
+    {{- end }}
+{{- end }}

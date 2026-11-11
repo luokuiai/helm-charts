@@ -24,7 +24,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/warpgate/1.0.0"
+CHART = ROOT / "charts/warpgate/1.0.1"
 BINARY = os.environ.get("WARPGATE_BIN")
 OIDC = {"enabled": True, "issuerURL": "https://auth.example.com", "clientID": "warpgate"}
 
@@ -55,6 +55,26 @@ def config(docs):
 
 
 class ChartTests(unittest.TestCase):
+    def test_optional_netbird_resource_reuses_service_and_existing_router(self):
+        self.assertFalse(any(d["kind"] == "NetworkResource" for d in manifests()))
+        values = {"netbird": {"enabled": True, "routerName": "vpn-entry",
+                              "routerNamespace": "infra-system", "groupNames": ["内部应用网络组"]}}
+        docs = manifests(values, release="gateway")
+        netbird = resource(docs, "NetworkResource")
+        self.assertEqual(netbird["metadata"]["name"], "gateway")
+        self.assertEqual(netbird["metadata"]["namespace"], "access")
+        self.assertEqual(netbird["spec"], {
+            "networkRouterRef": {"name": "vpn-entry", "namespace": "infra-system"},
+            "serviceRef": {"name": resource(docs, "Service")["metadata"]["name"]},
+            "groups": [{"name": "内部应用网络组"}]})
+        for invalid in ({"netbird": {"enabled": True}},
+                        {"netbird": {"enabled": True, "routerName": "", "groupNames": ["team"]}},
+                        {"netbird": {"enabled": True, "groupNames": ["  "]}},
+                        {"netbird": {"enabled": True, "groupNames": ["team"]},
+                         "protocols": {"ssh": {"enabled": False}}}):
+            with self.subTest(values=invalid):
+                self.assertNotEqual(render(invalid).returncode, 0)
+
     def test_s3_configuration_uses_environment_credentials_and_optional_ephemeral_storage(self):
         for endpoint in ("", "https://s3.example.com"):
             with self.subTest(endpoint=endpoint):
@@ -337,7 +357,11 @@ class ChartTests(unittest.TestCase):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         metadata = yaml.safe_load((CHART / "Chart.yaml").read_text())
-        self.assertEqual(metadata["version"], "1.0.0")
+        self.assertEqual(metadata["version"], "1.0.1")
+        netbird_question = next(q for q in questions if q["variable"] == "netbird.enabled")
+        self.assertEqual(netbird_question["show_subquestion_if"], True)
+        self.assertEqual({q["variable"] for q in netbird_question["subquestions"]},
+                         {"netbird.routerName", "netbird.routerNamespace", "netbird.groupNames"})
         self.assertNotIn("catalog.cattle.io/release-name", metadata["annotations"])
         self.assertTrue((CHART / "icon.png").read_bytes().startswith(b"\x89PNG"))
 
