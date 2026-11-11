@@ -18,7 +18,7 @@ chart or an existing instance. Then create the installation namespace and a Secr
 ```bash
 kubectl create namespace access
 kubectl apply -f /path/to/private/warpgate-env.yaml
-helm install warpgate charts/warpgate/1.0.1 --namespace access
+helm install warpgate charts/warpgate/1.0.2 --namespace access
 ```
 
 All containers import `warpgate.envSecret`, default `warpgate-env`, through
@@ -362,7 +362,7 @@ provider creation in the Warpgate backend is required.
 Install after preparing the Secret and your values file:
 
 ```bash
-helm install warpgate charts/warpgate/1.0.1 \
+helm install warpgate charts/warpgate/1.0.2 \
   --namespace access \
   --values /path/to/private/warpgate-values.yaml
 ```

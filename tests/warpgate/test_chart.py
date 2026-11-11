@@ -24,7 +24,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/warpgate/1.0.1"
+CHART = ROOT / "charts/warpgate/1.0.2"
 BINARY = os.environ.get("WARPGATE_BIN")
 OIDC = {"enabled": True, "issuerURL": "https://auth.example.com", "clientID": "warpgate"}
 
@@ -357,11 +357,15 @@ class ChartTests(unittest.TestCase):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         metadata = yaml.safe_load((CHART / "Chart.yaml").read_text())
-        self.assertEqual(metadata["version"], "1.0.1")
+        self.assertEqual(metadata["version"], "1.0.2")
         netbird_question = next(q for q in questions if q["variable"] == "netbird.enabled")
         self.assertEqual(netbird_question["show_subquestion_if"], True)
         self.assertEqual({q["variable"] for q in netbird_question["subquestions"]},
                          {"netbird.routerName", "netbird.routerNamespace", "netbird.groupNames"})
+        fields = {q["variable"]: q for q in netbird_question["subquestions"]}
+        self.assertEqual(fields["netbird.routerNamespace"]["type"], "reference[namespace]")
+        self.assertEqual(fields["netbird.groupNames"]["type"], "listofstrings")
+        self.assertEqual(fields["netbird.groupNames"]["default"], [])
         self.assertNotIn("catalog.cattle.io/release-name", metadata["annotations"])
         self.assertTrue((CHART / "icon.png").read_bytes().startswith(b"\x89PNG"))
 
