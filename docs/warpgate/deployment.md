@@ -18,7 +18,7 @@ chart or an existing instance. Then create the installation namespace and a Secr
 ```bash
 kubectl create namespace access
 kubectl apply -f /path/to/private/warpgate-env.yaml
-helm install warpgate charts/warpgate/1.0.2 --namespace access
+helm install warpgate charts/warpgate/1.0.3 --namespace access
 ```
 
 All containers import `warpgate.envSecret`, default `warpgate-env`, through
@@ -28,7 +28,7 @@ All containers import `warpgate.envSecret`, default `warpgate-env`, through
 | --- | --- |
 | `WARPGATE_DATABASE_URL` | Required external PostgreSQL connection URL, e.g. `postgresql://warpgate:URL_ENCODED_CREDENTIAL@postgres.database.svc.cluster.local:5432/warpgate?sslmode=require`. |
 | `WARPGATE_ADMIN_PASSWORD` | Initial administrator credential. Does not reset an existing user. |
-| `WARPGATE_OIDC_CLIENT_ID` | Required with OIDC enabled unless using the legacy `oidc.clientID` value. Provider Client ID. |
+| `WARPGATE_OIDC_CLIENT_ID` | Required with OIDC enabled. Provider Client ID. |
 | `WARPGATE_OIDC_CLIENT_SECRET` | Required only with OIDC enabled. Raw, single-line provider Client Secret. |
 | `AWS_ACCESS_KEY_ID` | Required with chart-managed S3 recording storage. Dedicated S3 access identity. |
 | `AWS_SECRET_ACCESS_KEY` | Required with chart-managed S3 recording storage. Secret key for that identity. |
@@ -342,9 +342,7 @@ provider creation in the Warpgate backend is required.
    Warpgate must reach the discovery, token and JWKS endpoints; the browser must
    reach the provider's authorization endpoint.
 3. Put the application Client ID and Client Secret into `WARPGATE_OIDC_CLIENT_ID`
-   and `WARPGATE_OIDC_CLIENT_SECRET` in `warpgate-env`. On existing releases,
-   a nonempty legacy `oidc.clientID` takes precedence. Clear it in the Helm
-   values when moving to the Secret. Keep the old value to roll back.
+   and `WARPGATE_OIDC_CLIENT_SECRET` in `warpgate-env` before enabling OIDC.
 4. Enable OIDC and register the exact redirect URI at the provider:
 
    ```text
@@ -365,7 +363,7 @@ provider creation in the Warpgate backend is required.
 Install after preparing the Secret and your values file:
 
 ```bash
-helm install warpgate charts/warpgate/1.0.2 \
+helm install warpgate charts/warpgate/1.0.3 \
   --namespace access \
   --values /path/to/private/warpgate-values.yaml
 ```

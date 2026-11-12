@@ -1,0 +1,370 @@
+questions:
+  - variable: image.repository
+    label: "Warpgate 镜像"
+    type: string
+    default: ghcr.io/warp-tech/warpgate:0.30.2
+    required: true
+    group: "基本设置"
+    description: "填写包含版本或摘要的完整镜像地址。此 Chart 使用 Warpgate 0.30 及更新版本的原生初始化命令。"
+  - variable: warpgate.envSecret
+    label: "Warpgate 环境变量 Secret"
+    type: "reference[secret]"
+    default: warpgate-env
+    required: true
+    group: "基本设置"
+    description: "选择此命名空间中的已有 Secret。必填 WARPGATE_DATABASE_URL 和 WARPGATE_ADMIN_PASSWORD；高可用需加 WARPGATE_ENCRYPTION_KEY；OIDC 需加 WARPGATE_OIDC_CLIENT_ID 和 WARPGATE_OIDC_CLIENT_SECRET；S3 需加 AWS_ACCESS_KEY_ID 和 AWS_SECRET_ACCESS_KEY。所有 Pod 共用此 Secret。URL 与客户端密钥必须为单行，修改后需重启工作负载。"
+  - variable: ha.enabled
+    label: "启用高可用部署"
+    type: boolean
+    default: "false"
+    required: true
+    group: "基本设置"
+    description: "使用 StatefulSet，每个 Pod 保留独立的数据 PVC。所有 Pod 必须使用相同的外部 PostgreSQL、WARPGATE_ENCRYPTION_KEY 和共享录像存储。切换模式前需停止原工作负载并迁移录像。"
+  - variable: ha.replicas
+    label: "Warpgate 副本数"
+    type: int
+    default: 2
+    min: 1
+    required: true
+    group: "基本设置"
+    show_if: ha.enabled=true
+    description: "使用 2 个及以上副本提供冗余。可填写任意正整数，每个 Pod 需要独立的可调度节点。设置为 1 会保留 StatefulSet 及其 PVC，但不提供冗余。"
+  - variable: oidc.enabled
+    label: "启用 OpenID Connect 登录"
+    type: boolean
+    default: "false"
+    required: true
+    group: "身份认证 / OIDC"
+    description: "配置通用 OIDC 提供商，包括 Casdoor。需可对外访问的 HTTPS 域名，并在环境变量 Secret 中设置 WARPGATE_OIDC_CLIENT_ID 和 WARPGATE_OIDC_CLIENT_SECRET。"
+  - variable: oidc.issuerURL
+    label: "OIDC 签发者地址"
+    type: string
+    default: ""
+    required: true
+    group: "身份认证 / OIDC"
+    show_if: oidc.enabled=true
+    description: "填写提供商发现文档公布的准确签发者地址，例如 Casdoor 的 https://auth.example.com。Warpgate 必须能够访问其发现、令牌和 JWKS 端点。"
+  - variable: oidc.name
+    label: "OIDC 提供商名称"
+    type: string
+    default: oidc
+    required: true
+    group: "身份认证 / OIDC"
+    show_if: oidc.enabled=true
+    description: "使用字母、数字、下划线或连字符组成的固定标识符。修改名称会影响已保存的 SSO 凭据绑定。"
+  - variable: oidc.label
+    label: "登录按钮文字"
+    type: string
+    default: "Single sign-on"
+    required: true
+    group: "身份认证 / OIDC"
+    show_if: oidc.enabled=true
+  - variable: oidc.autoCreateUsers
+    label: "自动创建 OIDC 用户"
+    type: boolean
+    default: "false"
+    required: true
+    group: "身份认证 / OIDC"
+    show_if: oidc.enabled=true
+    description: "关闭时，需先为已有 Warpgate 用户绑定 SSO 凭据；开启时，提供商认证成功后自动创建用户。访问目标仍需授予 Warpgate 角色。"
+  - variable: oidc.rolesClaim
+    label: "角色 / 组声明（可选）"
+    type: string
+    default: ""
+    group: "身份认证 / OIDC"
+    show_if: oidc.enabled=true
+    description: "留空使用 Warpgate 的 warpgate_roles 声明；也可填写 groups，并在 YAML 中配置 oidc.roleMappings。仅映射访问角色，不授予管理员权限。"
+  - variable: persistence.enabled
+    label: "持久化保存本地数据（PVC）"
+    type: boolean
+    default: "true"
+    group: "持久化存储"
+    description: "在 Pod 替换后保留配置、证书、本地录像和正在上传的 S3 缓冲文件。高可用模式必须开启，且每个 Pod 使用独立数据 PVC。此项独立于录像开关；关闭后使用 emptyDir，删除 Pod 将丢失本地文件。"
+  - variable: persistence.existingClaim
+    label: "已有数据 PVC（可选）"
+    type: string
+    default: ""
+    group: "持久化存储"
+    show_if: persistence.enabled=true&&ha.enabled=false
+    description: "留空则创建 PVC。已有 PVC 必须允许 UID/GID 1000 写入，用于保存生成的配置、后端证书和本地录像。用户、凭据和主机密钥存储在外部 PostgreSQL 中。更换前需迁移文件。"
+  - variable: persistence.storageClass
+    label: "数据存储类"
+    type: storageclass
+    default: local-path
+    group: "持久化存储"
+    show_if: persistence.enabled=true
+    description: "创建新数据 PVC 时使用，高可用模式每个 Pod 创建一个。留空使用集群默认存储类。local-path 将各 Pod 数据保存在分配到的 K3s 节点上；若需在节点故障后自动恢复该 Pod，请使用可跨节点挂载的存储。共享文件录像使用下方独立的 RWX PVC。"
+  - variable: persistence.size
+    label: "本地存储容量"
+    type: string
+    default: 1Gi
+    required: true
+    group: "持久化存储"
+    description: "高可用模式下为每个 Pod 的 PVC 申请容量；关闭持久化时为 emptyDir 容量上限。卸载或高可用缩容时会保留 PVC，已有 PVC 需单独扩容。正在录制的 S3 会话也需要本地缓冲空间。"
+  - variable: warpgate.recordSessions
+    label: "首次初始化时启用会话录像"
+    type: boolean
+    default: "true"
+    group: "会话录像"
+    description: "默认开启；未启用下方 S3 时使用本地存储。仅首次初始化数据库时生效；安装后请在 Warpgate 管理界面调整录像设置。"
+  - variable: recordings.s3.enabled
+    label: "使用 S3 保存录像"
+    type: boolean
+    default: "false"
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true
+    description: "新安装时保持关闭即可本地保存录像；开启后，启动时使用环境变量 Secret 中的 AWS 凭据配置 S3。不会迁移已有录像。对于已有部署，关闭此项只会停止 Chart 管理；如需切回本地存储，还需在 Warpgate 管理界面中选择。"
+  - variable: recordings.s3.bucket
+    label: "S3 存储桶"
+    type: string
+    default: ""
+    required: true
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: ha.sharedRecordingsClaim
+    label: "共享录像文件 PVC（RWX）"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    required: true
+    group: "会话录像"
+    show_if: ha.enabled=true&&recordings.s3.enabled=false
+    description: "选择此命名空间中的已有 ReadWriteMany PVC，须允许 UID/GID 1000 写入。所有 Pod 将其根目录挂载到 /data/recordings。未由 Chart 配置 S3 时必须提供，即使首次初始化的录像开关关闭，因为已有数据库会保留原录像设置。K3s local-path 不属于共享存储。请先迁移已有录像，并在 Warpgate 中将磁盘路径设为 /data/recordings。"
+  - variable: recordings.s3.endpoint
+    label: "S3 服务地址"
+    type: string
+    default: ""
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "使用 AWS 时留空。使用 Silo 时填写其 S3 API 的 HTTPS 地址，Warpgate 和回放浏览器都须能够访问。需为 Warpgate 的访问来源配置存储桶 CORS。"
+  - variable: recordings.s3.region
+    label: "S3 区域"
+    type: string
+    default: us-east-1
+    required: true
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: recordings.s3.prefix
+    label: "S3 对象前缀"
+    type: string
+    default: warpgate
+    required: true
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+  - variable: recordings.s3.pathStyle
+    label: "启用 S3 路径式寻址"
+    type: boolean
+    default: "true"
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "Silo / MinIO 通常需要开启；使用 AWS 虚拟主机式存储桶地址时关闭。"
+  - variable: recordings.s3.setupImage
+    label: "S3 配置镜像"
+    type: string
+    default: postgres:18.6-alpine
+    required: true
+    group: "会话录像"
+    show_if: warpgate.recordSessions=true&&recordings.s3.enabled=true
+    description: "填写完整的 PostgreSQL 客户端镜像地址。原生初始化完成后，由短时运行的初始化容器仅设置数据库中的录像存储配置。"
+  - variable: ingress.enabled
+    label: "启用域名访问（Ingress）"
+    type: boolean
+    default: "false"
+    required: true
+    group: "域名 / HTTPS"
+    description: "为 Web 界面和 HTTP 网关提供 HTTPS 访问。SSH 和数据库协议需通过 TCP Service 单独开放，DNS 解析需另行配置。"
+  - variable: ingress.hostname
+    label: "域名"
+    type: hostname
+    default: warpgate.example.com
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "只填写域名。在 OIDC 应用中将 https://此域名/@warpgate/api/sso/return 注册为重定向 URI。"
+  - variable: ingress.className
+    label: "Ingress 类"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "K3s 通常选择 traefik；留空使用默认 Ingress 类。请在下方选择匹配的控制器类型。"
+  - variable: ingress.controller
+    label: "Ingress 控制器类型"
+    type: enum
+    default: traefik
+    required: true
+    options: [traefik, nginx]
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "Warpgate 后端始终使用 HTTPS。traefik 创建启用证书验证的 ServersTransport（需已安装 Traefik CRD）；nginx 添加 HTTPS 后端及 CA 验证注解。"
+  - variable: ingress.certificate.mode
+    label: "HTTPS 证书"
+    type: enum
+    default: existing
+    required: true
+    options: [existing, cert-manager]
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "existing：使用已有 TLS Secret；cert-manager：通过已安装的 cert-manager 签发器申请证书。"
+  - variable: ingress.certificate.secretName
+    label: "外部访问 TLS Secret 名称"
+    type: string
+    default: warpgate-tls
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "existing 模式填写已有证书的 Secret；cert-manager 模式填写证书要保存到的 Secret 名称。与自动生成的后端证书相互独立。"
+  - variable: ingress.certificate.issuerKind
+    label: "证书签发器类型"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options: [ClusterIssuer, Issuer]
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器名称"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器名称"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+  - variable: warpgate.externalHost
+    label: "自定义外部访问域名（可选）"
+    type: string
+    default: ""
+    group: "域名 / HTTPS"
+    description: "留空使用 Ingress 域名。使用独立管理的 HTTPS 代理或直接开放 Service 时，OIDC 需填写此项，不带协议或端口。"
+  - variable: warpgate.externalPort
+    label: "自定义外部 HTTPS 端口"
+    type: int
+    default: 0
+    group: "域名 / HTTPS"
+    description: "0 表示使用默认值：Ingress 为 443，直接访问为 8888。自定义 HTTPS 监听端口、LoadBalancer 或 NodePort 时需填写，并在 OIDC 重定向 URI 中包含此端口。"
+  - variable: service.type
+    label: "Service 访问方式"
+    type: enum
+    default: ClusterIP
+    required: true
+    options: [ClusterIP, NodePort, LoadBalancer]
+    group: "服务 / 协议"
+    description: "ClusterIP 仅限集群内部访问；NodePort 或 LoadBalancer 开放已启用的 SSH、数据库监听端口和 HTTPS。高可用时请使用 VPN 可达的稳定 TCP 负载均衡入口，单个节点 IP 无法提供冗余。HTTP Ingress 不转发这些 TCP 协议。"
+  - variable: service.httpsNodePort
+    label: "HTTPS 节点端口（NodePort）"
+    type: int
+    default: 0
+    group: "服务 / 协议"
+    show_if: service.type=NodePort
+    description: "0 表示自动分配端口。直接通过 NodePort 访问时，需将自定义外部 HTTPS 端口设为实际分配的端口。"
+  - variable: protocols.ssh.enabled
+    label: "启用 SSH 网关"
+    type: boolean
+    default: "true"
+    group: "服务 / 协议"
+  - variable: protocols.ssh.port
+    label: "SSH 端口"
+    type: int
+    default: 2222
+    group: "服务 / 协议"
+    show_if: protocols.ssh.enabled=true
+  - variable: protocols.ssh.nodePort
+    label: "SSH 节点端口（NodePort）"
+    type: int
+    default: 0
+    group: "服务 / 协议"
+    show_if: service.type=NodePort&&protocols.ssh.enabled=true
+    description: "0 表示自动分配 NodePort。"
+  - variable: protocols.mysql.enabled
+    label: "启用 MySQL 网关"
+    type: boolean
+    default: "true"
+    group: "服务 / 协议"
+  - variable: protocols.mysql.port
+    label: "MySQL 端口"
+    type: int
+    default: 33306
+    group: "服务 / 协议"
+    show_if: protocols.mysql.enabled=true
+  - variable: protocols.mysql.nodePort
+    label: "MySQL 节点端口（NodePort）"
+    type: int
+    default: 0
+    group: "服务 / 协议"
+    show_if: service.type=NodePort&&protocols.mysql.enabled=true
+    description: "0 表示自动分配 NodePort。"
+  - variable: protocols.postgres.enabled
+    label: "启用 PostgreSQL 网关"
+    type: boolean
+    default: "true"
+    group: "服务 / 协议"
+  - variable: protocols.postgres.port
+    label: "PostgreSQL 端口"
+    type: int
+    default: 55432
+    group: "服务 / 协议"
+    show_if: protocols.postgres.enabled=true
+  - variable: protocols.postgres.nodePort
+    label: "PostgreSQL 节点端口（NodePort）"
+    type: int
+    default: 0
+    group: "服务 / 协议"
+    show_if: service.type=NodePort&&protocols.postgres.enabled=true
+    description: "0 表示自动分配 NodePort。"
+  - variable: resources.requests.cpu
+    label: "CPU 请求量"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.cpu
+    label: "CPU 上限"
+    type: string
+    default: 1000m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.requests.memory
+    label: "内存请求量"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.memory
+    label: "内存上限"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / 内存"
+
+  - variable: netbird.enabled
+    label: "通过 NetBird 访问 SSH"
+    type: boolean
+    default: false
+    group: "NetBird SSH"
+    description: "为已有 Warpgate Service 创建 NetBird 网络资源，复用已有路由器；请另在 NetBird 配置仅授权设备访问 SSH 端口的策略。"
+    show_subquestion_if: true
+    subquestions:
+      - variable: netbird.routerName
+        label: "NetBird NetworkRouter 名称"
+        type: string
+        default: vpn-entry
+        required: true
+        description: "填写已有 NetworkRouter 名称；创建网络资源后不可更改其路由器引用。"
+      - variable: netbird.routerNamespace
+        label: "NetworkRouter 命名空间"
+        type: "reference[namespace]"
+        default: infra-system
+        required: true
+        description: "填写已有 NetworkRouter 所在命名空间。"
+      - variable: netbird.groupNames
+        label: "NetBird 目标组"
+        type: "array[string]"
+        default:
+          - ""
+        required: true
+        description: "填写已有目标组，例如内部应用网络组。组不是客户端设备组；访问策略须单独在 NetBird 配置。"

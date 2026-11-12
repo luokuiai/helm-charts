@@ -170,6 +170,9 @@
             "properties": {
               "issuerURL": {
                 "minLength": 1
+              },
+              "clientID": {
+                "minLength": 1
               }
             }
           }

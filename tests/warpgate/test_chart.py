@@ -24,9 +24,9 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CHART = ROOT / "charts/warpgate/1.0.2"
+CHART = ROOT / "charts/warpgate/1.0.3"
 BINARY = os.environ.get("WARPGATE_BIN")
-OIDC = {"enabled": True, "issuerURL": "https://auth.example.com", "clientID": "warpgate"}
+OIDC = {"enabled": True, "issuerURL": "https://auth.example.com"}
 
 
 def render(values=None, release="warpgate"):
@@ -266,12 +266,12 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(sso["provider"]["admin_role_mappings"], {})
         pod = resource(docs, "Deployment")["spec"]["template"]["spec"]
         install = pod["initContainers"][0]
-        self.assertIn("--substitute-env=WARPGATE_DATABASE_URL WARPGATE_OIDC_CLIENT_SECRET", install["args"])
+        self.assertIn("--substitute-env=WARPGATE_DATABASE_URL WARPGATE_OIDC_CLIENT_SECRET WARPGATE_OIDC_CLIENT_ID", install["args"])
         self.assertEqual(install["env"][1]["valueFrom"]["secretKeyRef"],
                          {"name": "warpgate-env", "key": "WARPGATE_OIDC_CLIENT_SECRET"})
         self.assertEqual([d["metadata"]["name"] for d in docs if d["kind"] == "Secret"], ["warpgate-backend-tls"])
 
-    def test_oidc_client_id_uses_environment_secret_with_legacy_fallback(self):
+    def test_oidc_client_id_uses_environment_secret(self):
         values = {"oidc": {"enabled": True, "issuerURL": "https://auth.example.com"},
                   "ingress": {"enabled": True}}
         docs = manifests(values)
@@ -283,12 +283,6 @@ class ChartTests(unittest.TestCase):
         env = {v["name"]: v for v in install["env"]}
         self.assertEqual(env["WARPGATE_OIDC_CLIENT_ID"]["valueFrom"]["secretKeyRef"],
                          {"name": "warpgate-env", "key": "WARPGATE_OIDC_CLIENT_ID"})
-        values["oidc"]["clientID"] = "legacy-client"
-        docs = manifests(values)
-        self.assertEqual(config(docs)["sso_providers"][0]["provider"]["client_id"], "legacy-client")
-        install = resource(docs, "Deployment")["spec"]["template"]["spec"]["initContainers"][0]
-        self.assertNotIn("WARPGATE_OIDC_CLIENT_ID", {v["name"] for v in install["env"]})
-
     def test_oidc_without_chart_ingress_uses_explicit_https_host_and_port(self):
         docs = manifests({"oidc": OIDC, "warpgate": {"externalHost": "access.example.com", "externalPort": 9443}})
         settings = config(docs)
@@ -380,7 +374,7 @@ class ChartTests(unittest.TestCase):
         values = yaml.safe_load((CHART / "values.yaml").read_text())
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         metadata = yaml.safe_load((CHART / "Chart.yaml").read_text())
-        self.assertEqual(metadata["version"], "1.0.2")
+        self.assertEqual(metadata["version"], "1.0.3")
         netbird_question = next(q for q in questions if q["variable"] == "netbird.enabled")
         self.assertEqual(netbird_question["show_subquestion_if"], True)
         self.assertEqual({q["variable"] for q in netbird_question["subquestions"]},
@@ -517,7 +511,7 @@ class RuntimeTests(unittest.TestCase):
             docs = manifests({"ha": {"enabled": True}, "ingress": {"enabled": True}, "recordings": {"s3": {
                 "enabled": True, "bucket": "recordings", "endpoint": "http://127.0.0.1:19000",
                 "prefix": "sessions/o'hare"}}, "oidc": {
-                **OIDC, "clientID": "", "issuerURL": f"http://127.0.0.1:{server.server_port}"}, "protocols": {
+                **OIDC, "issuerURL": f"http://127.0.0.1:{server.server_port}"}, "protocols": {
                     "ssh": {"enabled": True, "port": ssh_port},
                     "mysql": {"enabled": False}, "postgres": {"enabled": False}}})
             template = resource(docs, "ConfigMap")["data"]["warpgate.yaml"]

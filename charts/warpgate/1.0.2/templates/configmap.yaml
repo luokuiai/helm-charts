@@ -66,12 +66,7 @@ data:
         provider:
           type: custom
           issuer_url: {{ required "oidc.issuerURL is required when OIDC is enabled" .Values.oidc.issuerURL | quote }}
-          {{- if .Values.oidc.clientID }}
-          client_id: {{ .Values.oidc.clientID | quote }}
-          {{- else }}
-          client_id: |-
-            $WARPGATE_OIDC_CLIENT_ID
-          {{- end }}
+          client_id: {{ required "oidc.clientID is required when OIDC is enabled" .Values.oidc.clientID | quote }}
           # A literal scalar preserves quotes, backslashes and colons in single-line secrets.
           client_secret: |-
             $WARPGATE_OIDC_CLIENT_SECRET

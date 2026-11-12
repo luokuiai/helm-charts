@@ -10,7 +10,7 @@ Pod restarts reuse the PVC, recording files and retained backend TLS certificate
 native setup does not recreate an existing administrator or SSH keys.
 
 For OIDC, enable **OpenID Connect login**, enter the provider's exact Issuer URL
-and add `WARPGATE_OIDC_CLIENT_ID` and `WARPGATE_OIDC_CLIENT_SECRET` to the same environment Secret. A nonempty legacy `oidc.clientID` takes precedence.
+and Client ID, and add `WARPGATE_OIDC_CLIENT_SECRET` to the same environment Secret.
 It must contain the raw, single-line Client Secret. Casdoor is supported through
 the generic OIDC provider. Register this exact redirect URI at the provider:
 
