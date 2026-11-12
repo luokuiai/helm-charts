@@ -1,0 +1,117 @@
+questions:
+  - variable: image.repository
+    label: "kkFileView 镜像"
+    type: string
+    default: harbor.luokuiai.com/kkfileview:5.0.2
+    required: true
+    group: "部署"
+    description: "填写完整镜像地址，包含标签或摘要。"
+  - variable: image.pullSecret
+    label: "镜像仓库 Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "部署"
+    description: "私有 Harbor 需要时，选择安装命名空间中已有的镜像拉取 Secret。"
+  - variable: envSecret
+    label: "环境变量 Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "部署"
+    description: "选择安装命名空间中已有的环境变量 Secret；更新后需重启工作负载。不要在其中更改服务端口。"
+  - variable: ingress.enabled
+    label: "启用域名访问（Ingress）"
+    type: boolean
+    default: false
+    group: "域名 / HTTPS"
+    description: "默认仅通过集群内部 Service 访问。启用前请确认网络访问权限和文档隐私要求。"
+  - variable: ingress.host
+    label: "域名"
+    type: hostname
+    default: kkfileview.example.com
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+  - variable: ingress.className
+    label: "Ingress 类"
+    type: "reference[networking.k8s.io.ingressclass]"
+    default: ""
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "选择已有的 Ingress 类；留空使用集群默认类。"
+  - variable: ingress.certificate.mode
+    label: "HTTPS 模式"
+    type: enum
+    default: disabled
+    required: true
+    options:
+      - disabled
+      - existing
+      - cert-manager
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true
+    description: "existing 使用已有证书；cert-manager 使用已有签发器；disabled 使用 HTTP。"
+  - variable: ingress.certificate.issuerKind
+    label: "证书签发器类型"
+    type: enum
+    default: ClusterIssuer
+    required: true
+    options:
+      - ClusterIssuer
+      - Issuer
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器名称"
+    type: "reference[cert-manager.io.clusterissuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=ClusterIssuer
+  - variable: ingress.certificate.issuerName
+    label: "证书签发器名称"
+    type: "reference[cert-manager.io.issuer]"
+    default: ""
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager&&ingress.certificate.issuerKind=Issuer
+  - variable: ingress.certificate.secretName
+    label: "已有 TLS 证书"
+    type: "reference[secret]"
+    default: kkfileview-tls
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=existing
+    description: "选择安装命名空间中已有的 TLS Secret。"
+  - variable: ingress.certificate.secretName
+    label: "证书保存的 Secret 名称"
+    type: string
+    default: kkfileview-tls
+    required: true
+    group: "域名 / HTTPS"
+    show_if: ingress.enabled=true&&ingress.certificate.mode=cert-manager
+    description: "填写 cert-manager 签发证书后保存的 Secret 名称。"
+  - variable: resources.requests.cpu
+    label: "CPU 请求量"
+    type: string
+    default: "1"
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.cpu
+    label: "CPU 上限"
+    type: string
+    default: "1"
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.requests.memory
+    label: "内存请求量"
+    type: string
+    default: 2Gi
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.memory
+    label: "内存上限"
+    type: string
+    default: 2Gi
+    required: true
+    group: "CPU / 内存"
+    description: "文件转换消耗取决于文件大小和并发量，请根据实际负载调整。"

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kkfileview.fullname" . }}
+  labels:
+    {{- include "kkfileview.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kkfileview.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kkfileview.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ . | quote }}
+      {{- end }}
+      containers:
+        - name: kkfileview
+          image: {{ required "image.repository is required" .Values.image.repository | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.envSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . | quote }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8012
+              protocol: TCP
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

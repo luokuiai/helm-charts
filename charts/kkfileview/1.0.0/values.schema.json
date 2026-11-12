@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "image",
+    "envSecret",
+    "ingress",
+    "resources"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "pullPolicy",
+        "pullSecret"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "pullSecret": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+        }
+      }
+    },
+    "envSecret": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+    },
+    "ingress": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "className",
+        "annotations",
+        "host",
+        "certificate"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "host": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+        },
+        "certificate": {
+          "type": "object",
+          "required": [
+            "mode",
+            "secretName",
+            "issuerKind",
+            "issuerName"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "disabled",
+                "existing",
+                "cert-manager"
+              ]
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "issuerKind": {
+              "enum": [
+                "Issuer",
+                "ClusterIssuer"
+              ]
+            },
+            "issuerName": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    }
+  }
+}

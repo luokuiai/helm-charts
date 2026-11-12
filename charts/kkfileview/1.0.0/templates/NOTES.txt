@@ -1,0 +1,7 @@
+kkFileView Service: {{ include "kkfileview.fullname" . }}.{{ .Release.Namespace }}.svc:8012
+{{- if .Values.ingress.enabled }}
+Address: {{ ternary "https" "http" (ne .Values.ingress.certificate.mode "disabled") }}://{{ .Values.ingress.host }}
+{{- else }}
+Local access: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "kkfileview.fullname" . }} 8012:8012
+{{- end }}
+Preview files and caches are not persisted across Pod replacement.

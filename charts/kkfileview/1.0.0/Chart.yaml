@@ -1,0 +1,14 @@
+apiVersion: v2
+name: kkfileview
+description: kkFileView document preview with a Rancher configuration form
+type: application
+version: 1.0.0
+appVersion: "5.0.2"
+home: https://kkfileview.keking.cn/
+sources:
+  - https://github.com/kekingcn/kkFileView
+keywords:
+  - kkfileview
+  - document-preview
+annotations:
+  catalog.cattle.io/display-name: "kkFileView"

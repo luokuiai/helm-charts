@@ -1,0 +1,27 @@
+image:
+  repository: harbor.luokuiai.com/kkfileview:5.0.2
+  pullPolicy: IfNotPresent
+  # Optional image registry credentials Secret in the release namespace.
+  pullSecret: ""
+
+# Optional existing Secret with application environment variables.
+envSecret: ""
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: kkfileview.example.com
+  certificate:
+    mode: disabled # disabled | existing | cert-manager
+    secretName: kkfileview-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "1"
+    memory: 2Gi
