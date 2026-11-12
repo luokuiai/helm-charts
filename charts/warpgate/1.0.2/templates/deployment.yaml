@@ -90,7 +90,7 @@ spec:
           args:
             - internal-install-files
             {{- if .Values.oidc.enabled }}
-            - --substitute-env=WARPGATE_DATABASE_URL WARPGATE_OIDC_CLIENT_SECRET
+            - --substitute-env=WARPGATE_DATABASE_URL WARPGATE_OIDC_CLIENT_SECRET{{ if not .Values.oidc.clientID }} WARPGATE_OIDC_CLIENT_ID{{ end }}
             {{- else }}
             - --substitute-env=WARPGATE_DATABASE_URL
             {{- end }}
@@ -109,6 +109,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.warpgate.envSecret | quote }}
                   key: WARPGATE_OIDC_CLIENT_SECRET
+            {{- if not .Values.oidc.clientID }}
+            - name: WARPGATE_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.warpgate.envSecret | quote }}
+                  key: WARPGATE_OIDC_CLIENT_ID
+            {{- end }}
             {{- end }}
           securityContext:
             {{- include "warpgate.containerSecurityContext" . | nindent 12 }}

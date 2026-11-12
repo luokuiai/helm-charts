@@ -12,7 +12,7 @@ questions:
     default: warpgate-env
     required: true
     group: "基本设置"
-    description: "选择此命名空间中的已有 Secret。必填 WARPGATE_DATABASE_URL 和 WARPGATE_ADMIN_PASSWORD；高可用需加 WARPGATE_ENCRYPTION_KEY；OIDC 需加 WARPGATE_OIDC_CLIENT_SECRET；S3 需加 AWS_ACCESS_KEY_ID 和 AWS_SECRET_ACCESS_KEY。所有 Pod 共用此 Secret。URL 与客户端密钥必须为单行，修改后需重启工作负载。"
+    description: "选择此命名空间中的已有 Secret。必填 WARPGATE_DATABASE_URL 和 WARPGATE_ADMIN_PASSWORD；高可用需加 WARPGATE_ENCRYPTION_KEY；OIDC 需加 WARPGATE_OIDC_CLIENT_ID 和 WARPGATE_OIDC_CLIENT_SECRET；S3 需加 AWS_ACCESS_KEY_ID 和 AWS_SECRET_ACCESS_KEY。所有 Pod 共用此 Secret。URL 与客户端密钥必须为单行，修改后需重启工作负载。"
   - variable: ha.enabled
     label: "启用高可用部署"
     type: boolean
@@ -35,7 +35,7 @@ questions:
     default: "false"
     required: true
     group: "身份认证 / OIDC"
-    description: "配置通用 OIDC 提供商，包括 Casdoor。需可对外访问的 HTTPS 域名，并在环境变量 Secret 中设置 WARPGATE_OIDC_CLIENT_SECRET。"
+    description: "配置通用 OIDC 提供商，包括 Casdoor。需可对外访问的 HTTPS 域名，并在环境变量 Secret 中设置 WARPGATE_OIDC_CLIENT_ID 和 WARPGATE_OIDC_CLIENT_SECRET。"
   - variable: oidc.issuerURL
     label: "OIDC 签发者地址"
     type: string
@@ -44,14 +44,6 @@ questions:
     group: "身份认证 / OIDC"
     show_if: oidc.enabled=true
     description: "填写提供商发现文档公布的准确签发者地址，例如 Casdoor 的 https://auth.example.com。Warpgate 必须能够访问其发现、令牌和 JWKS 端点。"
-  - variable: oidc.clientID
-    label: "OIDC 客户端 ID"
-    type: string
-    default: ""
-    required: true
-    group: "身份认证 / OIDC"
-    show_if: oidc.enabled=true
-    description: "填写在身份提供商中注册的应用客户端 ID。客户端密钥存入 WARPGATE_OIDC_CLIENT_SECRET。"
   - variable: oidc.name
     label: "OIDC 提供商名称"
     type: string

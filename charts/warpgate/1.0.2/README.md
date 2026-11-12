@@ -16,8 +16,8 @@ storage configuration. Local files and recording buffers are mounted at `/data`.
 Select an existing environment Secret (default `warpgate-env`) with
 `WARPGATE_DATABASE_URL` and `WARPGATE_ADMIN_PASSWORD`. Create a dedicated
 PostgreSQL database and user before installation. With OIDC enabled, also provide the single-line
-`WARPGATE_OIDC_CLIENT_SECRET`, then enter the Issuer URL and Client ID in the
-form. Client secrets stay out of Helm values and ConfigMaps. Automatic OIDC
+`WARPGATE_OIDC_CLIENT_ID` and `WARPGATE_OIDC_CLIENT_SECRET`, then enter the Issuer URL in the
+form. A nonempty legacy `oidc.clientID` takes precedence; clear it to use the Secret. Client secrets stay out of Helm values and ConfigMaps. Automatic OIDC
 user creation is optional; users still need target access through Warpgate roles.
 
 Local recordings use `warpgate.recordSessions: true` and `persistence.enabled: true`

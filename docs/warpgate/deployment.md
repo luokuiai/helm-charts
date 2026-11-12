@@ -28,6 +28,7 @@ All containers import `warpgate.envSecret`, default `warpgate-env`, through
 | --- | --- |
 | `WARPGATE_DATABASE_URL` | Required external PostgreSQL connection URL, e.g. `postgresql://warpgate:URL_ENCODED_CREDENTIAL@postgres.database.svc.cluster.local:5432/warpgate?sslmode=require`. |
 | `WARPGATE_ADMIN_PASSWORD` | Initial administrator credential. Does not reset an existing user. |
+| `WARPGATE_OIDC_CLIENT_ID` | Required with OIDC enabled unless using the legacy `oidc.clientID` value. Provider Client ID. |
 | `WARPGATE_OIDC_CLIENT_SECRET` | Required only with OIDC enabled. Raw, single-line provider Client Secret. |
 | `AWS_ACCESS_KEY_ID` | Required with chart-managed S3 recording storage. Dedicated S3 access identity. |
 | `AWS_SECRET_ACCESS_KEY` | Required with chart-managed S3 recording storage. Secret key for that identity. |
@@ -340,8 +341,10 @@ provider creation in the Warpgate backend is required.
    For a usual Casdoor installation this is `https://auth.example.com`.
    Warpgate must reach the discovery, token and JWKS endpoints; the browser must
    reach the provider's authorization endpoint.
-3. Enter the application's Client ID in **OIDC 客户端 ID** and put its Client
-   Secret into `WARPGATE_OIDC_CLIENT_SECRET` in `warpgate-env`.
+3. Put the application Client ID and Client Secret into `WARPGATE_OIDC_CLIENT_ID`
+   and `WARPGATE_OIDC_CLIENT_SECRET` in `warpgate-env`. On existing releases,
+   a nonempty legacy `oidc.clientID` takes precedence. Clear it in the Helm
+   values when moving to the Secret. Keep the old value to roll back.
 4. Enable OIDC and register the exact redirect URI at the provider:
 
    ```text

@@ -271,6 +271,24 @@ class ChartTests(unittest.TestCase):
                          {"name": "warpgate-env", "key": "WARPGATE_OIDC_CLIENT_SECRET"})
         self.assertEqual([d["metadata"]["name"] for d in docs if d["kind"] == "Secret"], ["warpgate-backend-tls"])
 
+    def test_oidc_client_id_uses_environment_secret_with_legacy_fallback(self):
+        values = {"oidc": {"enabled": True, "issuerURL": "https://auth.example.com"},
+                  "ingress": {"enabled": True}}
+        docs = manifests(values)
+        provider = config(docs)["sso_providers"][0]["provider"]
+        self.assertEqual(provider["client_id"], "$WARPGATE_OIDC_CLIENT_ID")
+        self.assertEqual(provider["client_secret"], "$WARPGATE_OIDC_CLIENT_SECRET")
+        install = resource(docs, "Deployment")["spec"]["template"]["spec"]["initContainers"][0]
+        self.assertIn("--substitute-env=WARPGATE_DATABASE_URL WARPGATE_OIDC_CLIENT_SECRET WARPGATE_OIDC_CLIENT_ID", install["args"])
+        env = {v["name"]: v for v in install["env"]}
+        self.assertEqual(env["WARPGATE_OIDC_CLIENT_ID"]["valueFrom"]["secretKeyRef"],
+                         {"name": "warpgate-env", "key": "WARPGATE_OIDC_CLIENT_ID"})
+        values["oidc"]["clientID"] = "legacy-client"
+        docs = manifests(values)
+        self.assertEqual(config(docs)["sso_providers"][0]["provider"]["client_id"], "legacy-client")
+        install = resource(docs, "Deployment")["spec"]["template"]["spec"]["initContainers"][0]
+        self.assertNotIn("WARPGATE_OIDC_CLIENT_ID", {v["name"] for v in install["env"]})
+
     def test_oidc_without_chart_ingress_uses_explicit_https_host_and_port(self):
         docs = manifests({"oidc": OIDC, "warpgate": {"externalHost": "access.example.com", "externalPort": 9443}})
         settings = config(docs)
@@ -331,7 +349,6 @@ class ChartTests(unittest.TestCase):
             {"warpgate": {"envSecret": ""}}, {"warpgate": {"envSecret": "bad/name"}},
             {"warpgate": {"externalHost": "https://host"}}, {"warpgate": {"externalPort": 65536}},
             {"oidc": {"enabled": True}}, {"oidc": OIDC},
-            {"oidc": {**OIDC, "clientID": ""}, "ingress": {"enabled": True}},
             {"oidc": {**OIDC, "issuerURL": "not-a-url"}, "ingress": {"enabled": True}},
             {"oidc": {**OIDC, "issuerURL": "https://auth.example.com?invalid"}, "ingress": {"enabled": True}},
             {"protocols": {"ssh": {"port": 8888}}}, {"protocols": {"ssh": {"port": 33306}}},
@@ -397,6 +414,7 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(values["warpgate"]["envSecret"], secret["metadata"]["name"])
         self.assertIn("WARPGATE_ADMIN_PASSWORD", secret["stringData"])
         self.assertTrue(secret["stringData"]["WARPGATE_DATABASE_URL"].startswith("postgresql://"))
+        self.assertIn("WARPGATE_OIDC_CLIENT_ID", secret["stringData"])
         self.assertIn("WARPGATE_OIDC_CLIENT_SECRET", secret["stringData"])
         docs = manifests(values)
         settings = config(docs)
@@ -499,7 +517,7 @@ class RuntimeTests(unittest.TestCase):
             docs = manifests({"ha": {"enabled": True}, "ingress": {"enabled": True}, "recordings": {"s3": {
                 "enabled": True, "bucket": "recordings", "endpoint": "http://127.0.0.1:19000",
                 "prefix": "sessions/o'hare"}}, "oidc": {
-                **OIDC, "issuerURL": f"http://127.0.0.1:{server.server_port}"}, "protocols": {
+                **OIDC, "clientID": "", "issuerURL": f"http://127.0.0.1:{server.server_port}"}, "protocols": {
                     "ssh": {"enabled": True, "port": ssh_port},
                     "mysql": {"enabled": False}, "postgres": {"enabled": False}}})
             template = resource(docs, "ConfigMap")["data"]["warpgate.yaml"]
@@ -518,6 +536,7 @@ class RuntimeTests(unittest.TestCase):
                    "NO_PROXY": "localhost,127.0.0.1,warpgate-cluster.internal",
                    "no_proxy": "localhost,127.0.0.1,warpgate-cluster.internal",
                    "AWS_ACCESS_KEY_ID": "test-only-access-id", "AWS_SECRET_ACCESS_KEY": "test-only-secret",
+                   "WARPGATE_OIDC_CLIENT_ID": "warpgate",
                    "WARPGATE_OIDC_CLIENT_SECRET": "quotes'\" slash\\ colon: hash# dollar$ ampersand&"}
 
             def run(args, **kwargs):
@@ -530,6 +549,7 @@ class RuntimeTests(unittest.TestCase):
             run(install_args[:-2] + [str(seed), str(data)])
             actual = yaml.safe_load((data / "warpgate.yaml").read_text())
             self.assertEqual(actual["database_url"], database_url)
+            self.assertEqual(actual["sso_providers"][0]["provider"]["client_id"], env["WARPGATE_OIDC_CLIENT_ID"])
             self.assertEqual(actual["sso_providers"][0]["provider"]["client_secret"], env["WARPGATE_OIDC_CLIENT_SECRET"])
             run(["--config", str(data / "warpgate.yaml"), "check"])
             setup_args = pod["initContainers"][1]["args"]

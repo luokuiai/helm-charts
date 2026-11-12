@@ -15,7 +15,7 @@ ha:
 
 warpgate:
   # Existing Secret containing WARPGATE_DATABASE_URL (external PostgreSQL),
-  # WARPGATE_ADMIN_PASSWORD and, with OIDC, WARPGATE_OIDC_CLIENT_SECRET.
+  # WARPGATE_ADMIN_PASSWORD and, with OIDC, WARPGATE_OIDC_CLIENT_ID and WARPGATE_OIDC_CLIENT_SECRET.
   # All containers import it through envFrom. URLs/secrets must be single-line.
   envSecret: warpgate-env
   # Bare hostname, derived from Ingress when empty. Required for OIDC.
@@ -34,6 +34,7 @@ oidc:
   name: oidc
   label: "Single sign-on"
   issuerURL: ""
+  # Legacy value: clear it to read WARPGATE_OIDC_CLIENT_ID from envSecret.
   clientID: ""
   # OpenID scope is added by Warpgate itself.
   scopes: [email, profile]

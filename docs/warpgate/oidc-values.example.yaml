@@ -8,7 +8,6 @@ oidc:
   label: "Sign in with Casdoor"
   # Copy the exact issuer from your Casdoor discovery document.
   issuerURL: https://auth.example.com
-  clientID: REPLACE_WITH_CASDOOR_CLIENT_ID
   autoCreateUsers: true
 
 ingress:
