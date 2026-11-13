@@ -15,9 +15,9 @@ questions:
   - variable: envSecret
     label: "环境变量 Secret（可选）"
     type: "reference[secret]"
-    default: ""
+    default: kkfileview-env
     group: "部署"
-    description: "选择安装命名空间中已有的环境变量 Secret；更新后需重启工作负载。不要在其中更改服务端口。"
+    description: "选择安装命名空间中已有的环境变量 Secret，默认 kkfileview-env；不使用可清空。更新后需重启工作负载。不要在其中更改服务端口。"
   - variable: ingress.enabled
     label: "启用域名访问（Ingress）"
     type: boolean

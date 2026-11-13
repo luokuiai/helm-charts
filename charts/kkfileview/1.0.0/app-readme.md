@@ -3,6 +3,7 @@
 默认镜像为 `harbor.luokuiai.com/kkfileview:5.0.2`，服务端口为 8012。
 工作负载由 Kubernetes 自动选择可调度节点。
 私有 Harbor 需要认证时，选择已有的镜像拉取 Secret。
+环境变量默认从同命名空间的 `kkfileview-env` Secret 全部注入；不使用时请清空该选项。
 
 默认只创建集群内部 Service。按需启用 Ingress，选择入口类并配置证书。
 Chart 不创建 PVC；Pod 替换时，容器里的预览文件和缓存可能丢失。

@@ -5,7 +5,8 @@ Install **kkFileView 1.0.0** from Rancher Apps after syncing this repository.
 1. Keep `harbor.luokuiai.com/kkfileview:5.0.2`, or supply another complete image
    reference. For private Harbor, choose an existing image-pull Secret in the same
    namespace. Verify the mirror supports the cluster nodes' architectures.
-2. Optionally select an existing environment Secret. Environment settings are
+2. Select an existing environment Secret (default `kkfileview-env`) or clear the
+   field if not using one. Environment settings are
    loaded at Pod startup; restart the Deployment after changing the Secret. Do not
    change the application port from 8012 through this Secret.
 3. By default, access is cluster-internal. Optionally enable Ingress and configure

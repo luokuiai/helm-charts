@@ -6,7 +6,8 @@ Locally maintained Rancher Helm Chart for kkFileView. Default image:
 Kubernetes automatically schedules the Pod on an eligible node.
 
 Select an existing image-pull Secret for private Harbor access if required, and
-optionally select an existing environment Secret in the release namespace. The
+optionally select an existing environment Secret in the release namespace (default
+`kkfileview-env`); clear the field if not using one. The
 image controls startup and default configuration; keep its service port at
 8012. The Chart does not create persistent storage: converted files and cached
 previews in the container can disappear on replacement. Configure application

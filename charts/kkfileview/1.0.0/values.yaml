@@ -5,7 +5,7 @@ image:
   pullSecret: ""
 
 # Optional existing Secret with application environment variables.
-envSecret: ""
+envSecret: kkfileview-env
 
 ingress:
   enabled: false

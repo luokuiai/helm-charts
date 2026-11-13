@@ -38,6 +38,7 @@ class KKFileViewChartTests(unittest.TestCase):
         pod = deployment["spec"]["template"]["spec"]
         container = pod["containers"][0]
         self.assertEqual(container["image"], "harbor.luokuiai.com/kkfileview:5.0.2")
+        self.assertEqual(container["envFrom"], [{"secretRef": {"name": "kkfileview-env"}}])
         self.assertEqual(container["ports"][0]["containerPort"], 8012)
         self.assertNotIn("affinity", pod)
         self.assertFalse(pod["automountServiceAccountToken"])
@@ -54,6 +55,8 @@ class KKFileViewChartTests(unittest.TestCase):
         pod = resource(docs, "Deployment")["spec"]["template"]["spec"]
         self.assertEqual(pod["imagePullSecrets"], [{"name": "harbor-auth"}])
         self.assertEqual(pod["containers"][0]["envFrom"], [{"secretRef": {"name": "preview-env"}}])
+        pod = resource(manifests({"envSecret": ""}), "Deployment")["spec"]["template"]["spec"]
+        self.assertNotIn("envFrom", pod["containers"][0])
 
     def test_ingress_certificate_modes_and_backend(self):
         for mode in ("disabled", "existing", "cert-manager"):
