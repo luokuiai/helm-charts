@@ -18,45 +18,46 @@ def resource(docs, kind):
 
 
 class RedisChartTests(unittest.TestCase):
-    def test_default_no_auth_and_persistent_aof(self):
+    def test_default_no_auth_and_no_persistence(self):
         docs = render()
         ss = resource(docs, "StatefulSet")["spec"]
         pod = ss["template"]["spec"]
         app = pod["containers"][0]
         self.assertEqual(ss["replicas"], 1)
         self.assertEqual(app["command"], ["redis-server"])
-        self.assertEqual(app["args"][-2:], ["--appendonly", "yes"])
-        self.assertIn({"name": "data", "mountPath": "/data"}, app["volumeMounts"])
-        self.assertEqual(ss["volumeClaimTemplates"][0]["spec"]["storageClassName"], "local-path")
+        self.assertEqual(app["image"], "redis:8")
+        self.assertEqual(app["args"][-4:], ["--appendonly", "no", "--save", ""])
+        self.assertNotIn("volumeClaimTemplates", ss)
         self.assertNotIn("volumes", pod)
+        self.assertNotIn("imagePullSecrets", pod)
         svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "cache")
         self.assertEqual(svc["spec"]["type"], "ClusterIP")
         self.assertEqual(svc["spec"]["ports"][0]["port"], 6379)
 
-    def test_optional_secret_and_existing_claim(self):
-        docs = render({"redis": {"configSecret": "cache-config"},
-                       "persistence": {"existingClaim": "cache-data"},
-                       "image": {"pullSecret": "harbor"}})
+    def test_optional_config_secret(self):
+        docs = render({"redis": {"configSecret": "cache-config"}})
         ss = resource(docs, "StatefulSet")["spec"]
         pod = ss["template"]["spec"]
         app = pod["containers"][0]
         self.assertEqual(app["command"], ["redis-server", "/etc/redis/redis.conf"])
         self.assertIn({"name": "config", "secret": {"secretName": "cache-config", "items": [{"key": "redis.conf", "path": "redis.conf"}]}}, pod["volumes"])
-        self.assertIn({"name": "data", "persistentVolumeClaim": {"claimName": "cache-data"}}, pod["volumes"])
-        self.assertEqual(pod["imagePullSecrets"], [{"name": "harbor"}])
         self.assertNotIn("volumeClaimTemplates", ss)
 
-    def test_optional_config_and_storage_independently(self):
-        for values in ({"redis": {"configSecret": "cache-config"}},
-                       {"persistence": {"existingClaim": "cache-data"}}):
-            with self.subTest(values=values):
-                ss = resource(render(values), "StatefulSet")["spec"]
-                names = {v["name"] for v in ss["template"]["spec"]["volumes"]}
-                self.assertEqual(names, {"config"} if "redis" in values else {"data"})
+    def test_optional_persistence(self):
+        ss = resource(render({"persistence": {"enabled": True}}), "StatefulSet")["spec"]
+        app = ss["template"]["spec"]["containers"][0]
+        self.assertEqual(app["args"][-4:], ["--appendonly", "yes", "--save", ""])
+        self.assertIn({"name": "data", "mountPath": "/data"}, app["volumeMounts"])
+        self.assertEqual(ss["volumeClaimTemplates"][0]["spec"]["storageClassName"], "local-path")
+        ss = resource(render({"persistence": {"enabled": True, "existingClaim": "cache-data"}}), "StatefulSet")["spec"]
+        self.assertNotIn("volumeClaimTemplates", ss)
+        self.assertIn({"name": "data", "persistentVolumeClaim": {"claimName": "cache-data"}},
+                      ss["template"]["spec"]["volumes"])
 
     def test_form_defaults(self):
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         values = yaml.safe_load((CHART / "values.yaml").read_text())
+        self.assertFalse(any(q["variable"] == "image.pullSecret" for q in questions))
         for question in questions:
             current = values
             for part in question["variable"].split("."):

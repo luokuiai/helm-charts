@@ -17,27 +17,27 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
-      {{- with .Values.image.pullSecret }}
-      imagePullSecrets:
-        - name: {{ . | quote }}
-      {{- end }}
       containers:
         - name: redis
           image: {{ required "image.repository is required" .Values.image.repository | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["redis-server"{{ if .Values.redis.configSecret }}, "/etc/redis/redis.conf"{{ end }}]
-          args: ["--bind", "0.0.0.0", "--protected-mode", "no", "--port", "6379", "--dir", "/data", "--appendonly", "yes"]
+          args: ["--bind", "0.0.0.0", "--protected-mode", "no", "--port", "6379", "--dir", "/data", "--appendonly", {{ ternary "yes" "no" .Values.persistence.enabled | quote }}, "--save", ""]
           ports:
             - name: redis
               containerPort: 6379
+          {{- if or .Values.redis.configSecret .Values.persistence.enabled }}
           volumeMounts:
+            {{- if .Values.persistence.enabled }}
             - name: data
               mountPath: /data
+            {{- end }}
             {{- if .Values.redis.configSecret }}
             - name: config
               mountPath: /etc/redis
               readOnly: true
             {{- end }}
+          {{- end }}
           startupProbe:
             tcpSocket: {port: redis}
             periodSeconds: 5
@@ -51,7 +51,7 @@ spec:
             failureThreshold: 6
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      {{- if or .Values.redis.configSecret .Values.persistence.existingClaim }}
+      {{- if or .Values.redis.configSecret (and .Values.persistence.enabled .Values.persistence.existingClaim) }}
       volumes:
         {{- if .Values.redis.configSecret }}
         - name: config
@@ -61,13 +61,13 @@ spec:
               - key: redis.conf
                 path: redis.conf
         {{- end }}
-        {{- if .Values.persistence.existingClaim }}
+        {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim | quote }}
         {{- end }}
       {{- end }}
-  {{- if not .Values.persistence.existingClaim }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -1,11 +1,11 @@
 nameOverride: ""
 image:
-  repository: redis:7.4
+  repository: redis:8
   pullPolicy: IfNotPresent
-  pullSecret: ""
 redis:
   configSecret: ""
 persistence:
+  enabled: false
   existingClaim: ""
   storageClass: local-path
   size: 10Gi

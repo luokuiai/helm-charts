@@ -1,9 +1,9 @@
 apiVersion: v2
 name: redis
-description: Redis with persistent storage and a Rancher form
+description: Redis with a Rancher configuration form
 type: application
 version: 1.0.0
-appVersion: "7.4"
+appVersion: "8"
 home: https://redis.io/
 icon: file://charts/redis/1.0.0/icon.png
 sources:

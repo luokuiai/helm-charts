@@ -9,7 +9,7 @@ Each application is maintained separately, with multiple chart versions supporte
 helm-charts/                         # Git repository root
 ├── charts/                          # Chart directory scanned by Rancher
 │   ├── redis/
-│   │   └── 1.0.0/                   # Redis standalone + AOF + PVC
+│   │   └── 1.0.0/                   # Redis standalone
 │   ├── postgres/
 │   │   └── 1.0.0/                   # PostgreSQL 18 + Rancher form + PVC
 │   ├── openbao/
@@ -76,7 +76,7 @@ The current versions use Chinese consistently for Rancher form groups, labels, a
 | Chart | Chart version | Contents |
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
-| redis | 1.0.0 | Redis standalone, AOF, optional authentication, and persistent storage |
+| redis | 1.0.0 | Redis standalone with optional authentication and persistence |
 | postgres | 1.0.0 | PostgreSQL 18.6, persistent storage, environment Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.1 | Casdoor v4.25.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
@@ -96,7 +96,7 @@ Ingress is disabled by default. DNS, cert-manager, and DNS webhook installations
 See the [Komodo migration guide](docs/komodo/migration.md) for installation and migration steps.
 Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.example.yaml).
 
-See the [Redis deployment guide](docs/redis/deployment.md) for single-instance installation, optional authentication, and persistent storage.
+See the [Redis deployment guide](docs/redis/deployment.md) for single-instance installation and optional authentication.
 
 See the [PostgreSQL README](charts/postgres/1.0.0/README.md) for PostgreSQL 18 installation and data volume details.
 

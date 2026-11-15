@@ -28,14 +28,8 @@ questions:
   - variable: redis.image.repository
     label: "Redis 镜像"
     type: string
-    default: redis:7.4
+    default: redis:8
     required: true
-    group: "Redis"
-    show_if: redis.enabled=true
-  - variable: redis.image.pullSecret
-    label: "Redis 镜像仓库 Secret（可选）"
-    type: "reference[secret]"
-    default: ""
     group: "Redis"
     show_if: redis.enabled=true
   - variable: redis.redis.configSecret
@@ -45,26 +39,6 @@ questions:
     group: "Redis"
     show_if: redis.enabled=true
     description: "留空不设置密码，应用配置中也应清除旧密码；选择包含 redis.conf 的 Secret 可设置密码，应用配置中需填写相同密码。"
-  - variable: redis.persistence.existingClaim
-    label: "Redis 已有数据 PVC（可选）"
-    type: "reference[persistentvolumeclaim]"
-    default: ""
-    group: "Redis"
-    show_if: redis.enabled=true
-    description: "留空自动创建 PVC；选择已有 PVC 前请确认数据兼容。"
-  - variable: redis.persistence.storageClass
-    label: "Redis 存储类"
-    type: storageclass
-    default: local-path
-    group: "Redis"
-    show_if: redis.enabled=true
-  - variable: redis.persistence.size
-    label: "Redis 存储容量"
-    type: string
-    default: 10Gi
-    required: true
-    group: "Redis"
-    show_if: redis.enabled=true
   - variable: redis.resources.requests.cpu
     label: "Redis CPU 请求量"
     type: string

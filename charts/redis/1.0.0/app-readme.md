@@ -1,5 +1,6 @@
 # Redis
 
-默认不设置密码，应用通过集群内 Service 的 6379 端口连接。如需密码，可选择
-包含 `redis.conf` 文件的 Secret，通过 `requirepass` 设置。默认启用 AOF 并使用
-PVC，单副本不提供高可用。Secret 更新后需重启 Pod。
+Redis 单副本，默认不设置密码。如需密码，可选择包含 `redis.conf` 的 Secret，
+通过 `requirepass` 设置。服务仅在集群内部开放 6379。
+默认禁用磁盘持久化，Pod 重建后数据丢失；独立安装可选启用 PVC 和 AOF。
+更新配置 Secret 后需重启 Pod。

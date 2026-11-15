@@ -15,7 +15,8 @@ the ConfigMap. The application has no PVC; logs under `/app/logs` and local
 temporary files are not persisted.
 
 The bundled Redis is optional and disabled by default. When enabled, the
-application connects to it automatically, and its AOF data is stored in a PVC.
+application connects to it automatically. Redis runs in memory without a PVC;
+its data is lost when the Pod is replaced.
 It has no authentication by default; to enable authentication select a Secret
 containing `redis.conf` with `requirepass` and configure the same credentials in
 `application-prod.yml`. Without Redis authentication, remove old Redis

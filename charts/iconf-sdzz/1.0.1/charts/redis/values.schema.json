@@ -4,16 +4,15 @@
   "required": [
     "image",
     "redis",
-    "persistence",
-    "resources"
+    "resources",
+    "persistence"
   ],
   "properties": {
     "image": {
       "type": "object",
       "required": [
         "repository",
-        "pullPolicy",
-        "pullSecret"
+        "pullPolicy"
       ],
       "properties": {
         "repository": {
@@ -26,10 +25,6 @@
             "IfNotPresent",
             "Never"
           ]
-        },
-        "pullSecret": {
-          "type": "string",
-          "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
         }
       }
     },
@@ -46,14 +41,21 @@
         }
       }
     },
+    "resources": {
+      "type": "object"
+    },
     "persistence": {
       "type": "object",
       "required": [
+        "enabled",
         "existingClaim",
         "storageClass",
         "size"
       ],
       "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
         "existingClaim": {
           "type": "string",
           "pattern": "^$|^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
@@ -66,9 +68,6 @@
           "minLength": 1
         }
       }
-    },
-    "resources": {
-      "type": "object"
     }
   }
 }

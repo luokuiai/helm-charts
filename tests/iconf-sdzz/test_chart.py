@@ -61,18 +61,18 @@ class ChartTests(unittest.TestCase):
         self.assertIn({"name": "SPRING_DATA_REDIS_HOST", "value": service["metadata"]["name"]}, env)
         self.assertIn({"name": "SPRING_DATA_REDIS_PORT", "value": "6379"}, env)
         self.assertEqual(redis["spec"]["replicas"], 1)
-        self.assertEqual(redis["spec"]["volumeClaimTemplates"][0]["metadata"]["name"], "data")
-        self.assertEqual(redis["spec"]["template"]["spec"]["containers"][0]["image"], "redis:7.4")
-        docs = render_all({"redis": {"enabled": True, "redis": {"configSecret": "auth"},
-                                      "persistence": {"existingClaim": "redis-data"}}})
+        self.assertNotIn("volumeClaimTemplates", redis["spec"])
+        self.assertEqual(redis["spec"]["template"]["spec"]["containers"][0]["image"], "redis:8")
+        docs = render_all({"redis": {"enabled": True, "redis": {"configSecret": "auth"}}})
         redis = next(d for d in docs if d["kind"] == "StatefulSet")
         pod = redis["spec"]["template"]["spec"]
-        self.assertIn({"name": "data", "persistentVolumeClaim": {"claimName": "redis-data"}}, pod["volumes"])
         self.assertIn({"name": "config", "secret": {"secretName": "auth", "items": [{"key": "redis.conf", "path": "redis.conf"}]}}, pod["volumes"])
 
     def test_form_defaults_match_values(self):
         questions = yaml.safe_load((CHART / "questions.yaml").read_text())["questions"]
         values = yaml.safe_load((CHART / "values.yaml").read_text())
+        self.assertFalse(any(q["variable"].startswith("redis.persistence.") or
+                             q["variable"] == "redis.image.pullSecret" for q in questions))
         for q in questions:
             value = values
             for part in q["variable"].split("."):

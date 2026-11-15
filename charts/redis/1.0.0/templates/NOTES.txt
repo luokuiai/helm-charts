@@ -4,4 +4,8 @@ Configuration: Secret {{ .Values.redis.configSecret }} (redis.conf)
 {{- else }}
 Authentication is disabled; limit network access to trusted workloads.
 {{- end }}
-AOF is enabled. Keep and back up the data PVC.
+{{- if .Values.persistence.enabled }}
+Persistence uses AOF and a PVC; back up your data.
+{{- else }}
+Persistence is disabled; data is lost when the Pod is replaced.
+{{- end }}
