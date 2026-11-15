@@ -30,6 +30,12 @@ spec:
               value: prod
             - name: STORAGE_TYPE
               value: s3
+            {{- if .Values.redis.enabled }}
+            - name: SPRING_DATA_REDIS_HOST
+              value: {{ include "redis.fullname" (dict "Release" .Release "Values" .Values.redis) | quote }}
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+            {{- end }}
           ports:
             - name: http
               containerPort: 8080

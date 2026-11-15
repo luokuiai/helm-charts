@@ -19,6 +19,80 @@ questions:
     required: true
     group: "部署"
     description: "选择同命名空间的 ConfigMap，使用 application-prod.yml 配置数据库、Redis、S3 等；修改后重启工作负载。"
+  - variable: redis.enabled
+    label: "部署内置 Redis"
+    type: boolean
+    default: false
+    group: "Redis"
+    description: "启用后应用自动连接本次部署的 Redis；关闭则使用 ConfigMap 中的外部 Redis 配置。"
+  - variable: redis.image.repository
+    label: "Redis 镜像"
+    type: string
+    default: redis:7.4
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.image.pullSecret
+    label: "Redis 镜像仓库 Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.redis.configSecret
+    label: "Redis 配置 Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "Redis"
+    show_if: redis.enabled=true
+    description: "留空不设置密码，应用配置中也应清除旧密码；选择包含 redis.conf 的 Secret 可设置密码，应用配置中需填写相同密码。"
+  - variable: redis.persistence.existingClaim
+    label: "Redis 已有数据 PVC（可选）"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    group: "Redis"
+    show_if: redis.enabled=true
+    description: "留空自动创建 PVC；选择已有 PVC 前请确认数据兼容。"
+  - variable: redis.persistence.storageClass
+    label: "Redis 存储类"
+    type: storageclass
+    default: local-path
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.persistence.size
+    label: "Redis 存储容量"
+    type: string
+    default: 10Gi
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.resources.requests.cpu
+    label: "Redis CPU 请求量"
+    type: string
+    default: 100m
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.resources.limits.cpu
+    label: "Redis CPU 上限"
+    type: string
+    default: "1"
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.resources.requests.memory
+    label: "Redis 内存请求量"
+    type: string
+    default: 256Mi
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
+  - variable: redis.resources.limits.memory
+    label: "Redis 内存上限"
+    type: string
+    default: 1Gi
+    required: true
+    group: "Redis"
+    show_if: redis.enabled=true
   - variable: ingress.enabled
     label: "启用域名访问（Ingress）"
     type: boolean

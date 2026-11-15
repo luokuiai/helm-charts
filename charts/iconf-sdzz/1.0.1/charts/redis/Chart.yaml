@@ -1,0 +1,15 @@
+annotations:
+  catalog.cattle.io/display-name: Redis
+apiVersion: v2
+appVersion: "7.4"
+description: Redis with persistent storage and a Rancher form
+home: https://redis.io/
+icon: file://charts/redis/1.0.0/icon.png
+keywords:
+- redis
+- database
+name: redis
+sources:
+- https://github.com/redis/docker-library-redis
+type: application
+version: 1.0.0

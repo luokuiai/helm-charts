@@ -11,8 +11,16 @@ and sets `STORAGE_TYPE=s3`.
 
 ConfigMaps do not hide passwords or keys from users allowed to read them. Preserve
 encryption keys across restarts and upgrades. Restart the Deployment after updating
-the ConfigMap. The chart does not create a PVC; logs under `/app/logs` and local
+the ConfigMap. The application has no PVC; logs under `/app/logs` and local
 temporary files are not persisted.
+
+The bundled Redis is optional and disabled by default. When enabled, the
+application connects to it automatically, and its AOF data is stored in a PVC.
+It has no authentication by default; to enable authentication select a Secret
+containing `redis.conf` with `requirepass` and configure the same credentials in
+`application-prod.yml`. Without Redis authentication, remove old Redis
+credentials from the application configuration. Switching between external and
+bundled Redis does not migrate data automatically.
 
 For example, create a ConfigMap whose `application-prod.yml` key contains:
 

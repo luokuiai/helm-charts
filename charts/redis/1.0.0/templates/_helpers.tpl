@@ -1,5 +1,9 @@
 {{- define "redis.fullname" -}}
+{{- if .Values.nameOverride -}}
+{{- printf "%s-%s" (.Release.Name | trunc 47 | trimSuffix "-") .Values.nameOverride | trunc 54 | trimSuffix "-" -}}
+{{- else -}}
 {{- .Release.Name | trunc 50 | trimSuffix "-" -}}
+{{- end -}}
 {{- end -}}
 {{- define "redis.selectorLabels" -}}
 app.kubernetes.io/name: {{ .Chart.Name }}

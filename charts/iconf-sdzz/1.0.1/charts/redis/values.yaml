@@ -1,0 +1,18 @@
+nameOverride: ""
+image:
+  repository: redis:7.4
+  pullPolicy: IfNotPresent
+  pullSecret: ""
+redis:
+  configSecret: ""
+persistence:
+  existingClaim: ""
+  storageClass: local-path
+  size: 10Gi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

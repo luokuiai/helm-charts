@@ -1,3 +1,4 @@
+nameOverride: ""
 image:
   repository: redis:7.4
   pullPolicy: IfNotPresent

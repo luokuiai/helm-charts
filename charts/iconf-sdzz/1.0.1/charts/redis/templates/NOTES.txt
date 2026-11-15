@@ -1,0 +1,7 @@
+Redis Service: {{ include "redis.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:6379
+{{- if .Values.redis.configSecret }}
+Configuration: Secret {{ .Values.redis.configSecret }} (redis.conf)
+{{- else }}
+Authentication is disabled; limit network access to trusted workloads.
+{{- end }}
+AOF is enabled. Keep and back up the data PVC.
