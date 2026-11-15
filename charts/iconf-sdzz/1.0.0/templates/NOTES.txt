@@ -1,0 +1,2 @@
+Set image.repository to your published image.
+Create the selected ConfigMap containing application-prod.yml before starting.

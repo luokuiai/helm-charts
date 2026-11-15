@@ -1,0 +1,22 @@
+image:
+  repository: ""
+  pullPolicy: IfNotPresent
+  pullSecret: ""
+configMap: iconf-sdzz-config
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: iconf-sdzz.example.com
+  certificate:
+    mode: disabled
+    secretName: iconf-sdzz-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
