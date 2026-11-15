@@ -1,0 +1,7 @@
+apiVersion: v2
+name: iconf-sdzz
+description: iconf-sdzz meeting application
+type: application
+version: 1.0.1
+annotations:
+  catalog.cattle.io/display-name: "iconf-sdzz"

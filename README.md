@@ -8,6 +8,8 @@ Each application is maintained separately, with multiple chart versions supporte
 ```text
 helm-charts/                         # Git repository root
 ├── charts/                          # Chart directory scanned by Rancher
+│   ├── redis/
+│   │   └── 1.0.0/                   # Redis standalone + AOF + PVC
 │   ├── postgres/
 │   │   └── 1.0.0/                   # PostgreSQL 18 + Rancher form + PVC
 │   ├── openbao/
@@ -24,6 +26,7 @@ helm-charts/                         # Git repository root
 │   │   ├── 1.0.1/                   # Silo optional separate Console ingress
 │   │   └── 1.0.0/                   # Silo S3 storage + 1-16 nodes + Rancher form
 │   ├── iconf-sdzz/
+│   │   ├── 1.0.1/                   # default image
 │   │   └── 1.0.0/                   # iconf-sdzz meeting application
 │   ├── kkfileview/
 │   │   └── 1.0.0/                   # kkFileView document preview
@@ -73,13 +76,14 @@ The current versions use Chinese consistently for Rancher form groups, labels, a
 | Chart | Chart version | Contents |
 | --- | --- | --- |
 | komodo | 1.0.0 | Komodo Core, MongoDB, PVCs, and a Rancher configuration form |
+| redis | 1.0.0 | Redis standalone, AOF, optional authentication, and persistent storage |
 | postgres | 1.0.0 | PostgreSQL 18.6, persistent storage, environment Secret, and a Rancher configuration form |
 | openbao | 1.0.0 | OpenBao 2.7.2, persistent standalone or 3 / 5 member Raft HA, domain / HTTPS, and a Rancher configuration form |
 | casdoor | 1.0.1 | Casdoor v4.25.0, external PostgreSQL / MySQL, domain / HTTPS, and a Rancher configuration form |
 | external-proxy | 1.0.0 | External IP / DNS backends through existing Traefik, original Host forwarding, upstream TLS / SNI, domain certificates, and a Rancher configuration form |
 | magpie | 1.0.1, 1.0.0 | Magpie 0.1.1836 gateway and Web UI, persistent config, domain / HTTPS, node selection, and a Rancher configuration form |
 | silo | 1.0.2, 1.0.1, 1.0.0 | Silo S3 storage, 1-16 nodes with independent PVCs, API / Console domains, HTTPS, and a Rancher configuration form |
-| iconf-sdzz | 1.0.0 | iconf-sdzz meeting application, ConfigMap and S3 storage |
+| iconf-sdzz | 1.0.1, 1.0.0 | iconf-sdzz meeting application, ConfigMap and S3 storage |
 | kkfileview | 1.0.0 | kkFileView 5.0.2 with optional Ingress |
 | warpgate | 1.0.3, 1.0.2, 1.0.1, 1.0.0 | Warpgate 0.30.2, optional HA, external PostgreSQL, OIDC, S3 / shared-file recordings, SSH / HTTP / database gateways, HTTPS, and a Rancher configuration form |
 | netbird-proxy | 1.0.2, 1.0.1, 1.0.0 | Standalone NetBird Reverse Proxy, proxy-managed certificates, deploy-time Geo database download, Traefik TLS passthrough, and a Rancher configuration form |
@@ -91,6 +95,8 @@ Komodo optionally creates an Ingress through the Rancher form, with an existing 
 Ingress is disabled by default. DNS, cert-manager, and DNS webhook installations are managed separately. AliDNS ClusterIssuers can be created through the `cert-manager-alidns-issuer` Chart.
 See the [Komodo migration guide](docs/komodo/migration.md) for installation and migration steps.
 Secret examples are available in [secrets.example.yaml](docs/komodo/secrets.example.yaml).
+
+See the [Redis deployment guide](docs/redis/deployment.md) for single-instance installation, optional authentication, and persistent storage.
 
 See the [PostgreSQL README](charts/postgres/1.0.0/README.md) for PostgreSQL 18 installation and data volume details.
 
@@ -119,7 +125,7 @@ See the [Registry Proxy README](charts/registry-proxy/1.0.0/README.md) for the t
 ## Adding an application
 
 Place a complete chart under `charts/<app>/<chart-version>/`.
-The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.1/`, `charts/external-proxy/1.0.0/`, `charts/silo/1.0.0/`, `charts/kkfileview/1.0.0/`, `charts/warpgate/1.0.3/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
+The existing charts are located at `charts/komodo/1.0.0/`, `charts/postgres/1.0.0/`, `charts/redis/1.0.0/`, `charts/openbao/1.0.0/`, `charts/casdoor/1.0.1/`, `charts/magpie/1.0.1/`, `charts/external-proxy/1.0.0/`, `charts/silo/1.0.0/`, `charts/kkfileview/1.0.0/`, `charts/warpgate/1.0.3/`, `charts/netbird-proxy/1.0.2/`, `charts/netbird-operator-network/1.0.1/`, `charts/cert-manager-alidns-issuer/1.0.0/`, and `charts/registry-proxy/1.0.0/`.
 
 - The `name` in `Chart.yaml` must match the application directory name.
 - The version directory must match `version` in `Chart.yaml`.
@@ -151,7 +157,7 @@ In Rancher, go to **Apps → Repositories → Create**, select a Git repository,
 
 Configure Git credentials if the repository is private.
 
-After the repository syncs, search for `komodo`, `postgres`, `openbao`, `casdoor`, `magpie`, `external-proxy`, `silo`, `kkfileview`, `warpgate`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.
+After the repository syncs, search for `komodo`, `postgres`, `redis`, `openbao`, `casdoor`, `magpie`, `external-proxy`, `silo`, `kkfileview`, `warpgate`, `netbird-proxy`, `netbird-operator-network`, `cert-manager-alidns-issuer`, or `registry-proxy` and select the desired chart version.
 
 For new installations, the release name is editable; these charts do not force
 `catalog.cattle.io/release-name`. Installed Helm releases keep their original

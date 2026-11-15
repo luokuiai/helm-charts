@@ -4,11 +4,11 @@ import subprocess
 import unittest
 import yaml
 
-CHART = Path(__file__).resolve().parents[2] / "charts/iconf-sdzz/1.0.0"
+CHART = Path(__file__).resolve().parents[2] / "charts/iconf-sdzz/1.0.1"
 
 
 def render(extra=None):
-    values = {"image": {"repository": "example.test/iconf-sdzz:test"}, **(extra or {})}
+    values = extra or {}
     result = subprocess.run(["helm", "template", "meeting", str(CHART), "--namespace", "apps", "-f", "-"],
                             input=yaml.safe_dump(values), text=True, capture_output=True, check=True)
     return {doc["kind"]: doc for doc in yaml.safe_load_all(result.stdout) if doc}
@@ -20,6 +20,7 @@ class ChartTests(unittest.TestCase):
         spec = docs["Deployment"]["spec"]
         pod = spec["template"]["spec"]
         app = pod["containers"][0]
+        self.assertEqual(app["image"], "harbor.luokuiai.com/iconf-sdzz")
         self.assertEqual(spec["strategy"]["type"], "Recreate")
         self.assertNotIn("envFrom", app)
         self.assertIn({"name": "SPRING_PROFILES_ACTIVE", "value": "prod"}, app["env"])
