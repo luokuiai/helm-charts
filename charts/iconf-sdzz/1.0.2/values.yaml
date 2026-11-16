@@ -1,0 +1,37 @@
+image:
+  repository: harbor.luokuiai.com/iconf-sdzz:1.0.0
+  pullPolicy: IfNotPresent
+  pullSecret: ""
+configMap: iconf-sdzz-config
+redis:
+  enabled: false
+  nameOverride: redis
+  image:
+    repository: redis:8
+    pullPolicy: IfNotPresent
+  redis:
+    configSecret: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: iconf-sdzz.example.com
+  certificate:
+    mode: disabled
+    secretName: iconf-sdzz-tls
+    issuerKind: ClusterIssuer
+    issuerName: ""
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi

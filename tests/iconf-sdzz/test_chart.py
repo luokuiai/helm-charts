@@ -4,7 +4,7 @@ import subprocess
 import unittest
 import yaml
 
-CHART = Path(__file__).resolve().parents[2] / "charts/iconf-sdzz/1.0.1"
+CHART = Path(__file__).resolve().parents[2] / "charts/iconf-sdzz/1.0.2"
 
 
 def render(extra=None):
@@ -25,7 +25,7 @@ class ChartTests(unittest.TestCase):
         spec = docs["Deployment"]["spec"]
         pod = spec["template"]["spec"]
         app = pod["containers"][0]
-        self.assertEqual(app["image"], "harbor.luokuiai.com/iconf-sdzz")
+        self.assertEqual(app["image"], "harbor.luokuiai.com/iconf-sdzz:1.0.0")
         self.assertEqual(spec["strategy"]["type"], "Recreate")
         self.assertNotIn("envFrom", app)
         self.assertIn({"name": "SPRING_PROFILES_ACTIVE", "value": "prod"}, app["env"])

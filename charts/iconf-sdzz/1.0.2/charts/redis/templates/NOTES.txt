@@ -1,0 +1,11 @@
+Redis Service: {{ include "redis.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:6379
+{{- if .Values.redis.configSecret }}
+Configuration: Secret {{ .Values.redis.configSecret }} (redis.conf)
+{{- else }}
+Authentication is disabled; limit network access to trusted workloads.
+{{- end }}
+{{- if .Values.persistence.enabled }}
+Persistence uses AOF and a PVC; back up your data.
+{{- else }}
+Persistence is disabled; data is lost when the Pod is replaced.
+{{- end }}

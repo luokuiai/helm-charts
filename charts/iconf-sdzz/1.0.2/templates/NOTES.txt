@@ -1,0 +1,2 @@
+Default image: {{ .Values.image.repository }}
+Create the selected ConfigMap containing application-prod.yml before starting.

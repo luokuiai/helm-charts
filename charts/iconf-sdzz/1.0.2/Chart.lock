@@ -1,0 +1,6 @@
+dependencies:
+- name: redis
+  repository: file://../../redis/1.0.0
+  version: 1.0.0
+digest: sha256:acbfa1287b9133871096193766812e0c2792e40b15363981a64383b5fc161f31
+generated: "2026-11-15T13:11:19.133390085+08:00"

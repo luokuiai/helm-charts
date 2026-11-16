@@ -1,0 +1,13 @@
+apiVersion: v2
+name: iconf-sdzz
+description: iconf-sdzz meeting application
+type: application
+version: 1.0.2
+appVersion: "1.0.0"
+dependencies:
+  - name: redis
+    version: 1.0.0
+    repository: "file://../../redis/1.0.0"
+    condition: redis.enabled
+annotations:
+  catalog.cattle.io/display-name: "iconf-sdzz"

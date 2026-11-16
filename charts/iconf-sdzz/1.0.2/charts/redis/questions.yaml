@@ -1,0 +1,65 @@
+questions:
+  - variable: image.repository
+    label: "Redis 镜像"
+    type: string
+    default: redis:8
+    required: true
+    group: "部署"
+    description: "填写完整镜像地址；默认使用官方 Redis 8 镜像。"
+  - variable: redis.configSecret
+    label: "Redis 配置 Secret（可选）"
+    type: "reference[secret]"
+    default: ""
+    group: "部署"
+    description: "留空不启用密码；如需密码，选择包含 redis.conf 的 Secret 并在文件中设置 requirepass。更新后需重启工作负载。"
+  - variable: persistence.enabled
+    label: "启用数据持久化"
+    type: boolean
+    default: false
+    group: "持久化存储"
+    description: "启用后使用 PVC 并开启 AOF；关闭时 Pod 重建后数据丢失。"
+  - variable: persistence.existingClaim
+    label: "已有数据 PVC（可选）"
+    type: "reference[persistentvolumeclaim]"
+    default: ""
+    group: "持久化存储"
+    show_if: persistence.enabled=true
+    description: "留空创建 PVC；选择已有 PVC 时请确认数据与 Redis 版本兼容。"
+  - variable: persistence.storageClass
+    label: "存储类"
+    type: storageclass
+    default: local-path
+    group: "持久化存储"
+    show_if: persistence.enabled=true
+  - variable: persistence.size
+    label: "存储容量"
+    type: string
+    default: 10Gi
+    required: true
+    group: "持久化存储"
+    show_if: persistence.enabled=true
+  - variable: resources.requests.cpu
+    label: "CPU 请求量"
+    type: string
+    default: 100m
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.cpu
+    label: "CPU 上限"
+    type: string
+    default: "1"
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.requests.memory
+    label: "内存请求量"
+    type: string
+    default: 256Mi
+    required: true
+    group: "CPU / 内存"
+  - variable: resources.limits.memory
+    label: "内存上限"
+    type: string
+    default: 1Gi
+    required: true
+    group: "CPU / 内存"
+    description: "根据数据量和持久化重写时的额外内存调整；可在 redis.conf 中设置 maxmemory。"

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "redis.fullname" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "redis.fullname" . }}-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "redis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "redis.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: redis
+          image: {{ required "image.repository is required" .Values.image.repository | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["redis-server"{{ if .Values.redis.configSecret }}, "/etc/redis/redis.conf"{{ end }}]
+          args: ["--bind", "0.0.0.0", "--protected-mode", "no", "--port", "6379", "--dir", "/data", "--appendonly", {{ ternary "yes" "no" .Values.persistence.enabled | quote }}, "--save", ""]
+          ports:
+            - name: redis
+              containerPort: 6379
+          {{- if or .Values.redis.configSecret .Values.persistence.enabled }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /data
+            {{- end }}
+            {{- if .Values.redis.configSecret }}
+            - name: config
+              mountPath: /etc/redis
+              readOnly: true
+            {{- end }}
+          {{- end }}
+          startupProbe:
+            tcpSocket: {port: redis}
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            tcpSocket: {port: redis}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: redis}
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if or .Values.redis.configSecret (and .Values.persistence.enabled .Values.persistence.existingClaim) }}
+      volumes:
+        {{- if .Values.redis.configSecret }}
+        - name: config
+          secret:
+            secretName: {{ .Values.redis.configSecret | quote }}
+            items:
+              - key: redis.conf
+                path: redis.conf
+        {{- end }}
+        {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | quote }}
+        {{- end }}
+      {{- end }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "redis.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if eq .Values.persistence.storageClass "-" }}
+        storageClassName: ""
+        {{- else if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+  {{- end }}
